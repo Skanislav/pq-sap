@@ -1,0 +1,11 @@
+# third-party reference clone (not ours to version here)
+pq-sap/
+
+# python venv (durable, do not commit)
+python/.venv/
+
+# editor swap files
+*.swp
+
+# compiled presentation (docs/presentation/build.sh regenerates it)
+docs/presentation/SUMMARY.html
