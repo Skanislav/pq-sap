@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pq-stealth"
+version = "0.0.1"
+description = "Executable spec / reference implementation of a post-quantum ERC-5564 stealth address scheme (ML-KEM key exchange + ML-DSA key blinding)"
+requires-python = ">=3.10"
+dependencies = [
+    "kyber-py>=1.2.0",
+    "dilithium-py>=1.4.0",
+    "pycryptodome>=3.20",
+]
+
+[project.optional-dependencies]
+audit = ["liboqs-python>=0.12"]
+bench = ["coincurve>=20.0"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+include = ["pq_stealth*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "RUF"]
