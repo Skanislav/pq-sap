@@ -1,0 +1,98 @@
+{
+  "benchmarked": [
+    {
+      "name": "ML-KEM-512",
+      "family": "lattice",
+      "assumption": "Module-LWE",
+      "level": "L1",
+      "pk_B": 800,
+      "ct_B": 768,
+      "keygen_ms": 0.013,
+      "decaps_ms": 0.0114,
+      "meta_addr_B": 833,
+      "announce_gas": 54900
+    },
+    {
+      "name": "ML-KEM-768",
+      "family": "lattice",
+      "assumption": "Module-LWE",
+      "level": "L3*",
+      "pk_B": 1184,
+      "ct_B": 1088,
+      "keygen_ms": 0.019,
+      "decaps_ms": 0.0179,
+      "meta_addr_B": 1217,
+      "announce_gas": 67700
+    },
+    {
+      "name": "sntrup761",
+      "family": "lattice",
+      "assumption": "NTRU",
+      "level": "~L2",
+      "pk_B": 1158,
+      "ct_B": 1039,
+      "keygen_ms": 1.726,
+      "decaps_ms": 0.1465,
+      "meta_addr_B": 1191,
+      "announce_gas": 65910
+    },
+    {
+      "name": "FrodoKEM-640-AES",
+      "family": "lattice",
+      "assumption": "LWE (unstructured)",
+      "level": "L1",
+      "pk_B": 9616,
+      "ct_B": 9752,
+      "keygen_ms": 0.354,
+      "decaps_ms": 0.4101,
+      "meta_addr_B": 9649,
+      "announce_gas": 413320
+    },
+    {
+      "name": "HQC-1",
+      "family": "code",
+      "assumption": "quasi-cyclic codes",
+      "level": "L1",
+      "pk_B": 2241,
+      "ct_B": 4433,
+      "keygen_ms": 0.868,
+      "decaps_ms": 2.4712,
+      "meta_addr_B": 2274,
+      "announce_gas": 201050
+    },
+    {
+      "name": "BIKE-L1",
+      "family": "code",
+      "assumption": "quasi-cyclic codes",
+      "level": "L1",
+      "pk_B": 1541,
+      "ct_B": 1573,
+      "keygen_ms": 6.565,
+      "decaps_ms": 5.2239,
+      "meta_addr_B": 1574,
+      "announce_gas": 87340
+    },
+    {
+      "name": "Classic-McEliece-348864",
+      "family": "code",
+      "assumption": "Goppa codes",
+      "level": "L1",
+      "pk_B": 261120,
+      "ct_B": 96,
+      "keygen_ms": 422.079,
+      "decaps_ms": 17.9039,
+      "meta_addr_B": 261153,
+      "announce_gas": 28050
+    }
+  ],
+  "csidh_literature": {
+    "name": "CSIDH-512",
+    "family": "isogeny",
+    "assumption": "isogeny (NIKE)",
+    "level": "~L1(disputed)",
+    "pk": 64,
+    "ct": 64,
+    "decaps_ms": 80.0,
+    "note": "true PQ NIKE; ~80 ms/op; quantum-security params contested"
+  }
+}

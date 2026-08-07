@@ -1,0 +1,55 @@
+{
+  "announce_pq": {
+    "calldata_bytes": 1316,
+    "calldata_zero": 202,
+    "calldata_nonzero": 1114,
+    "calldata_tokens": 4658,
+    "event_data_bytes": 1248,
+    "execution_gas": 12814,
+    "standard_total": 52446,
+    "floor_total": 67580,
+    "modeled_gas": 67580,
+    "binding_regime": "FLOOR (EIP-7623)",
+    "measured_gas": 67580,
+    "error_pct": 0.0
+  },
+  "announce_dksap": {
+    "calldata_bytes": 292,
+    "calldata_zero": 229,
+    "calldata_nonzero": 63,
+    "calldata_tokens": 481,
+    "event_data_bytes": 224,
+    "execution_gas": 4418,
+    "standard_total": 27342,
+    "floor_total": 25810,
+    "modeled_gas": 27342,
+    "binding_regime": "standard",
+    "measured_gas": 67580,
+    "error_pct": -59.54
+  },
+  "l2": {
+    "assumptions": {
+      "eth_usd": 3200.0,
+      "l1_basefee_gwei": 8.0,
+      "blob_basefee_gwei": 1.0,
+      "note": "marginal L1 data cost per announcement; per-rollup fee adds that rollup's compression + margin, which floats"
+    },
+    "pq_announce_bytes": 1316,
+    "dksap_announce_bytes": 292,
+    "pq_calldata_l1_usd": 1.347584,
+    "dksap_calldata_l1_usd": 0.299008,
+    "pq_blob_l1_usd": 0.004211,
+    "dksap_blob_l1_usd": 0.000934,
+    "blob_vs_calldata_saving_x": 320.0
+  },
+  "meta_registration": {
+    "pq_meta_bytes": 5633,
+    "pq_storage_words": 177,
+    "pq_register_gas": 3786320,
+    "dksap_meta_bytes": 33,
+    "dksap_storage_words": 2,
+    "dksap_register_gas": 62320,
+    "ratio_x": 60.8,
+    "note": "one-time per recipient; SSTORE-dominated. An SSTORE2/code-blob store (~200 gas/byte to deploy) is cheaper for payloads this large and is the recommended pattern."
+  }
+}

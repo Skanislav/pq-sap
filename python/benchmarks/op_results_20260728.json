@@ -1,0 +1,50 @@
+{
+  "ops": [
+    {
+      "op": "gen_meta_address",
+      "median_ms": 8.642,
+      "best_ms": 8.139,
+      "reps": 25
+    },
+    {
+      "op": "send (sender: encaps + stealth-pk derive)",
+      "median_ms": 9.775,
+      "best_ms": 9.511,
+      "reps": 25
+    },
+    {
+      "op": "scan hit (decaps + view-tag + derive)",
+      "median_ms": 10.808,
+      "best_ms": 10.519,
+      "reps": 25
+    },
+    {
+      "op": "derive_stealth_pk (sender-side, isolated)",
+      "median_ms": 6.573,
+      "best_ms": 6.44,
+      "reps": 25
+    },
+    {
+      "op": "sign_blinded (rejection loop)",
+      "median_ms": 155.386,
+      "best_ms": 26.755,
+      "reps": 25
+    },
+    {
+      "op": "verify (stock FIPS 204)",
+      "median_ms": 7.795,
+      "best_ms": 7.649,
+      "reps": 25
+    }
+  ],
+  "rejection_rounds": {
+    "reps": 30,
+    "blinded_median": 18.0,
+    "blinded_mean": 24.4,
+    "blinded_max": 98,
+    "stock_median": 3.0,
+    "stock_mean": 4.5,
+    "stock_max": 12,
+    "ratio_mean": 5.5
+  }
+}

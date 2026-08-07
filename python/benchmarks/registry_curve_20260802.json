@@ -1,0 +1,104 @@
+{
+  "ours/liboqs": {
+    "rows": [
+      {
+        "n": 2500,
+        "best_s": 0.0984,
+        "us_per_ann": 39.35,
+        "tag_matches": 7
+      },
+      {
+        "n": 5000,
+        "best_s": 0.1921,
+        "us_per_ann": 38.41,
+        "tag_matches": 15
+      },
+      {
+        "n": 10000,
+        "best_s": 0.4147,
+        "us_per_ann": 41.47,
+        "tag_matches": 32
+      },
+      {
+        "n": 20000,
+        "best_s": 0.8364,
+        "us_per_ann": 41.82,
+        "tag_matches": 82
+      },
+      {
+        "n": 40000,
+        "best_s": 1.6464,
+        "us_per_ann": 41.16,
+        "tag_matches": 145
+      },
+      {
+        "n": 80000,
+        "best_s": 3.6491,
+        "us_per_ann": 45.61,
+        "tag_matches": 331
+      },
+      {
+        "n": 160000,
+        "best_s": 7.0174,
+        "us_per_ann": 43.86,
+        "tag_matches": 626
+      }
+    ],
+    "fit": {
+      "slope_us_per_ann": 44.31,
+      "intercept_ms": -30.55,
+      "r_squared": 0.99923
+    }
+  },
+  "dksap": {
+    "rows": [
+      {
+        "n": 2500,
+        "best_s": 0.0711,
+        "us_per_ann": 28.46,
+        "tag_matches": 13
+      },
+      {
+        "n": 5000,
+        "best_s": 0.1444,
+        "us_per_ann": 28.88,
+        "tag_matches": 22
+      },
+      {
+        "n": 10000,
+        "best_s": 0.2875,
+        "us_per_ann": 28.75,
+        "tag_matches": 44
+      },
+      {
+        "n": 20000,
+        "best_s": 0.5708,
+        "us_per_ann": 28.54,
+        "tag_matches": 80
+      },
+      {
+        "n": 40000,
+        "best_s": 1.1568,
+        "us_per_ann": 28.92,
+        "tag_matches": 153
+      },
+      {
+        "n": 80000,
+        "best_s": 2.2893,
+        "us_per_ann": 28.62,
+        "tag_matches": 298
+      },
+      {
+        "n": 160000,
+        "best_s": 4.3866,
+        "us_per_ann": 27.42,
+        "tag_matches": 643
+      }
+    ],
+    "fit": {
+      "slope_us_per_ann": 27.5,
+      "intercept_ms": 25.26,
+      "r_squared": 0.99949
+    }
+  }
+}

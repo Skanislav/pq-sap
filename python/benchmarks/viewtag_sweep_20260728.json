@@ -1,0 +1,23 @@
+[
+  {
+    "tag_bytes": 1,
+    "expected_fp_rate": "1/256",
+    "derivations": 181,
+    "total_s": 1.927,
+    "us_per_ann": 48.18
+  },
+  {
+    "tag_bytes": 2,
+    "expected_fp_rate": "1/65536",
+    "derivations": 0,
+    "total_s": 0.714,
+    "us_per_ann": 17.84
+  },
+  {
+    "tag_bytes": 3,
+    "expected_fp_rate": "1/16777216",
+    "derivations": 0,
+    "total_s": 0.705,
+    "us_per_ann": 17.63
+  }
+]

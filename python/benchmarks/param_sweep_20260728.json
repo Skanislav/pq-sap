@@ -1,0 +1,77 @@
+[
+  {
+    "level": "L1",
+    "params": "ML-KEM-512+ML-DSA-44",
+    "liboqs_kem": "ML-KEM-512",
+    "sizes": {
+      "meta_address_B": 3777,
+      "ciphertext_B": 768,
+      "stealth_pk_B": 1312,
+      "sig_B": 2420
+    },
+    "kem_ms": {
+      "keygen_ms": 0.017,
+      "encaps_ms": 0.015,
+      "decaps_ms": 0.012
+    },
+    "scan_us_per_ann": 27.84,
+    "rejection": {
+      "eta": 2,
+      "tau": 39,
+      "beta_blinded": 156,
+      "blinded_mean": 14.4,
+      "stock_mean": 4.6,
+      "ratio": 3.1
+    }
+  },
+  {
+    "level": "L3",
+    "params": "ML-KEM-768+ML-DSA-65",
+    "liboqs_kem": "ML-KEM-768",
+    "sizes": {
+      "meta_address_B": 5633,
+      "ciphertext_B": 1088,
+      "stealth_pk_B": 1952,
+      "sig_B": 3309
+    },
+    "kem_ms": {
+      "keygen_ms": 0.019,
+      "encaps_ms": 0.019,
+      "decaps_ms": 0.017
+    },
+    "scan_us_per_ann": 43.65,
+    "rejection": {
+      "eta": 4,
+      "tau": 49,
+      "beta_blinded": 392,
+      "blinded_mean": 24.8,
+      "stock_mean": 5.5,
+      "ratio": 4.5
+    }
+  },
+  {
+    "level": "L5",
+    "params": "ML-KEM-1024+ML-DSA-87",
+    "liboqs_kem": "ML-KEM-1024",
+    "sizes": {
+      "meta_address_B": 7489,
+      "ciphertext_B": 1568,
+      "stealth_pk_B": 2592,
+      "sig_B": 4627
+    },
+    "kem_ms": {
+      "keygen_ms": 0.025,
+      "encaps_ms": 0.026,
+      "decaps_ms": 0.025
+    },
+    "scan_us_per_ann": 66.48,
+    "rejection": {
+      "eta": 2,
+      "tau": 60,
+      "beta_blinded": 240,
+      "blinded_mean": 15.3,
+      "stock_mean": 3.8,
+      "ratio": 4.0
+    }
+  }
+]

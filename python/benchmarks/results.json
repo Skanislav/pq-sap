@@ -1,0 +1,58 @@
+[
+  {
+    "backend": "ours/liboqs",
+    "n": 5000,
+    "best_s": 0.1774,
+    "per_announcement_us": 35.48,
+    "tag_matches": 13,
+    "reps": 3
+  },
+  {
+    "backend": "ours/liboqs",
+    "n": 20000,
+    "best_s": 0.8301,
+    "per_announcement_us": 41.5,
+    "tag_matches": 73,
+    "reps": 3
+  },
+  {
+    "backend": "ours/liboqs",
+    "n": 80000,
+    "best_s": 3.426,
+    "per_announcement_us": 42.83,
+    "tag_matches": 277,
+    "reps": 3
+  },
+  {
+    "backend": "ours/pure",
+    "n": 5000,
+    "best_s": 21.9106,
+    "per_announcement_us": 4382.11,
+    "tag_matches": 23,
+    "reps": 3
+  },
+  {
+    "backend": "dksap",
+    "n": 5000,
+    "best_s": 0.1373,
+    "per_announcement_us": 27.47,
+    "tag_matches": 21,
+    "reps": 3
+  },
+  {
+    "backend": "dksap",
+    "n": 20000,
+    "best_s": 0.5653,
+    "per_announcement_us": 28.26,
+    "tag_matches": 71,
+    "reps": 3
+  },
+  {
+    "backend": "dksap",
+    "n": 80000,
+    "best_s": 2.2338,
+    "per_announcement_us": 27.92,
+    "tag_matches": 330,
+    "reps": 3
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "blocks": 256,
+  "logs_per_block": 40,
+  "table_entries": 35805,
+  "announcements": 12,
+  "proof_sibling_hashes": 25,
+  "proof_bytes_total": 1486,
+  "verify_ms": 0.043,
+  "receipt_bytes": 13308,
+  "receipt_bytes_if_viewtag_indexed": 1109
+}
