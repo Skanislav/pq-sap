@@ -24,6 +24,22 @@ python vectors/generate_vectors.py   # regenerate vectors/v0/vectors.json
                                      # (deterministic: byte-identical output)
 ```
 
+## Docker
+
+Self-contained image with the liboqs cross-check backend built in
+(pinned to match `liboqs-python`):
+
+```sh
+docker build -t pq-stealth-py .
+docker run --rm pq-stealth-py        # test suite (18 tests)
+
+# conformance vectors: regenerate and confirm byte-identical
+docker run --rm pq-stealth-py sh -c \
+  "cp vectors/v0/vectors.json /tmp/ref.json \
+   && python vectors/generate_vectors.py \
+   && cmp vectors/v0/vectors.json /tmp/ref.json && echo vectors OK"
+```
+
 ## Layout
 
 | Module | Contents |
