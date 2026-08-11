@@ -7,9 +7,13 @@ proves control with a plain ECDSA signature (recover -> same address).
 
 import hashlib
 
-from coincurve import PublicKey
+import pytest
 
-from pq_stealth.classical import (
+pytest.importorskip("coincurve")  # the classical scheme needs the bench extra
+
+from coincurve import PublicKey  # noqa: E402
+
+from pq_stealth.classical import (  # noqa: E402
     gen_meta_address, send, scan, check_announcement,
     derive_stealth_privkey, eth_address, encode_meta_address,
     decode_meta_address, DEFAULT,

@@ -9,7 +9,9 @@ from dataclasses import replace
 
 import pytest
 
-from pq_stealth.classical import (
+pytest.importorskip("coincurve")  # the classical scheme needs the bench extra
+
+from pq_stealth.classical import (  # noqa: E402
     gen_meta_address, send, check_announcement, decode_meta_address, DEFAULT,
 )
 

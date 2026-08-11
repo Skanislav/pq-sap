@@ -9,9 +9,12 @@ import json
 import pathlib
 
 import pytest
-from coincurve import PublicKey
 
-from pq_stealth.classical import (
+pytest.importorskip("coincurve")  # the classical scheme needs the bench extra
+
+from coincurve import PublicKey  # noqa: E402
+
+from pq_stealth.classical import (  # noqa: E402
     check_announcement, decode_meta_address, eth_address,
     Announcement, MetaPublic, DEFAULT,
 )
