@@ -107,8 +107,13 @@ def main() -> None:
         "blinded signature must pass the stock ZKNOX-profile verifier"
 
     # --- expanded pk, encoded exactly as PKContract stores it --------------
-    A_hat_eth, tr_eth, t1_new = D.pk_for_eth(stealth_pk, _xof=shake256,
-                                             _xof2=shake128)
+    # SHAKE/NIST profile, current (df999ed) contract format: A_hat in the NTT
+    # domain, t1 PLAIN (the contract scales by 2^d and NTTs itself; upstream's
+    # pk_for_eth is hardwired to the keccak-PRNG variant and unused here)
+    rho_pk, t1_unpacked = D._unpack_pk(stealth_pk)
+    tr_eth = D._h(stealth_pk, 64, _xof=shake256)
+    A_hat_eth = D._expand_matrix_from_seed(rho_pk, _xof=shake128)
+    t1_new = t1_unpacked
     assert tr_eth == tr
     a_hat_compact = A_hat_eth.compact_256(32)
     t1_compact = t1_new.compact_256(32)
