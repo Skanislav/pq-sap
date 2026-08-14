@@ -1,0 +1,3 @@
+@openzeppelin/contracts/=lib/ETHDILITHIUM/lib/openzeppelin-contracts/contracts/
+solady/=lib/ETHDILITHIUM/lib/solady/src/
+ethdilithium/=lib/ETHDILITHIUM/src/

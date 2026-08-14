@@ -1,0 +1,9 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+optimizer = true
+optimizer_runs = 10000
+solc_version = "0.8.30"
+# Upstream ETHDILITHIUM targets osaka; prague keeps anvil compatibility (D-014).
+evm_version = "prague"
