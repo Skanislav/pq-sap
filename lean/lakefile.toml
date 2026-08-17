@@ -1,0 +1,12 @@
+name = "PqStealth"
+defaultTargets = ["PqStealth"]
+
+[[lean_lib]]
+name = "PqStealth"
+
+# Pinned per plan.md ("VCVio is young ... we pin a commit and don't float
+# on main"): 2026-07-15, the commit validated by the week-1 gate.
+[[require]]
+name = "VCVio"
+git = "https://github.com/Verified-zkEVM/VCVio"
+rev = "a5f474fd0e9a26266cc599d100267411690dfeb7"
