@@ -10,12 +10,13 @@
  *      ZKNOX MLDSA verifier (v0.0.10 on Sepolia — older than the git HEAD
  *      we tested locally, hence this rehearsal)
  *
- * Requires network access to a Sepolia RPC (SEPOLIA_RPC_URL overrides).
+ * First run records the fork state to test/state/ (needs a Sepolia RPC;
+ * SEPOLIA_RPC_URL overrides). Later runs replay it offline; FORK_RECORD=1
+ * forces a fresh recording. See test/util/anvil.ts.
  */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -25,13 +26,10 @@ import { sepolia } from 'viem/chains';
 
 import { decodeMetaAddress, scan } from '../src/scheme.ts';
 import { SEPOLIA, ANNOUNCER_ABI, ZKNOX_VERIFIER_ABI, FACTORY_ABI, SCHEME_ID } from '../src/sepolia.ts';
+import { startSepoliaFork } from './util/anvil.ts';
 
 const PORT = 8549;
 const PROXY_PORT = 9545;
-const RPC = `http://127.0.0.1:${PORT}`;
-// anvil's own HTTP client can't reach remote RPCs on this network; fork
-// through the local Node proxy (scripts/rpc-proxy.mjs) instead
-const UPSTREAM = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.drpc.org';
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const PRE_QUANTUM_PUBKEY = '0x1111111111111111111111111111111111111111' as Hex;
@@ -45,25 +43,13 @@ const unhex = (s: string): Uint8Array =>
   Uint8Array.from(Buffer.from(s.slice(2), 'hex'));
 
 test('sepolia fork: announce, scan, counterfactual, on-chain verify', async () => {
-  const proxy = spawn(process.execPath,
-    [here('../scripts/rpc-proxy.mjs'), '--port', String(PROXY_PORT),
-     '--upstream', UPSTREAM], { stdio: 'ignore' });
-  await new Promise((r) => setTimeout(r, 500));
-  const anvil = spawn('anvil',
-    ['--port', String(PORT), '--fork-url', `http://127.0.0.1:${PROXY_PORT}`,
-     '--silent'],
-    { stdio: 'ignore' });
+  const anvil = await startSepoliaFork(
+    { port: PORT, proxyPort: PROXY_PORT, cache: 'sepolia-fork' });
+  console.log(`    fork mode: ${anvil.mode}`);
   try {
-    const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC) });
-    for (let i = 0; ; i++) {
-      try { await publicClient.getBlockNumber(); break; }
-      catch (e) {
-        if (i > 300) throw new Error(`anvil fork did not start: ${(e as Error).message}`);
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
+    const publicClient = createPublicClient({ chain: sepolia, transport: http(anvil.rpc) });
     const wallet = createWalletClient({
-      chain: sepolia, transport: http(RPC),
+      chain: sepolia, transport: http(anvil.rpc),
       account: privateKeyToAccount(ANVIL_KEY),
     });
 
@@ -129,7 +115,6 @@ test('sepolia fork: announce, scan, counterfactual, on-chain verify', async () =
       'blinded sig must verify against the verifier DEPLOYED on Sepolia');
     console.log('    deployed-verifier compatibility: OK');
   } finally {
-    anvil.kill();
-    proxy.kill();
+    anvil.stop();
   }
 });

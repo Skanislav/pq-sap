@@ -13,8 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -25,6 +24,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 
 import { SEPOLIA, FACTORY_ABI } from '../src/sepolia.ts';
+import { startSepoliaFork } from './util/anvil.ts';
 import {
   ENTRYPOINT_V07, ENTRYPOINT_ABI,
   buildSpendUserOp, signWithBlindedKey, requiredPrefund,
@@ -32,8 +32,6 @@ import {
 
 const PORT = 8552;
 const PROXY_PORT = 9548;
-const RPC = `http://127.0.0.1:${PORT}`;
-const UPSTREAM = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.drpc.org';
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const VERSION = 'pq-only-demo-v0';
@@ -46,25 +44,16 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const demo = JSON.parse(
   readFileSync(here('../../python/scripts/zknox_demo.json'), 'utf8'));
 
-test('fork: spend a ZKNOX account with ML-DSA in BOTH slots — no ECDSA', async () => {
-  const proxy = spawn(process.execPath,
-    [here('../scripts/rpc-proxy.mjs'), '--port', String(PROXY_PORT),
-     '--upstream', UPSTREAM], { stdio: 'ignore' });
-  await new Promise((r) => setTimeout(r, 500));
-  const anvil = spawn('anvil',
-    ['--port', String(PORT), '--fork-url', `http://127.0.0.1:${PROXY_PORT}`,
-     '--silent'], { stdio: 'ignore' });
+test('fork: spend a ZKNOX account with ML-DSA in BOTH slots — no ECDSA', {
+  skip: !existsSync(KOHAKU_OUT) ? 'kohaku artifacts not built (KOHAKU_OUT)' : false,
+}, async () => {
+  const anvil = await startSepoliaFork(
+    { port: PORT, proxyPort: PROXY_PORT, cache: 'sepolia-fork-pq-only' });
+  console.log(`    fork mode: ${anvil.mode}`);
   try {
-    const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC) });
-    for (let i = 0; ; i++) {
-      try { await publicClient.getBlockNumber(); break; }
-      catch (e) {
-        if (i > 300) throw new Error(`fork did not start: ${(e as Error).message}`);
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
+    const publicClient = createPublicClient({ chain: sepolia, transport: http(anvil.rpc) });
     const eoa = privateKeyToAccount(ANVIL_KEY);
-    const wallet = createWalletClient({ chain: sepolia, transport: http(RPC), account: eoa });
+    const wallet = createWalletClient({ chain: sepolia, transport: http(anvil.rpc), account: eoa });
     const deploy = async (a: { abi: unknown; bytecode: { object: Hex } }, args: unknown[]) => {
       const hash = await wallet.deployContract({ abi: a.abi as [], bytecode: a.bytecode.object, args });
       return (await publicClient.waitForTransactionReceipt({ hash })).contractAddress!;
@@ -117,7 +106,6 @@ test('fork: spend a ZKNOX account with ML-DSA in BOTH slots — no ECDSA', async
     console.log(`    handleOps gas: ${rcpt.gasUsed}`);
     console.log(`    SPENT with post-quantum signatures only — zero ECDSA ✔`);
   } finally {
-    anvil.kill();
-    proxy.kill();
+    anvil.stop();
   }
 });

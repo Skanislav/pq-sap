@@ -10,6 +10,8 @@
     "test": "node --test test/vectors.test.ts",
     "e2e": "node --test test/e2e-anvil.test.ts",
     "e2e-7913": "node --test test/e2e-7913.test.ts",
+    "e2e:fork": "node --test test/e2e-sepolia-fork.test.ts test/e2e-sepolia-fork-spend.test.ts test/e2e-fork-pq-only.test.ts",
+    "e2e:fork:record": "FORK_RECORD=1 node --test test/e2e-sepolia-fork.test.ts test/e2e-sepolia-fork-spend.test.ts test/e2e-fork-pq-only.test.ts",
     "build-contracts": "forge build --root contracts",
     "typecheck": "tsc",
     "lint": "tsc",

@@ -29,7 +29,9 @@ import {
   buildSpendUserOp, signUserOp, requiredPrefund,
 } from '../src/spend.ts';
 
-const RPC = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.drpc.org';
+// drpc dropped Sepolia from the free plan (2026-08)
+const RPC = process.env.SEPOLIA_RPC_URL
+  ?? 'https://ethereum-sepolia-rpc.publicnode.com';
 const PRE_QUANTUM_PUBKEY = '0x1111111111111111111111111111111111111111' as Hex;
 const ETHERSCAN = 'https://sepolia.etherscan.io';
 

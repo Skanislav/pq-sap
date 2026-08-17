@@ -91,11 +91,13 @@ export async function buildSpendUserOp(
   };
 }
 
-const PY = process.env.PQ_PYTHON
-  ?? '/private/tmp/claude-501/-Users-skas-Ethereum-git-erc-5567/3bbf0a8c-f678-4091-af33-dbab7934a47e/scratchpad/pqvenv/bin/python';
-const PYTHONREF = process.env.ZKNOX_PYTHONREF
-  ?? '/private/tmp/claude-501/-Users-skas-Ethereum-git-erc-5567/3bbf0a8c-f678-4091-af33-dbab7934a47e/scratchpad/kohaku/packages/pq-account/lib/ETHDILITHIUM/pythonref';
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+// repo-local defaults: the project venv and the vendored ETHDILITHIUM
+// tree (see README "Vendored verifier" for how to restore it)
+const PY = process.env.PQ_PYTHON
+  ?? here('../../python/.venv/bin/python');
+const PYTHONREF = process.env.ZKNOX_PYTHONREF
+  ?? here('../contracts/lib/ETHDILITHIUM/pythonref');
 
 /** Sign a 32-byte hash with the blinded stealth key (Python, deterministic
  *  seeds — same key as public_key_data in zknox_demo.json). */

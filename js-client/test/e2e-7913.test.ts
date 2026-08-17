@@ -19,7 +19,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -30,8 +29,9 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
 
+import { startAnvil } from './util/anvil.ts';
+
 const PORT = 8549;
-const RPC = `http://127.0.0.1:${PORT}`;
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const EIP3860_INITCODE_CAP = 49_152;
@@ -55,19 +55,11 @@ test('blinded stealth key spends through an ERC-7913 signer (verifier || key)', 
   const pkContractArt = artifact('ZKNOX_PKContract.sol/PKContract.json');
   const accountArt = artifact('Stealth7913Account.sol/Stealth7913Account.json');
 
-  const anvil = spawn('anvil', ['--port', String(PORT), '--silent'],
-    { stdio: 'ignore' });
+  const anvil = await startAnvil(PORT);
   try {
-    const publicClient = createPublicClient({ chain: foundry, transport: http(RPC) });
-    for (let i = 0; ; i++) {
-      try { await publicClient.getBlockNumber(); break; }
-      catch (e) {
-        if (i > 50) throw new Error(`anvil did not start: ${(e as Error).message}`);
-        await new Promise((r) => setTimeout(r, 100));
-      }
-    }
+    const publicClient = createPublicClient({ chain: foundry, transport: http(anvil.rpc) });
     const wallet = createWalletClient({
-      chain: foundry, transport: http(RPC),
+      chain: foundry, transport: http(anvil.rpc),
       account: privateKeyToAccount(ANVIL_KEY),
     });
     const deploy = async (art: { abi: unknown; bytecode: { object: Hex } },
@@ -138,6 +130,6 @@ test('blinded stealth key spends through an ERC-7913 signer (verifier || key)', 
     });
     assert.equal(bad1271, '0xffffffff', 'account must reject the wrong hash');
   } finally {
-    anvil.kill();
+    anvil.stop();
   }
 });

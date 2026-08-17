@@ -13,7 +13,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -22,6 +21,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia } from 'viem/chains';
 
 import { SEPOLIA, ANNOUNCER_ABI, FACTORY_ABI, SCHEME_ID } from '../src/sepolia.ts';
+import { startSepoliaFork } from './util/anvil.ts';
 import {
   ENTRYPOINT_V07, ENTRYPOINT_ABI, preQuantumDemoKey,
   buildSpendUserOp, signUserOp, requiredPrefund,
@@ -29,8 +29,6 @@ import {
 
 const PORT = 8550;
 const PROXY_PORT = 9546;
-const RPC = `http://127.0.0.1:${PORT}`;
-const UPSTREAM = process.env.SEPOLIA_RPC_URL ?? 'https://sepolia.drpc.org';
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
@@ -39,25 +37,14 @@ const demo = JSON.parse(
   readFileSync(here('../../python/scripts/zknox_demo.json'), 'utf8'));
 
 test('sepolia fork: fund, deploy, and SPEND from the stealth account', async () => {
-  const proxy = spawn(process.execPath,
-    [here('../scripts/rpc-proxy.mjs'), '--port', String(PROXY_PORT),
-     '--upstream', UPSTREAM], { stdio: 'ignore' });
-  await new Promise((r) => setTimeout(r, 500));
-  const anvil = spawn('anvil',
-    ['--port', String(PORT), '--fork-url', `http://127.0.0.1:${PROXY_PORT}`,
-     '--silent'], { stdio: 'ignore' });
+  const anvil = await startSepoliaFork(
+    { port: PORT, proxyPort: PROXY_PORT, cache: 'sepolia-fork-spend' });
+  console.log(`    fork mode: ${anvil.mode}`);
   try {
-    const publicClient = createPublicClient({ chain: sepolia, transport: http(RPC) });
-    for (let i = 0; ; i++) {
-      try { await publicClient.getBlockNumber(); break; }
-      catch (e) {
-        if (i > 300) throw new Error(`anvil fork did not start: ${(e as Error).message}`);
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
+    const publicClient = createPublicClient({ chain: sepolia, transport: http(anvil.rpc) });
     const eoa = privateKeyToAccount(ANVIL_KEY);
     const wallet = createWalletClient({
-      chain: sepolia, transport: http(RPC), account: eoa,
+      chain: sepolia, transport: http(anvil.rpc), account: eoa,
     });
 
     // -- 1. fresh counterfactual with a pre-quantum key we control --------
@@ -126,7 +113,6 @@ test('sepolia fork: fund, deploy, and SPEND from the stealth account', async () 
       'recipient must receive the spent value');
     console.log(`    SPENT ${spendValue} wei from the stealth account ✔`);
   } finally {
-    anvil.kill();
-    proxy.kill();
+    anvil.stop();
   }
 });
