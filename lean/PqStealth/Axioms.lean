@@ -27,18 +27,14 @@ import PqStealth.Blinding
 import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
-import PqStealth.MLKEMInstance
-import PqStealth.Ownership
+import PqStealth.ConstructionA
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
+import PqStealth.MLKEM
+import PqStealth.Ownership
 import PqStealth.DKSAP
 import PqStealth.Demo
-import PqStealth.Falsification
-import PqStealth.DKSAPClassical
-import PqStealth.ConstructionA
-import PqStealth.SharedSecretHidingMLWE
-import PqStealth.MLKEM768
-import PqStealth.GameControls
+import PqStealth.Controls
 
 /-! ## Algebraic core (`Blinding`) -/
 
@@ -110,12 +106,6 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.sharedSecretHiding_eq_rorBias
 
-/-! ## Specialization to VCVio's ML-KEM (`MLKEMInstance`) -/
-
-/-- info: 'PqStealth.mlkem_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PqStealth.mlkem_unlinkAdvantage_le
-
 /-! ## Anonymity from ciphertext pseudorandomness (`AnonymityFromSPR`) -/
 
 /-- info: 'PqStealth.KEM.anonAdvantage_le_sprAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -125,10 +115,6 @@ import PqStealth.GameControls
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition
-
-/-- info: 'PqStealth.mlkem_unlinkAdvantage_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PqStealth.mlkem_unlinkAdvantage_le_full_decomposition
 
 /-! ## Spend side (`Ownership`) -/
 
@@ -150,7 +136,7 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.dksap_key_recovery
 
-/-! ## DKSAP under a classical adversary (`DKSAPClassical`) -/
+/-! ## DKSAP under a classical adversary (`DKSAP`) -/
 
 /-- info: 'PqStealth.dksapIdeal_unlinkAdvantage_eq_zero' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -160,7 +146,7 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.dksap_unlinkAdvantage_le_hashedDH
 
-/-! ## Negative control (`Falsification`) -/
+/-! ## Negative control (`Controls`) -/
 
 /-- info: 'PqStealth.dksapBroken_not_perfectlyComplete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -200,7 +186,7 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.ConstructionA.idealAux_indep_of_t
 
-/-! ## Hiding terms are VCVio's KEM IND-CPA advantage (`SharedSecretHiding`, `SharedSecretHidingMLWE`) -/
+/-! ## Hiding terms are VCVio's KEM IND-CPA advantage (`SharedSecretHiding`) -/
 
 /-- info: 'PqStealth.sharedSecretHiding_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -210,11 +196,7 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le_indCpa
 
-/-- info: 'PqStealth.mlkem_unlinkAdvantage_le_indCpa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PqStealth.mlkem_unlinkAdvantage_le_indCpa
-
-/-! ## ML-KEM-768 without instance hypotheses (`MLKEM768`) -/
+/-! ## ML-KEM-768 without instance hypotheses (`MLKEM`) -/
 
 /-- info: 'PqStealth.mlkem768_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -223,6 +205,10 @@ import PqStealth.GameControls
 /-- info: 'PqStealth.mlkem768_unlinkAdvantage_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.mlkem768_unlinkAdvantage_le_full_decomposition
+
+/-- info: 'PqStealth.mlkem768_unlinkAdvantage_le_indCpa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.mlkem768_unlinkAdvantage_le_indCpa
 
 /-- info: 'PqStealth.isEmpty_sampleableType_mlkem768Ciphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
@@ -246,7 +232,7 @@ import PqStealth.GameControls
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.augmentedSISProblem_isValid_eq_matrixProblem
 
-/-! ## Game-layer controls (`GameControls`) -/
+/-! ## Game-layer controls (`Controls`) -/
 
 /-- info: 'PqStealth.unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in

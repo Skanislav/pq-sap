@@ -98,6 +98,22 @@ def CorrectExp : ProbComp Bool := do
 announcement always succeeds. -/
 def PerfectlyComplete : Prop := Pr[= true | S.CorrectExp] = 1
 
+/-! ## The false-positive experiment
+
+Detection soundness's counterpart to `CorrectExp`: the scanner is not the
+recipient. A quantitative bound on this probability for the real scan is
+separate work (it is the view-tag length argument); what is used in `Controls`
+is only that a tag-ignoring scan makes it `1`. -/
+
+/-- False-positive experiment: two independent recipients, an announcement
+addressed to the second, scanned with the first one's private state. `true` is a
+false positive. -/
+def FalsePositiveExp : ProbComp Bool := do
+  let (_, sk0) ← S.keygen
+  let (pk1, _) ← S.keygen
+  let c ← S.announce pk1
+  S.scan sk0 c
+
 /-! ## Unlinkability (recipient anonymity)
 
 The hidden bit selects which of two recipients an announcement is for; the

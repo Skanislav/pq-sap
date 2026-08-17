@@ -1,49 +1,44 @@
 /-
-Controls for the game layer: leaks the advantages must catch, and detection
-tests they must reject.
+Controls for the model: leaks the advantages must catch, detection tests they
+must reject, and a scheme that is deliberately wrong.
 
-`Falsification.lean` pins one completeness claim (DKSAP) from below by proving a
-deliberately broken variant broken. The game layer needs the same treatment on
-both sides, because a definition can be wrong in two opposite ways: an advantage
-that no scheme can make large measures nothing, and a detection test that no
-scheme can fail asserts nothing.
+A proof closed by `simp` can be correct about something other than what was
+intended, and a completeness theorem is especially exposed to this -- if the
+model were vacuous, or the detection test trivially true, the proof would still
+go through and nothing would look amiss. The usual defence is to break the
+scheme on purpose and check that the same proof script stops working. That is
+worth doing interactively, but it is a poor regression test: a failing tactic
+script is not checked by the build. The durable version is the one below --
+state the negation as an ordinary theorem and prove it.
 
-The positive controls answer the first: `leakyScheme` publishes the recipient's
+A definition can be wrong in two opposite ways, so the controls come in two
+kinds. An advantage that no scheme can make large measures nothing: the
+positive controls answer that. `leakyScheme` publishes the recipient's
 meta-address outright, and `unlinkAdvantage` is proved to be maximal on it --
 maximal meaning `1 - Pr[the two recipients drew the same key]`, which is the
 true ceiling, since on a key collision the two branches of the game are the same
 computation and no adversary can separate them. The same construction as a KEM
 does the same for `anonAdvantage`.
 
-The negative controls answer the second, and they are what makes the tag
-comparison in `ofKEMFull.scan` load-bearing: a KEM that always rejects gives a
-scheme that is not complete, and dropping the tag comparison gives a scheme that
-is complete but flags every announcement, including those addressed to someone
-else. The tag comparison is exactly what separates those two failures.
+A detection test that no scheme can fail asserts nothing: the negative controls
+answer that, and they are what makes the tag comparison in `ofKEMFull.scan`
+load-bearing. A KEM that always rejects gives a scheme that is not complete, and
+dropping the tag comparison gives a scheme that is complete but flags every
+announcement, including those addressed to someone else. The tag comparison is
+exactly what separates those two failures. `dksapBroken` closes the set on the
+classical side: it drops the recipient's spending key from the detection test,
+which is the single most plausible way to get DKSAP wrong.
+
+See `docs/announcement-model.md` (controls rationale) and
+`docs/dksap-asymmetry.md` (the broken variant).
 -/
 
 import PqStealth.KEMAnonymity
+import PqStealth.DKSAP
 
 open OracleComp OracleSpec
 
 namespace PqStealth
-
-/-! ## The false-positive experiment
-
-Detection soundness's counterpart to `CorrectExp`: the scanner is not the
-recipient. A quantitative bound on this probability for the real scan is
-separate work (it is the view-tag length argument); what is used here is only
-that a tag-ignoring scan makes it `1`. -/
-
-/-- False-positive experiment: two independent recipients, an announcement
-addressed to the second, scanned with the first one's private state. `true` is a
-false positive. -/
-def StealthScheme.FalsePositiveExp {MetaPub MetaPriv Announcement : Type}
-    (S : StealthScheme MetaPub MetaPriv Announcement) : ProbComp Bool := do
-  let (_, sk0) ← S.keygen
-  let (pk1, _) ← S.keygen
-  let c ← S.announce pk1
-  S.scan sk0 c
 
 /-! ## Positive control: a scheme that publishes the recipient -/
 
@@ -249,5 +244,64 @@ theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
     exact hy
 
 end NoTag
+
+/-! ## Negative control: DKSAP with the spending key dropped -/
+
+section BrokenDKSAP
+
+variable {F : Type} [Field F] {G : Type} [AddCommGroup G] [Module F G]
+
+/-- The algebraic reason the broken variant fails: dropping a nonzero spending
+key changes the derived public key. Stated for the recipient whose spending
+secret is `1`, which is enough to refute a claim quantified over all
+recipients. -/
+theorem dksapBroken_key_mismatch (g : G) (hg : g ≠ 0) (s : F) :
+    ((1 : F) + s) • g ≠ s • g := by
+  intro hEq
+  rw [add_smul, one_smul] at hEq
+  exact hg (by simpa using congrArg (· - s • g) hEq)
+
+variable [SampleableType F] [DecidableEq G] (g : G) (h : G → F)
+
+/-- A deliberately incorrect DKSAP: the recipient recomputes the shared scalar
+correctly but forgets to add their own spending key, so the key they check
+against is `s • g` instead of `(m + s) • g`. Announcing is unchanged. -/
+def dksapBroken : StealthScheme (G × G) (F × F) (G × G) where
+  keygen := do
+    let m ← ($ᵗ F)
+    let v ← ($ᵗ F)
+    pure ((m • g, v • g), (m, v))
+  announce MV := do
+    let r ← ($ᵗ F)
+    pure (r • g, MV.1 + (h (r • MV.2)) • g)
+  scan mv Rp := pure (decide (Rp.2 = (h (mv.2 • Rp.1)) • g))
+
+/-- **The negative control, proved.** The broken variant is not perfectly
+complete: there is a recipient and a payment for which detection fails. Because
+this is a theorem rather than a tactic script that happens to fail, the build
+keeps it honest -- if some future change made the broken scheme "work", this
+would stop compiling.
+
+Together with `dksap_perfectlyComplete` it pins the completeness result from
+both sides: the real scheme always detects, and a scheme differing from it only
+in dropping the spending key does not. -/
+theorem dksapBroken_not_perfectlyComplete (hg : g ≠ 0) :
+    ¬ (dksapBroken g h).PerfectlyComplete := by
+  intro hComplete
+  rw [StealthScheme.PerfectlyComplete, probOutput_eq_one_iff_forall] at hComplete
+  obtain ⟨-, hall⟩ := hComplete
+  have hmem : false ∈ support ((dksapBroken g h).CorrectExp) := by
+    simp only [StealthScheme.CorrectExp, dksapBroken, support_bind, support_pure,
+      Set.mem_iUnion, Set.mem_singleton_iff]
+    refine ⟨(((1 : F) • g, (1 : F) • g), (1 : F), (1 : F)),
+      ⟨1, mem_support_uniformSample _, 1, mem_support_uniformSample _, rfl⟩,
+      ((1 : F) • g, (1 : F) • g + h ((1 : F) • ((1 : F) • g)) • g),
+      ⟨1, mem_support_uniformSample _, rfl⟩, ?_⟩
+    symm
+    simp only [decide_eq_false_iff_not, ← add_smul]
+    exact dksapBroken_key_mismatch g hg _
+  simpa using hall false hmem
+
+end BrokenDKSAP
 
 end PqStealth

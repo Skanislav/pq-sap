@@ -31,7 +31,7 @@ is paper-level, VCVio's own K-PKE lemma being a `sorry` placeholder), the
 blinding term (`ConstructionA`), or SPR (-> 2·MLWE, the step above).
 -/
 
-import PqStealth.MLKEMInstance
+import PqStealth.KEMAnonymity
 
 open OracleComp OracleSpec
 
@@ -110,42 +110,5 @@ theorem unlinkAdvantage_ofKEMFull_le_full_decomposition
         + sharedSecretHiding kem auxGen adv false := by
         gcongr
         exact kem.anonAdvantage_le_sprAdv sim (adv.cipherOf auxGen)
-
-/-! ## ML-KEM: the simulator is an explicit key-independent ciphertext sampler -/
-
-section MLKEMSPR
-
-open MLKEM
-
-variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
-  (prims : Primitives params encoding)
-  [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
-  [DecidableEq encoding.EncodedV]
-  {Aux : Type} [DecidableEq Aux]
-  (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
-
-/-- **Unlinkability on real ML-KEM, fully decomposed.** The simulator `sim` is
-an explicit key-independent ciphertext sampler; for the two-hop MLWE argument
-it is uniform over the encoded ciphertext space. It is a parameter rather than
-`$ᵗ (Ciphertext params encoding)` because on the concrete encodings that
-uniform sample does not exist — the encoded types are `ByteArray`, which is
-infinite, so `SampleableType` is uninhabited there
-(`isEmpty_sampleableType_mlkem768Ciphertext` in `MLKEM768`); the ML-KEM-768
-instantiation supplies the uniform-1088-byte sampler instead. The hiding terms
-are KEM IND-CPA advantages (`SharedSecretHiding`); the SPR terms are the key
-hop and the ciphertext hop of the module docstring. -/
-theorem mlkem_unlinkAdvantage_le_full_decomposition
-    (sim : ProbComp (Ciphertext params encoding))
-    (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
-      (Ciphertext params encoding × Aux)) :
-    (mlkemStealthScheme ring encoding prims auxGen).unlinkAdvantage adv ≤
-      sharedSecretHiding (mlkem ring encoding prims) auxGen adv true
-      + auxKeyIndependence (mlkem ring encoding prims) auxGen adv
-      + ((mlkem ring encoding prims).sprAdv sim (adv.cipherOf auxGen) true
-         + (mlkem ring encoding prims).sprAdv sim (adv.cipherOf auxGen) false)
-      + sharedSecretHiding (mlkem ring encoding prims) auxGen adv false :=
-  unlinkAdvantage_ofKEMFull_le_full_decomposition (mlkem ring encoding prims) auxGen sim adv
-
-end MLKEMSPR
 
 end PqStealth
