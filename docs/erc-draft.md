@@ -2,7 +2,7 @@
 eip: TBD
 title: Post-Quantum Stealth Addresses
 description: An ERC-5564 stealth address scheme using ML-KEM-768 key encapsulation for detection and additively blinded ML-DSA-65 keys for spending
-author: Skas Merkushin <skas.merkushin@gmail.com>
+author: Skas Merkushin <skas.merkushin@gmail.com>, Iván Mañús (@ivanmmurciaua)
 discussions-to: TBD
 status: Draft
 type: Standards Track
@@ -131,6 +131,8 @@ Both spend modes fit this one interface: a blinded ML-DSA signature verifies und
 **Why additive blinding (construction A).** It preserves the ERC-5564 property that the sender computes the address, which sender-names-the-address designs require, and it lands on a *standard* ML-DSA public key, so every deployed FIPS 204 verifier accepts the resulting signatures. The alternative — deriving a fresh standardized keypair from the shared secret — uses only standardized operations but breaks sender-side address computation and was kept as a documented fallback.
 
 **Why an ERC-7913 signer encoding for spending.** Every stealth address carries a distinct blinded key, so any design that bakes the key into account initcode pays per-account deployment and, for post-quantum key sizes, collides with the EIP-3860 initcode cap (measured: an account embedding two ML-DSA keys exceeds the 49,152-byte cap and cannot deploy). An [ERC-7913](./eip-7913.md) signer inverts this: one shared verifier serves every stealth account, the account stores only `verifier || key` (40 bytes in the pointer form), and the encoding itself adds no verification cost — ERC-7913 is an interface, not an accelerator; the underlying signature check still dominates.
+
+**Why a classical-spend option is available (informative).** Because the detection layer derives the view tag and the address from the ML-KEM shared secret alone, it is indifferent to the group the spending key lives in, so blinding a secp256k1 spend key in place of the ML-DSA one (`P = K + KDF(ss)*G`, address `keccak256(uncompressed(P)[1:])[12:32]`) yields the ERC-7913 empty-key base case of the same account model: one that is spendable on-chain today with a plain ECDSA signature at `ecrecover` cost, at the price of a classical spend authorization deferred to the same migration. That price is narrower than it reads, since the stealth address is only a hash until it is spent from, so the secp256k1 public key surfaces just at spend time and a single-transaction full drain closes even that window, while confidentiality (which recipient received the payment) rests on ML-KEM and stays post-quantum throughout, the very harvest-now-decrypt-later split the Motivation draws. Sharing the recipient's ML-KEM viewing key and registering under its own scheme ID, the variant lets a wallet offer both, with a reference implementation and vectors published alongside.
 
 **Why full-precision `t` in the meta-address.** `Power2Round` does not commute with the blinding addition; rounding before blinding makes the sender's and recipient's keys disagree. The ~4.4 kB cost is one-time per recipient.
 

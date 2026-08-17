@@ -1,0 +1,68 @@
+name: Lean
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# The Lean package lives in `lean/`; everything below runs there.
+defaults:
+  run:
+    working-directory: lean
+
+jobs:
+  build:
+    name: lake build + axiom audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # elan reads `lean/lean-toolchain` and fetches the pinned toolchain on the
+      # first `lake` invocation, so no default toolchain is installed here.
+      - name: Install elan
+        working-directory: .
+        run: |
+          set -euo pipefail
+          curl https://elan.lean-lang.org/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      # `lean/.lake` holds both the dependency checkouts and their build
+      # artifacts. Mathlib's oleans come from `lake exe cache get`, but VCVio is
+      # NOT in that cache and must be compiled from source: expect a first run
+      # (or any run after a cache miss) of well over an hour. Every later run
+      # depends on this cache hitting, so the key is deliberately narrow --
+      # `lake-manifest.json` pins every dependency revision and `lean-toolchain`
+      # pins the compiler, which together determine the whole `.lake` tree.
+      - name: Cache .lake
+        uses: actions/cache@v4
+        with:
+          path: lean/.lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean/lake-manifest.json', 'lean/lean-toolchain') }}
+          restore-keys: |
+            lake-${{ runner.os }}-
+
+      - name: Fetch mathlib build cache
+        run: lake exe cache get
+
+      # The build log is kept so the next step can assert on it. `pipefail` is
+      # what makes a failing `lake build` fail the step despite the pipe.
+      - name: Build
+        run: |
+          set -euo pipefail
+          lake build 2>&1 | tee build.log
+
+      # `PqStealth/Axioms.lean` already fails the build if a headline theorem
+      # picks up `sorryAx` or a new axiom. This is the belt-and-braces check for
+      # everything else: a `sorry` or a warning anywhere in this package. The
+      # filter on `PqStealth/` is deliberate -- VCVio compiles from source here
+      # and its own sorries (game-based Security files, Falcon) are out of scope
+      # and must not turn this job red.
+      - name: Assert no sorry and no warnings in PqStealth
+        run: |
+          set -euo pipefail
+          if grep -Ein "^(warning|error): PqStealth/|PqStealth/.*(uses 'sorry'|sorryAx)" build.log; then
+            echo "::error::lake build reported a sorry, a warning, or an error in PqStealth"
+            exit 1
+          fi
+          grep -q "Build completed successfully" build.log
