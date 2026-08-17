@@ -64,6 +64,9 @@ boundary (`test/util/anvil.ts` wires it up):
 
 The cache files are a few hundred KB of public Sepolia contract state and
 are meant to be committed: anyone can rerun the fork rehearsals offline.
+CI (`.github/workflows/ci.yml`) does exactly that — replay mode with
+`SEPOLIA_RPC_URL` pointed at an unreachable address, so no run can
+silently fall back to a live RPC.
 
 Why record at the RPC boundary instead of anvil's native
 `anvil_dumpState`/`--load-state`? Measured on anvil 1.4.1: a fork's dump
