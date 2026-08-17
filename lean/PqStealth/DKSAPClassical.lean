@@ -67,13 +67,14 @@ whose scalar is the real `h(r * V)` from one whose scalar is uniform. Under DDH
 with `h` a random oracle this is negligible; it is the classical assumption the
 scheme rests on, and it is exactly what a discrete-log oracle destroys. -/
 noncomputable def hashedDHTrue : ℝ :=
-  ((dksap g h).unlinkSetup adv >>= (dksap g h).unlinkBranchTrue adv).boolDistAdvantage
-    ((dksapIdeal (F := F) g).unlinkSetup adv >>= (dksapIdeal (F := F) g).unlinkBranchTrue adv)
+  ((dksap g h).unlinkSetup >>= (dksap g h).unlinkBranchTrue adv).boolDistAdvantage
+    ((dksapIdeal (F := F) g).unlinkSetup >>= (dksapIdeal (F := F) g).unlinkBranchTrue adv)
 
 /-- Hashed-DH advantage on the `b = 0` branch. -/
 noncomputable def hashedDHFalse : ℝ :=
-  ((dksapIdeal (F := F) g).unlinkSetup adv >>= (dksapIdeal (F := F) g).unlinkBranchFalse adv).boolDistAdvantage
-    ((dksap g h).unlinkSetup adv >>= (dksap g h).unlinkBranchFalse adv)
+  ((dksapIdeal (F := F) g).unlinkSetup >>=
+      (dksapIdeal (F := F) g).unlinkBranchFalse adv).boolDistAdvantage
+    ((dksap g h).unlinkSetup >>= (dksap g h).unlinkBranchFalse adv)
 
 /-! ## The idealized scheme is perfectly unlinkable
 
@@ -151,11 +152,11 @@ theorem dksap_unlinkAdvantage_le_hashedDH
     (dksap g h).unlinkAdvantage adv ≤ hashedDHTrue g h adv + hashedDHFalse g h adv := by
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage]
   unfold hashedDHTrue hashedDHFalse
-  set Pt := (dksap g h).unlinkSetup adv >>= (dksap g h).unlinkBranchTrue adv
-  set Pf := (dksap g h).unlinkSetup adv >>= (dksap g h).unlinkBranchFalse adv
-  set It := (dksapIdeal (F := F) g).unlinkSetup adv >>=
+  set Pt := (dksap g h).unlinkSetup >>= (dksap g h).unlinkBranchTrue adv
+  set Pf := (dksap g h).unlinkSetup >>= (dksap g h).unlinkBranchFalse adv
+  set It := (dksapIdeal (F := F) g).unlinkSetup >>=
     (dksapIdeal (F := F) g).unlinkBranchTrue adv
-  set If := (dksapIdeal (F := F) g).unlinkSetup adv >>=
+  set If := (dksapIdeal (F := F) g).unlinkSetup >>=
     (dksapIdeal (F := F) g).unlinkBranchFalse adv
   have hzero : It.boolDistAdvantage If = 0 := by
     rw [← StealthScheme.unlinkAdvantage_eq_branchDistAdvantage]

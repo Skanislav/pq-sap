@@ -69,39 +69,43 @@ The hidden bit selects which of two recipients an announcement is for; the
 adversary sees both public meta-addresses and the challenge announcement and
 must guess. This is the anonymity / key-privacy game, NOT message IND-CPA. -/
 
-/-- Two-phase unlinkability adversary: given both public meta-addresses it
-prepares state, then given the challenge announcement it guesses the
-recipient. Depends only on the public types, not on the scheme. -/
-structure UnlinkAdv (MetaPub Announcement : Type) where
-  State : Type
-  setup : MetaPub → MetaPub → ProbComp State
-  distinguish : State → Announcement → ProbComp Bool
+/-- Unlinkability adversary: given both public meta-addresses and the challenge
+announcement, guess which recipient the announcement is for. Depends only on the
+public types, not on the scheme, so the same type is also a KEM key-privacy
+adversary (`KEMAnonymity`).
+
+A function rather than a two-phase `setup`/`distinguish` structure: the games
+are non-adaptive, so the two formulations are interchangeable (see
+`docs/announcement-model.md`), and the function form keeps the shared game
+prefix free of the adversary — which is what lets the unlinkability and
+anonymity prefixes be recognized as the same computation. -/
+abbrev UnlinkAdv (MetaPub Announcement : Type) :=
+  MetaPub → MetaPub → Announcement → ProbComp Bool
+
+/-- Shared prefix of the unlinkability game: generate two recipients and publish
+both public meta-addresses. -/
+def unlinkSetup : ProbComp (MetaPub × MetaPub) := do
+  let (pk0, _) ← S.keygen
+  let (pk1, _) ← S.keygen
+  pure (pk0, pk1)
 
 variable (adv : UnlinkAdv MetaPub Announcement)
 
-/-- Shared prefix of the unlinkability game: generate two recipients and let
-the adversary inspect both public meta-addresses. -/
-def unlinkSetup : ProbComp (MetaPub × MetaPub × adv.State) := do
-  let (pk0, _) ← S.keygen
-  let (pk1, _) ← S.keygen
-  let st ← adv.setup pk0 pk1
-  pure (pk0, pk1, st)
-
 /-- The `b = 1` branch: the challenge announcement goes to recipient 1. -/
-def unlinkBranchTrue (a : MetaPub × MetaPub × adv.State) : ProbComp Bool := do
-  let c ← S.announce a.2.1
-  adv.distinguish a.2.2 c
+def unlinkBranchTrue (a : MetaPub × MetaPub) : ProbComp Bool := do
+  let c ← S.announce a.2
+  adv a.1 a.2 c
 
 /-- The `b = 0` branch: the challenge announcement goes to recipient 0. -/
-def unlinkBranchFalse (a : MetaPub × MetaPub × adv.State) : ProbComp Bool := do
+def unlinkBranchFalse (a : MetaPub × MetaPub) : ProbComp Bool := do
   let c ← S.announce a.1
-  adv.distinguish a.2.2 c
+  adv a.1 a.2 c
 
 /-- Unlinkability experiment: flip a hidden bit, announce to the selected
 recipient, and return whether the adversary's guess matches. In VCVio's
 hidden-bit form so the branch-decomposition lemma applies directly. -/
 def UnlinkExp : ProbComp Bool := do
-  let a ← S.unlinkSetup adv
+  let a ← S.unlinkSetup
   let b ← ($ᵗ Bool)
   let z ← if b then S.unlinkBranchTrue adv a else S.unlinkBranchFalse adv a
   pure (b == z)
@@ -113,13 +117,13 @@ noncomputable def unlinkAdvantage : ℝ := (S.UnlinkExp adv).boolBiasAdvantage
 adversary's advantage in distinguishing an announcement to recipient 1 from
 an announcement to recipient 0. This is the definitional heart of anonymity;
 what remains for the analysis is to bound the right-hand distinguishing
-advantage by ML-KEM's anonymity advantage. -/
+advantage by ML-KEM anonymity (ANO-CCA, not IND-CCA). -/
 theorem unlinkAdvantage_eq_branchDistAdvantage :
     S.unlinkAdvantage adv =
-      (S.unlinkSetup adv >>= S.unlinkBranchTrue adv).boolDistAdvantage
-      (S.unlinkSetup adv >>= S.unlinkBranchFalse adv) :=
+      (S.unlinkSetup >>= S.unlinkBranchTrue adv).boolDistAdvantage
+      (S.unlinkSetup >>= S.unlinkBranchFalse adv) :=
   ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage
-    (S.unlinkSetup adv) (S.unlinkBranchTrue adv) (S.unlinkBranchFalse adv)
+    S.unlinkSetup (S.unlinkBranchTrue adv) (S.unlinkBranchFalse adv)
 
 end StealthScheme
 

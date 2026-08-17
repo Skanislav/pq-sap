@@ -52,7 +52,7 @@ cannot be proved here at all. Section 4 below is exactly such a statement.
 * **`auxKeyIndependence` is not `0` for construction A, and no MLWE bound
   closes it.** A uniform mask erases `t` (proved: `idealAux_indep_of_t`) but
   `rho` sits OUTSIDE the masked term, in `pack rho …`. The adversary is handed
-  both meta-addresses, hence both `rho`s, in `adv.setup`; with `hashAddr` an
+  both meta-addresses, hence both `rho`s; with `hashAddr` an
   arbitrary function (take it to be the identity, and `pack rho _ = rho`) the
   address reveals which `rho` produced it. The scheme is fine — `keccak` is
   not the identity — but the missing ingredient is `hashAddr ∘ pack` as a
@@ -69,8 +69,8 @@ cannot be proved here at all. Section 4 below is exactly such a statement.
   as three independent samples), which is the SHAKE/SHA-as-random-oracle step.
 * **Both games of the reduction still need a bind commutation.**
   `LearningWithErrors.distr` / `uniformDistr` fix the seed and the mask BEFORE
-  the adversary runs, whereas `randAuxBranchTrue` draws the shared secret AFTER
-  `adv.setup`. So identifying `LearningWithErrors.game0` with the real game
+  the adversary runs, whereas `randAuxBranchTrue` draws the shared secret after
+  the announcement prefix. So identifying `LearningWithErrors.game0` with the real game
   (on top of `ExpandIsIdeal`) and `game1` with the ideal-blinding game both
   require commuting independent samples past one another
   (`probOutput_bind_eq_tsum` + `tsum_comm`). `idealAux_indep_of_t` is proved in
@@ -107,14 +107,13 @@ theorem auxKeyIndependence_eq_zero_of_pk_independent
     (adv : StealthScheme.UnlinkAdv PK (C × Aux))
     (h : ∀ (kk : K) (pk pk' : PK), auxGen kk pk = auxGen kk pk') :
     auxKeyIndependence kem auxGen adv = 0 := by
-  have key : ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
+  have key : ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
         randAuxBranchTrue kem auxGen adv) =
-      (kem.anonSetup (adv.cipherOf auxGen) >>=
-        kem.anonBranchTrue (adv.cipherOf auxGen)) := by
+      (kem.anonSetup >>= kem.anonBranchTrue (adv.cipherOf auxGen)) := by
     simp only [StealthScheme.unlinkSetup, StealthScheme.ofKEMFull, KEM.anonSetup,
       StealthScheme.UnlinkAdv.cipherOf, randAuxBranchTrue, KEM.anonBranchTrue,
       bind_assoc, pure_bind]
-    refine bind_congr fun x => bind_congr fun y => bind_congr fun st =>
+    refine bind_congr fun x => bind_congr fun y =>
       bind_congr fun c => bind_congr fun kk => ?_
     rw [h kk _ _]
   rw [auxKeyIndependence, key, ProbComp.boolDistAdvantage, sub_self, abs_zero]
@@ -329,10 +328,9 @@ def mlweAdvOfUnlinkAdv (kem : KEM KEMpk KEMsk C K)
     let s₁' ← sampleS
     let s₂' ← sampleE
     let t₁ := expandA chal.1 *ᵥ s₁' + s₂'
-    let st ← adv.setup (ek0, rho0, expandA rho0 *ᵥ s₁ + s₂) (ek1, chal.1, t₁)
     let (c, _) ← kem.encaps ek1
     let tg ← sampleTag
-    adv.distinguish st
+    adv (ek0, rho0, expandA rho0 *ᵥ s₁ + s₂) (ek1, chal.1, t₁)
       (c, (tg, hashAddr (pack chal.1 (power2Round (chal.2 + t₁)))))
 
 /-! ### The middle game

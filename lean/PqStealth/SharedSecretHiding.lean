@@ -58,10 +58,10 @@ by `auxKeyIndependence`. -/
 noncomputable def rorGameTrue : ProbComp Bool := do
   let b ← ($ᵗ Bool)
   let z ← if b then
-      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
         (StealthScheme.ofKEMFull kem auxGen).unlinkBranchTrue adv
     else
-      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
         randAuxBranchTrue kem auxGen adv
   pure (b == z)
 
@@ -69,9 +69,9 @@ noncomputable def rorGameTrue : ProbComp Bool := do
 noncomputable def rorGameFalse : ProbComp Bool := do
   let b ← ($ᵗ Bool)
   let z ← if b then
-      kem.anonSetup (adv.cipherOf auxGen) >>= kem.anonBranchFalse (adv.cipherOf auxGen)
+      kem.anonSetup >>= kem.anonBranchFalse (adv.cipherOf auxGen)
     else
-      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
         (StealthScheme.ofKEMFull kem auxGen).unlinkBranchFalse adv
   pure (b == z)
 
@@ -101,23 +101,21 @@ term -- proved below. -/
 public keys, because the auxiliary data must be rebuilt from the same key the
 real announcement used -- here the challenge key, embedded as recipient 1. -/
 def indCpaAdvTrue : kem.IND_CPA_Adversary where
-  State := PK × PK × adv.State
+  State := PK × PK
   preChallenge pk1 := do
     let (pk0, _) ← kem.keygen
-    let st ← adv.setup pk0 pk1
-    pure (pk0, pk1, st)
-  postChallenge s cStar k := adv.distinguish s.2.2 (cStar, auxGen k s.2.1)
+    pure (pk0, pk1)
+  postChallenge s cStar k := adv s.1 s.2 (cStar, auxGen k s.2)
 
 /-- IND-CPA reduction adversary for the `b = 0` branch (challenge key as
 recipient 0). On this branch the reduction's reference key and the real
 recipient coincide, so the auxiliary data is rebuilt from recipient 0. -/
 def indCpaAdvFalse : kem.IND_CPA_Adversary where
-  State := PK × PK × adv.State
+  State := PK × PK
   preChallenge pk0 := do
     let (pk1, _) ← kem.keygen
-    let st ← adv.setup pk0 pk1
-    pure (pk0, pk1, st)
-  postChallenge s cStar k := adv.distinguish s.2.2 (cStar, auxGen k s.1)
+    pure (pk0, pk1)
+  postChallenge s cStar k := adv s.1 s.2 (cStar, auxGen k s.1)
 
 /-! ## Distribution-level bridges
 
@@ -134,20 +132,17 @@ theorem evalDist_uniformSample_bind_const {α γ : Type} [SampleableType α] (p 
   refine evalDist_ext fun x => ?_
   simp only [probOutput_bind_const, probFailure_of_liftM_PMF, tsub_zero, one_mul]
 
-/-- An independent draw may be pulled to the front of a three-step prefix. -/
-theorem evalDist_bind_pull_front {α β γ δ ζ : Type}
-    (oa : ProbComp α) (ob : α → ProbComp β) (oc : α → β → ProbComp γ)
-    (od : ProbComp δ) (k : α → β → γ → δ → ProbComp ζ) :
-    𝒟[(do let a ← oa; let b ← ob a; let c ← oc a b; let d ← od; k a b c d)] =
-      𝒟[(do let d ← od; let a ← oa; let b ← ob a; let c ← oc a b; k a b c d)] := by
-  calc 𝒟[(do let a ← oa; let b ← ob a; let c ← oc a b; let d ← od; k a b c d)]
-      = 𝒟[(do let a ← oa; let b ← ob a; let d ← od; let c ← oc a b; k a b c d)] := by
-        refine evalDist_bind_congr' _ fun a => evalDist_bind_congr' _ fun b => ?_
-        exact evalDist_bind_bind_swap (oc a b) od fun c d => k a b c d
-    _ = 𝒟[(do let a ← oa; let d ← od; let b ← ob a; let c ← oc a b; k a b c d)] := by
+/-- An independent draw may be pulled to the front of a two-step prefix. -/
+theorem evalDist_bind_pull_front {α β δ ζ : Type}
+    (oa : ProbComp α) (ob : α → ProbComp β) (od : ProbComp δ)
+    (k : α → β → δ → ProbComp ζ) :
+    𝒟[(do let a ← oa; let b ← ob a; let d ← od; k a b d)] =
+      𝒟[(do let d ← od; let a ← oa; let b ← ob a; k a b d)] := by
+  calc 𝒟[(do let a ← oa; let b ← ob a; let d ← od; k a b d)]
+      = 𝒟[(do let a ← oa; let d ← od; let b ← ob a; k a b d)] := by
         refine evalDist_bind_congr' _ fun a => ?_
-        exact evalDist_bind_bind_swap (ob a) od fun b d => oc a b >>= fun c => k a b c d
-    _ = 𝒟[(do let d ← od; let a ← oa; let b ← ob a; let c ← oc a b; k a b c d)] :=
+        exact evalDist_bind_bind_swap (ob a) od fun b d => k a b d
+    _ = 𝒟[(do let d ← od; let a ← oa; let b ← ob a; k a b d)] :=
         evalDist_bind_bind_swap oa od _
 
 /-- Boolean games with the same output distribution have the same bias. -/
@@ -173,10 +168,9 @@ noncomputable def rorNormalFormTrue : ProbComp Bool := do
   let b ← ($ᵗ Bool)
   let pk0 ← kem.keygen
   let pk1 ← kem.keygen
-  let st ← adv.setup pk0.1 pk1.1
   let ck ← kem.encaps pk1.1
   let kRand ← ($ᵗ K)
-  let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
+  let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
   pure (b == z)
 
 /-- Normal form of the `b = 0` reduction game, in which the challenge
@@ -186,10 +180,9 @@ noncomputable def rorNormalFormFalse : ProbComp Bool := do
   let b ← ($ᵗ Bool)
   let pk0 ← kem.keygen
   let pk1 ← kem.keygen
-  let st ← adv.setup pk0.1 pk1.1
   let ck ← kem.encaps pk0.1
   let kRand ← ($ᵗ K)
-  let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
+  let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
   pure (b == z)
 
 /-- The `b = 1` real-or-random game has the normal form's output distribution:
@@ -203,7 +196,7 @@ theorem evalDist_rorGameTrue_eq_normalForm :
     simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranchTrue,
       StealthScheme.ofKEMFull, bind_assoc, pure_bind, if_true]
     refine evalDist_bind_congr' _ fun pk0 => evalDist_bind_congr' _ fun pk1 =>
-      evalDist_bind_congr' _ fun st => evalDist_bind_congr' _ fun ck => ?_
+      evalDist_bind_congr' _ fun ck => ?_
     exact (evalDist_uniformSample_bind_const _).symm
   | false =>
     simp only [StealthScheme.unlinkSetup, randAuxBranchTrue,
@@ -220,29 +213,26 @@ theorem indCpaGameTrue_eq_evalDist_normalForm :
       𝒟[(do
         let pk1 ← kem.keygen
         let pk0 ← kem.keygen
-        let st ← adv.setup pk0.1 pk1.1
         let b ← ($ᵗ Bool)
         let ck ← kem.encaps pk1.1
         let kRand ← ($ᵗ K)
-        let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
+        let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
         pure (b == z) : ProbComp Bool)] := by
     simp only [KEMScheme.IND_CPA_Game, indCpaAdvTrue, bind_assoc, pure_bind,
       ProbCompRuntime.probComp, ProbCompRuntime.liftProbComp, ProbCompLift.id]
     rfl
   rw [hgame, evalDist_bind_bind_swap kem.keygen kem.keygen
     (fun pk1 pk0 => do
-      let st ← adv.setup pk0.1 pk1.1
       let b ← ($ᵗ Bool)
       let ck ← kem.encaps pk1.1
       let kRand ← ($ᵗ K)
-      let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
+      let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
       pure (b == z))]
-  exact evalDist_bind_pull_front kem.keygen (fun _ => kem.keygen)
-    (fun pk0 pk1 => adv.setup pk0.1 pk1.1) ($ᵗ Bool)
-    (fun _pk0 pk1 st b => do
+  exact evalDist_bind_pull_front kem.keygen (fun _ => kem.keygen) ($ᵗ Bool)
+    (fun pk0 pk1 b => do
       let ck ← kem.encaps pk1.1
       let kRand ← ($ᵗ K)
-      let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
+      let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
       pure (b == z))
 
 /-- **The glue, proved.** The `b = 1` shared-secret-hiding term is exactly the
@@ -265,10 +255,10 @@ theorem boolBiasAdvantage_rorNormalFormFalse :
   have hbranch : 𝒟[(do
       let b ← ($ᵗ Bool)
       let z ← if b then
-          (StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
+          (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
             (StealthScheme.ofKEMFull kem auxGen).unlinkBranchFalse adv
         else
-          kem.anonSetup (adv.cipherOf auxGen) >>= kem.anonBranchFalse (adv.cipherOf auxGen)
+          kem.anonSetup >>= kem.anonBranchFalse (adv.cipherOf auxGen)
       pure (b == z) : ProbComp Bool)] = 𝒟[rorNormalFormFalse kem auxGen adv] := by
     unfold rorNormalFormFalse
     refine evalDist_bind_congr' _ fun b => ?_
@@ -277,7 +267,7 @@ theorem boolBiasAdvantage_rorNormalFormFalse :
       simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranchFalse,
         StealthScheme.ofKEMFull, bind_assoc, pure_bind, if_true]
       refine evalDist_bind_congr' _ fun pk0 => evalDist_bind_congr' _ fun pk1 =>
-        evalDist_bind_congr' _ fun st => evalDist_bind_congr' _ fun ck => ?_
+        evalDist_bind_congr' _ fun ck => ?_
       exact (evalDist_uniformSample_bind_const _).symm
     | false =>
       simp only [KEM.anonSetup, KEM.anonBranchFalse, StealthScheme.UnlinkAdv.cipherOf,
@@ -298,22 +288,20 @@ theorem indCpaGameFalse_eq_evalDist_normalForm :
       𝒟[(do
         let pk0 ← kem.keygen
         let pk1 ← kem.keygen
-        let st ← adv.setup pk0.1 pk1.1
         let b ← ($ᵗ Bool)
         let ck ← kem.encaps pk0.1
         let kRand ← ($ᵗ K)
-        let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
+        let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
         pure (b == z) : ProbComp Bool)] := by
     simp only [KEMScheme.IND_CPA_Game, indCpaAdvFalse, bind_assoc, pure_bind,
       ProbCompRuntime.probComp, ProbCompRuntime.liftProbComp, ProbCompLift.id]
     rfl
   rw [hgame]
-  exact evalDist_bind_pull_front kem.keygen (fun _ => kem.keygen)
-    (fun pk0 pk1 => adv.setup pk0.1 pk1.1) ($ᵗ Bool)
-    (fun pk0 _pk1 st b => do
+  exact evalDist_bind_pull_front kem.keygen (fun _ => kem.keygen) ($ᵗ Bool)
+    (fun pk0 pk1 b => do
       let ck ← kem.encaps pk0.1
       let kRand ← ($ᵗ K)
-      let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
+      let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
       pure (b == z))
 
 /-- **The glue, proved.** The `b = 0` shared-secret-hiding term is exactly the

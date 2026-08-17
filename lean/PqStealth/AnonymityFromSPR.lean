@@ -51,23 +51,23 @@ either public key, so it carries no information about the hidden bit. -/
 /-- The anonymity experiment's branch with a simulated (key-independent)
 challenge ciphertext. -/
 def simBranch (sim : ProbComp C) (adv : StealthScheme.UnlinkAdv PK C)
-    (a : PK × PK × adv.State) : ProbComp Bool := do
+    (a : PK × PK) : ProbComp Bool := do
   let c ← sim
-  adv.distinguish a.2.2 c
+  adv a.1 a.2 c
 
 /-- SPR advantage on the `b = 1` branch: distinguishing a real encapsulation to
 key 1 from a simulated ciphertext, in the full anonymity context. For ML-KEM
 this is bounded by 2·MLWE (key hop + ciphertext hop). -/
 noncomputable def sprAdvTrue (kem : KEM PK SK C K) (sim : ProbComp C)
     (adv : StealthScheme.UnlinkAdv PK C) : ℝ :=
-  (kem.anonSetup adv >>= kem.anonBranchTrue adv).boolDistAdvantage
-    (kem.anonSetup adv >>= simBranch sim adv)
+  (kem.anonSetup >>= kem.anonBranchTrue adv).boolDistAdvantage
+    (kem.anonSetup >>= simBranch sim adv)
 
 /-- SPR advantage on the `b = 0` branch. -/
 noncomputable def sprAdvFalse (kem : KEM PK SK C K) (sim : ProbComp C)
     (adv : StealthScheme.UnlinkAdv PK C) : ℝ :=
-  (kem.anonSetup adv >>= simBranch sim adv).boolDistAdvantage
-    (kem.anonSetup adv >>= kem.anonBranchFalse adv)
+  (kem.anonSetup >>= simBranch sim adv).boolDistAdvantage
+    (kem.anonSetup >>= kem.anonBranchFalse adv)
 
 /-- **The structured open arrow, sorry-free.** Anonymity is bounded by the two
 per-branch SPR advantages: hop through the simulated game, whose ciphertext is
