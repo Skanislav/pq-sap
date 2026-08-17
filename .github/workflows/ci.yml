@@ -29,7 +29,8 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: python/pyproject.toml
-      - run: pip install -e ".[dev]"
+      # bench extra = coincurve, needed by the classical-spend tests (else skipped)
+      - run: pip install -e ".[dev,bench]"
       - run: ruff check .
       - run: pytest -q
       # the conformance vectors are deterministic: regenerating them must be
@@ -107,6 +108,7 @@ jobs:
       - run: npm run e2e
       - run: npm run build-contracts
       - run: npm run e2e-7913
+      - run: npm run e2e-7913-classical
       - run: npm run e2e:fork
 
   # ------------------------------------------------------------------ noir
@@ -144,35 +146,5 @@ jobs:
           bb verify -k target/vk -p target/proof -i target/public_inputs
 
   # ------------------------------------------------------------------ lean
-  lean:
-    name: lean (machine-checked core)
-    runs-on: ubuntu-latest
-    # cold: VCVio + PolyFun + cslib + loom2 compile from source (mathlib
-    # comes from its olean cache); warm: restored from the actions cache
-    timeout-minutes: 240
-    steps:
-      - uses: actions/checkout@v4
-      # restore the newest cache for this toolchain+manifest; save a fresh one
-      # every run (even after a failure) so partial builds are not lost
-      - uses: actions/cache/restore@v4
-        with:
-          # everything but mathlib's oleans (6+ GB, fetched by lake exe cache)
-          path: |
-            lean/.lake/build
-            lean/.lake/packages
-            !lean/.lake/packages/mathlib/.lake/build
-          key: lake-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json') }}-${{ github.run_id }}
-          restore-keys: |
-            lake-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json') }}-
-      - uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: lean
-          use-mathlib-cache: true
-      - uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: |
-            lean/.lake/build
-            lean/.lake/packages
-            !lean/.lake/packages/mathlib/.lake/build
-          key: lake-${{ hashFiles('lean/lean-toolchain', 'lean/lake-manifest.json') }}-${{ github.run_id }}
+  # the Lean core builds in its own workflow (.github/workflows/lean.yml):
+  # multi-hour cold build with a narrow .lake cache + no-sorry/no-warning audit
