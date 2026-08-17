@@ -32,15 +32,18 @@ FIPS 203 ciphertext layout, `32 * du * k = 960` bytes of `u` followed by
 `32 * dv = 128` bytes of `v`, 1088 bytes in total. That is the distribution the
 SPR literature means by "uniform ciphertext bytes", and it is a sharper
 simulator than uniform-over-the-encoded-type would be, since the latter would
-range over byte arrays of every length. `size_byteEncodeDUVec_mlkem768` checks
-the `u` half of the layout against the real encoder.
+range over byte arrays of every length. `size_uEncoded_encrypt_mlkem768` checks
+the `u` half of that layout against what honest K-PKE encryption actually emits.
 
 Documented gap: the matching `v`-half check is not machine-checked here. VCVio
 proves it (`byteEncode_size`, `LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`)
-but the theorem and the `bitsToBytes` definition it rests on are `private`, so
-the fact is unavailable outside that module; the `32 * dv` figure below is taken
-from FIPS 203 Algorithm 5 and matches VCVio's own `Params.ciphertextBytes`
-(checked by `uEncodedBytes_add_vEncodedBytes_eq_ciphertextBytes`).
+but that theorem and the `bitsToBytes` definition it rests on are `private`, so
+the fact is unavailable outside that module and the goal cannot even be stated
+in terms one can unfold. The `32 * dv` figure below is therefore taken from FIPS
+203 Algorithm 5 on the strength of the specification alone;
+`uEncodedBytes_add_vEncodedBytes_eq_ciphertextBytes` confirms only that the two
+figures chosen here sum to VCVio's `Params.ciphertextBytes`, which is arithmetic
+and corroborates neither summand.
 -/
 
 import PqStealth.AnonymityFromSPR
@@ -146,13 +149,20 @@ theorem uEncodedBytes_mlkem768 : uEncodedBytes mlkem768 = 960 := by decide
 /-- The `v` half of the ML-KEM-768 ciphertext layout. -/
 theorem vEncodedBytes_mlkem768 : vEncodedBytes mlkem768 = 128 := by decide
 
-/-- The real ML-KEM-768 `u` encoder produces exactly `uEncodedBytes` bytes, so
-the uniform sampler below ranges over the same byte length that honest
-encapsulation produces. -/
+/-- The ML-KEM-768 `u` encoder produces exactly `uEncodedBytes` bytes. -/
 theorem size_byteEncodeDUVec_mlkem768 (u : RqVec mlkem768.k) :
     (mlkem768Encoding.byteEncodeDUVec u : ByteArray).size = uEncodedBytes mlkem768 := by
   simp only [ByteArray.size, mlkem768Encoding, concreteEncoding, byteEncodeVec,
     Array.size_ofFn, uEncodedBytes]
+
+/-- The `u` component of an honestly produced ML-KEM-768 ciphertext occupies
+exactly `uEncodedBytes mlkem768` bytes, so the uniform sampler below ranges over
+the same byte length that real encapsulation emits. -/
+theorem size_uEncoded_encrypt_mlkem768
+    (ek : EncapsulationKey mlkem768 mlkem768Encoding) (msg : Message) (coins : Coins) :
+    ((KPKE.encrypt concreteNTTRingOps mlkem768Encoding mlkem768Primitives ek msg
+        coins).uEncoded : ByteArray).size = uEncodedBytes mlkem768 :=
+  size_byteEncodeDUVec_mlkem768 _
 
 /-! ## The uniform-ciphertext-bytes simulator -/
 
