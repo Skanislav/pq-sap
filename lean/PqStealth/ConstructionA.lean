@@ -95,7 +95,7 @@ betray, and the two games are literally the same computation. -/
 
 section AuxKeyIndependence
 
-variable {PK SK C K Aux : Type} [SampleableType K]
+variable {PK SK C K Aux : Type} [SampleableType K] [DecidableEq Aux]
 
 /-- **The term's meaning, pinned.** When `auxGen` ignores its public-key
 argument the two computations compared by `auxKeyIndependence` differ only in
@@ -143,6 +143,7 @@ symmetric primitive; see the module docstring. -/
 
 variable {R : Type} [CommRing R] {k l : ℕ}
   {Rho Bytes T1 Tag Addr KEMpk KEMsk C : Type} {K : Type}
+  [DecidableEq Tag] [DecidableEq Addr]
 
 /-- The recipient's meta-address as the model sees it: the ML-KEM
 encapsulation key, the matrix seed `rho`, and the FULL-precision spending key
@@ -170,6 +171,7 @@ def auxGen (kk : K) (pk : MetaPub KEMpk Rho R k) : Tag × Addr :=
     hashAddr (pack pk.2.1 (power2Round
       (expandA pk.2.1 *ᵥ (expandBlind kk).1 + (expandBlind kk).2 + pk.2.2))))
 
+omit [DecidableEq Tag] [DecidableEq Addr] in
 /-- **Where the correctness identity enters the game model.** For an honestly
 generated meta-address (`t = A *ᵥ s₁ + s₂`), the address announced by
 `auxGen` is `power2Round` of the honest ML-DSA public key of the widened secret
@@ -227,8 +229,8 @@ def metaKem (kem : KEM KEMpk KEMsk C K) :
 /-- Construction A as a `StealthScheme`: ML-KEM ciphertext plus view tag plus
 stealth address, addressed to a full meta-address. -/
 def scheme [SampleableType K] (kem : KEM KEMpk KEMsk C K) :
-    StealthScheme (MetaPub KEMpk Rho R k) (MetaPriv KEMsk R k l)
-      (C × (Tag × Addr)) :=
+    StealthScheme (MetaPub KEMpk Rho R k)
+      (MetaPriv KEMsk R k l × MetaPub KEMpk Rho R k) (C × (Tag × Addr)) :=
   StealthScheme.ofKEMFull (metaKem expandA sampleRho sampleS sampleE kem)
     (auxGen expandA expandBlind power2Round pack hashAddr viewTag)
 
@@ -347,6 +349,7 @@ theorem uniform_mask_absorb {β : Type} (cont : (Fin k → R) → ProbComp β)
       Pr[= z | (do let u ← ($ᵗ (Fin k → R)); cont u)] :=
   probOutput_bind_add_right_uniform (Fin k → R) t cont z
 
+omit [DecidableEq Tag] [DecidableEq Addr] in
 /-- **The middle-game independence lemma.** With the mask drawn uniformly, the
 announcement to a recipient with spending key `t` and one to a recipient with
 spending key `t'` are the same distribution — the blinding does erase `t`.

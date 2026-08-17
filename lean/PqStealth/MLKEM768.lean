@@ -180,7 +180,7 @@ def mlkem768UniformCiphertext : ProbComp (Ciphertext mlkem768 mlkem768Encoding) 
 
 section Capstones
 
-variable {Aux : Type}
+variable {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey mlkem768 mlkem768Encoding → Aux)
 
 /-- Our `KEM`, at the FIPS 203 ML-KEM-768 parameter set. -/
@@ -193,12 +193,15 @@ def mlkem768KEM :
 /-- The post-quantum stealth scheme on ML-KEM-768. -/
 def mlkem768StealthScheme :
     StealthScheme (EncapsulationKey mlkem768 mlkem768Encoding)
-      (DecapsulationKey mlkem768 mlkem768Encoding)
+      (DecapsulationKey mlkem768 mlkem768Encoding
+        × EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux) :=
   mlkemStealthScheme concreteNTTRingOps mlkem768Encoding mlkem768Primitives auxGen
 
-/-- **The unlinkability bound on ML-KEM-768**, with no instance hypotheses left
-open: the only arguments are the auxiliary-data function and the adversary.
+/-- **The unlinkability bound on ML-KEM-768**, with no instance hypotheses on
+the ML-KEM types left open: the only arguments are the auxiliary-data function,
+decidable equality on the caller-chosen `Aux` (needed by `scan`), and the
+adversary.
 Unlinkability is bounded by ML-KEM-768's anonymity advantage, its two
 shared-secret-hiding (IND-CPA) terms, and the auxiliary-data key-independence
 term. -/
@@ -213,9 +216,9 @@ theorem mlkem768_unlinkAdvantage_le
   mlkem_unlinkAdvantage_le concreteNTTRingOps mlkem768Encoding mlkem768Primitives auxGen adv
 
 /-- **Unlinkability on ML-KEM-768, fully decomposed**, with no instance
-hypotheses left open. Every term on the right is MLWE-reducible: the hiding
-terms via KEM IND-CPA (VCVio), the SPR terms via the key hop and the ciphertext
-hop. The simulator is uniform over the 1088-byte FIPS 203 ciphertext layout
+hypotheses on the ML-KEM types left open. The hiding terms are ML-KEM-768's KEM IND-CPA advantage
+(`SharedSecretHiding`); the SPR terms are the key hop and the ciphertext hop
+(paper-level, see `AnonymityFromSPR`). The simulator is uniform over the 1088-byte FIPS 203 ciphertext layout
 rather than `$ᵗ (Ciphertext ...)`, which does not exist here
 (`isEmpty_sampleableType_mlkem768Ciphertext`). -/
 theorem mlkem768_unlinkAdvantage_le_full_decomposition
