@@ -10,6 +10,7 @@
     "test": "node --test test/vectors.test.ts",
     "e2e": "node --test test/e2e-anvil.test.ts",
     "e2e-7913": "node --test test/e2e-7913.test.ts",
+    "e2e-7913-classical": "node --test test/e2e-7913-classical.test.ts",
     "build-contracts": "forge build --root contracts",
     "typecheck": "tsc",
     "lint": "tsc",

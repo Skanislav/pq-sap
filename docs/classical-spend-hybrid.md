@@ -22,6 +22,7 @@ Both schemes derive a per-payment tweak from an ML-KEM shared secret and add it 
 |---|---|---|
 | Spending key | ML-DSA, blinded `t' = A·s' + e' + t` | secp256k1, blinded `P = K + t·G` |
 | Stealth address | `keccak(ML-DSA pk)[12:]` | `keccak(uncompressed pubkey)[12:]` (EOA) |
+| ERC-7913 signer | `verifier \|\| key` pointer (over 20 B) | 20-byte address, empty key (`ecrecover` base case) |
 | Key exchange / view key | ML-KEM | ML-KEM (identical) |
 | View tag | `sha256(ss)[:n]` | `sha256(ss)[:n]` (identical) |
 | Signature / spend | ML-DSA (FIPS 204) | ECDSA (secp256k1) |
@@ -92,9 +93,19 @@ The ML-DSA scheme adds a fresh error term `e'` per stealth key, on purpose: reus
 
 The hybrid has no error term to reuse. The tweak is a single scalar `t = KDF(ss) mod n`, each `ss` fresh per payment, and `P = K + t·G` is a uniform point given `t`. The `s2`-reuse vector simply is not present, not because it was patched, but because the classical group has nothing analogous. Simpler by construction, not by cutting a corner.
 
+## ERC-7913 compatibility: the same account, the 20-byte case
+
+The stealth identity does not have to be a bare EOA. ERC-7913 represents a signer as `verifier || key`, and OpenZeppelin's `SignatureChecker.isValidSignatureNow(bytes signer, ...)` resolves it by length: fewer than 20 bytes fails, exactly 20 bytes falls back to `ecrecover` (or ERC-1271), and more than 20 bytes dispatches to the verifier contract. There is no separate secp256k1 verifier in that set (only P256, RSA, WebAuthn), precisely because a secp256k1 key is the 20-byte, empty-key base case handled by the `ecrecover` fallback.
+
+That is exactly where this scheme lands. The blinded stealth key is a plain secp256k1 key, so its ERC-7913 signer is the 20-byte stealth address with an empty key, and a spend is a plain ECDSA signature over the 32-byte hash the account validates. The same account harness the ML-DSA scheme drives (an OpenZeppelin `SignerERC7913` account, `Stealth7913Account` in the ML-DSA scheme's `TECHNICAL_SPEC.md` section 7 and `DECISIONS.md` D-014) accepts this scheme with no change: the hybrid is the 20-byte leaf, the ML-DSA scheme is the longer `verifier || pointer` leaf, and both resolve to the same counterfactual CREATE2 account address derived from the signer. One account model, one identity rule, two signer forms.
+
+This is what makes the migration in place rather than a re-anchor. An account can start life with the 20-byte secp256k1 signer, spendable today through `ecrecover` at ecrecover cost, and later swap in a post-quantum verifier signer without changing the account model or the way its address is derived. The hybrid is not a detour off the ERC-7913 path: it is that path's base case.
+
+The bare-EOA form in the Construction section stays the minimal reference (spend with no contract at all). The `SignerERC7913` account is the form that shares an identity rule with the ML-DSA scheme and migrates in place, at the cost of an account deployment per stealth output. The on-chain demonstration of this route lives alongside the reference, mirroring the ML-DSA scheme's own ERC-7913 test.
+
 ## Upgrade path
 
-The recipient's ML-KEM viewing key is shared between both schemes. When protocol-level PQ signatures land (EIP-8141), a wallet can move new payments to the ML-DSA scheme without rotating its viewing identity, and sweep any hybrid funds with a final classical spend. The hybrid is the interim; the ML-DSA scheme is where it goes.
+The recipient's ML-KEM viewing key is shared between both schemes. When protocol-level PQ signatures land (EIP-8141), or sooner through the ERC-7913 account above, a wallet can move new payments to the ML-DSA scheme without rotating its viewing identity, and sweep any hybrid funds with a final classical spend. The hybrid is the interim; the ML-DSA scheme is where it goes.
 
 ## Status
 
