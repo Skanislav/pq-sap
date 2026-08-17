@@ -7,6 +7,7 @@ import PqStealth.MLKEMInstance
 import PqStealth.Ownership
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
+import PqStealth.MLKEM768
 import PqStealth.DKSAP
 import PqStealth.Demo
 import PqStealth.Falsification

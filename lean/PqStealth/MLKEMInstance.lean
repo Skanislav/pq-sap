@@ -39,7 +39,7 @@ section MLKEMStealth
 variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (prims : Primitives params encoding)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
-  [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
+  [DecidableEq encoding.EncodedV]
   {Aux : Type}
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
 
