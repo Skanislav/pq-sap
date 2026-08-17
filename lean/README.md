@@ -1,11 +1,20 @@
 # PqStealth — machine-checked core (Lean 4 / VCVio)
 
+<!-- Update the slug if the repository moves. -->
+[![Lean](https://github.com/Skanislav/pq-sap/actions/workflows/lean.yml/badge.svg)](https://github.com/Skanislav/pq-sap/actions/workflows/lean.yml)
+
 The plan.md Lean deliverable, grown in two layers: the **algebraic core**
 (blinded-key correctness identity, rounding-error bounds — the original
 algebra-only scope) and the **security-game layer** (the scheme's security
 experiments and their structural reductions, added 2026-07-31). All of it
 sorry-free; every theorem depends only on `propext`, `Classical.choice`,
-`Quot.sound` (checked via `#print axioms`). Full `lake build`: 2,762 jobs.
+`Quot.sound`, and that is asserted by the build rather than checked by hand
+(see [Verifying](#verifying)). Full `lake build`: green.
+
+**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `KEMAnonymity`
+→ `SharedSecretHiding` → `AnonymityFromSPR` → `Ownership`. `Demo` is a
+runnable toy instance, so it is the cheapest way in; `PqStealth.lean` carries
+the same map as a module docstring.
 
 `PqStealth/Blinding.lean` contains, all sorry-free:
 
@@ -90,11 +99,11 @@ extraction) are paper-level, stated and cited in the docstrings.
 - VCVio `Verified-zkEVM/VCVio @ a5f474fd0e9a26266cc599d100267411690dfeb7`
   (2026-07-15), toolchain `leanprover/lean4:v4.32.0`; all transitive deps
   locked in `lake-manifest.json`.
-- Gate result: `lake build LatticeCrypto` in the VCVio checkout — **green**
-  (3017 jobs); the only `sorry`s in that tree are game-based Security files
-  and Falcon, both out of scope.
+- Gate result: `lake build LatticeCrypto` in the VCVio checkout — **green**;
+  the only `sorry`s in that tree are game-based Security files and Falcon,
+  both out of scope.
 - This package also builds **standalone** against the pinned dependency:
-  `lake build` — green (2715 jobs), ending in `Built PqStealth.Blinding`.
+  full `lake build` green.
 
 ## Build
 
@@ -107,3 +116,22 @@ lake build
 (If `elan`'s downloader ever times out on `release.lean-lang.org`, the
 toolchain zip can be fetched from the `leanprover/lean4` GitHub release
 and linked with `elan toolchain link`.)
+
+## Verifying
+
+`lake build` *is* the check — there is nothing to run afterwards.
+
+- **Sorry-freedom and the axiom basis** are asserted by
+  `PqStealth/Axioms.lean`, which the root module imports. It carries one
+  `#guard_msgs in #print axioms …` block per headline theorem, freezing that
+  theorem's exact axiom list (mostly `propext, Classical.choice, Quot.sound`;
+  the pure-algebra facts need less). A `sorry` introduced anywhere in a
+  headline theorem's dependency cone adds `sorryAx` to its list and turns the
+  mismatch into a compile error.
+- **The runnable DKSAP demo** is asserted the same way:
+  `PqStealth/Demo.lean` wraps each `#eval` in `#guard_msgs`, so the numbers
+  in its docstrings are checked, and the build prints nothing.
+- **CI** (`.github/workflows/lean.yml`) runs exactly the two commands above
+  on every push and pull request; the badge at the top of this file reports
+  the result. Note that VCVio is not in the mathlib binary cache and compiles
+  from source, so a run with a cold `lean/.lake` cache takes hours.
