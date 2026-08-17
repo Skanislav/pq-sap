@@ -61,7 +61,16 @@ instantiated on VCVio's concrete ML-KEM
   unlinkability *equals* anonymity) and `ofKEMFull` (view tag + stealth
   address folded in via `auxGen`); `unlinkAdvantage_ofKEMFull_le` — the
   auxiliary data hides the recipient exactly insofar as the shared secret is
-  pseudorandom.
+  pseudorandom. `ofKEMFull.scan` recomputes the announced auxiliary data from
+  the decapsulated secret and the recipient's own public key (a test "did
+  decapsulation succeed" is vacuous on an implicit-rejection KEM like ML-KEM);
+  `perfectlyComplete_ofKEMFull` proves detection from `KEM.PerfectlyCorrect`.
+- **`GameControls.lean`** — controls for the game layer: a scheme announcing
+  the recipient's meta-address has the maximal `unlinkAdvantage`
+  (`1 − Pr[key collision]`, the true ceiling of the two-recipient game), and
+  likewise a KEM whose ciphertext is the public key for `anonAdvantage`; on
+  the negative side a rejecting KEM breaks completeness, and the scan without
+  the tag comparison is complete but flags every announcement.
 - **`SharedSecretHiding.lean`** — each hiding term proved equal to a
   real-or-random guessing bias (i.e. a KEM IND-CPA advantage), plus the
   concrete VCVio `IND_CPA_Adversary` reduction adversaries (type-checked;

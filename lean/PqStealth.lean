@@ -10,4 +10,5 @@ import PqStealth.AnonymityFromSPR
 import PqStealth.DKSAP
 import PqStealth.Demo
 import PqStealth.Falsification
+import PqStealth.GameControls
 import PqStealth.DKSAPClassical

@@ -224,9 +224,9 @@ announcement addressed to them, given only that the KEM is perfectly correct.
 The content is that the two sides compute the same auxiliary data: the sender
 builds it from the encapsulated shared secret and the recipient's public key,
 the recipient rebuilds it from the decapsulated secret and its own public key,
-and KEM correctness identifies the two secrets. The claim is not vacuous --
-`deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls) is the same statement
-failing for a KEM whose decapsulation rejects. -/
+and KEM correctness identifies the two secrets. The correctness hypothesis is
+doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls)
+isolates the decapsulation clause and proves the conclusion false without it. -/
 theorem perfectlyComplete_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
     (auxGen : K → PK → Aux) (hkem : kem.PerfectlyCorrect) :
     (StealthScheme.ofKEMFull kem auxGen).PerfectlyComplete := by
