@@ -92,14 +92,34 @@ def recovered : F := recover hash (dlog M) (dlog V) R
 
 /-! ## Run it
 
-`#eval` these to watch the attack succeed. `recovered` equals `honestKey`, and
-scaling it by the generator lands exactly on the announced `P`. -/
+Each `#eval` below is wrapped in `#guard_msgs`, so the value in the docstring
+is an assertion the build checks rather than a line printed at every build:
+`recovered` equals `honestKey`, and scaling it by the generator lands exactly
+on the announced `P`. Evaluate them in the editor to watch the attack
+succeed. -/
 
+/-- info: 22 -/
+#guard_msgs in
 #eval M          -- published spending key
+
+/-- info: 20 -/
+#guard_msgs in
 #eval V          -- published viewing key
+
+/-- info: 15 -/
+#guard_msgs in
 #eval R          -- announced ephemeral key
+
+/-- info: 21 -/
+#guard_msgs in
 #eval P          -- announced stealth public key
+
+/-- info: 18 -/
+#guard_msgs in
 #eval honestKey  -- what the recipient derives while scanning
+
+/-- info: 18 -/
+#guard_msgs in
 #eval recovered  -- what the attacker derives from public data alone
 
 /-- The attacker's scalar is the recipient's own spending key. Checked by
