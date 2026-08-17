@@ -8,10 +8,10 @@ requires the spending secrets (s1, s2).
 
 from dataclasses import dataclass
 
-from .meta import MetaPublic
-from .sender import Announcement, compute_view_tag
 from .blinding import derive_stealth_pk
 from .encoding import stealth_address
+from .meta import MetaPublic
+from .sender import Announcement, compute_view_tag
 
 
 @dataclass(frozen=True)

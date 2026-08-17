@@ -3,8 +3,8 @@
 import os
 from dataclasses import dataclass
 
-from .params import ParamSet, DEFAULT
 from .encoding import encode_meta_address
+from .params import DEFAULT, ParamSet
 
 
 @dataclass(frozen=True)

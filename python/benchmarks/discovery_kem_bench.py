@@ -28,8 +28,13 @@ import statistics
 import time
 
 import oqs
-from onchain_cost import abi_encode_announce, byte_stats, calldata_tokens, \
-    G_TX, TOTAL_COST_FLOOR_PER_TOKEN
+from onchain_cost import (
+    G_TX,
+    TOTAL_COST_FLOOR_PER_TOKEN,
+    abi_encode_announce,
+    byte_stats,
+    calldata_tokens,
+)
 
 # (liboqs name, family, assumption, NIST level label).
 # Grouped by matched security level so rows compare like against like;
@@ -150,7 +155,8 @@ def main():
           "scan80k = decaps-bound projection for an 80,000-announcement registry)")
     header = (f"{'KEM':<26}{'assumption':<20}{'lvl':>6}{'pk B':>8}{'ct B':>8}"
               f"{'decaps ms':>10}{'scan80k s':>10}{'meta B':>9}{'announce gas':>13}")
-    for lvl_group, title in (("L1", "-- level 1 --"), ("L3", "-- level 3 (default level) --")):
+    for lvl_group, title in (("L1", "-- level 1 --"),
+                             ("L3", "-- level 3 (default level) --")):
         print(f"\n{title}")
         print(header)
         print("-" * 110)
@@ -182,7 +188,8 @@ def main():
     print(f"\nSCAN (decaps-bound, the axis that decides it): "
           f"{mlkem768['name']} scans 80k in {mlkem768['scan80k_s']:.1f} s; "
           f"best NTRU at level ({ntru_best['name']}) {ntru_best['scan80k_s']:.1f} s; "
-          f"slowest benchmarked ({slow_decaps['name']}) {slow_decaps['scan80k_s']:.0f} s; "
+          f"slowest benchmarked ({slow_decaps['name']}) "
+          f"{slow_decaps['scan80k_s']:.0f} s; "
           f"CSIDH (lit.) ~{csidh['scan80k_s']/60:.0f} min. "
           f"Spread {slow_decaps['decaps_ms']/fast_decaps['decaps_ms']:.0f}x "
           f"across benchmarked rows.")

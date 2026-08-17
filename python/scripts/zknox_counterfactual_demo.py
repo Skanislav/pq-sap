@@ -15,7 +15,8 @@ blob for the on-chain counterfactual-CREATE2 test:
   * challenge + sig  — possession proof signed with the blinded secret
                        (s1+s', s2+e', t0'), verified locally before output
 
-Usage: zknox_counterfactual_demo.py --pythonref PATH/to/ETHDILITHIUM/pythonref -o out.json
+Usage: zknox_counterfactual_demo.py --pythonref PATH/to/ETHDILITHIUM/pythonref \
+         -o out.json
 """
 
 import argparse

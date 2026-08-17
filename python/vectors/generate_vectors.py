@@ -13,8 +13,14 @@ import argparse
 import json
 import pathlib
 
-from pq_stealth import (gen_meta_address, send, check_announcement,
-                        prove_possession, Announcement, DEFAULT)
+from pq_stealth import (
+    DEFAULT,
+    Announcement,
+    check_announcement,
+    gen_meta_address,
+    prove_possession,
+    send,
+)
 
 SCHEMA_VERSION = "v0"
 
@@ -43,7 +49,7 @@ def ann_json(a: Announcement) -> dict:
 
 def generate() -> dict:
     pub_a, priv_a, rec_a = recipient_entry(b"\xa1" * 32, b"\xa2" * 32, b"\xa3" * 32)
-    pub_b, priv_b, rec_b = recipient_entry(b"\xb1" * 32, b"\xb2" * 32, b"\xb3" * 32)
+    _pub_b, _priv_b, rec_b = recipient_entry(b"\xb1" * 32, b"\xb2" * 32, b"\xb3" * 32)
 
     ann1 = send(pub_a, encaps_m=b"\xc1" * 32)
     ann2 = send(pub_a, encaps_m=b"\xc2" * 32)
@@ -116,7 +122,8 @@ def generate() -> dict:
 
     return {
         "schema": SCHEMA_VERSION,
-        "scheme": "pq-stealth (ML-KEM encaps + additive ML-DSA key blinding, fresh error term)",
+        "scheme": "pq-stealth "
+                  "(ML-KEM encaps + additive ML-DSA key blinding, fresh error term)",
         "params": DEFAULT.name,
         "view_tag_bytes": DEFAULT.view_tag_bytes,
         "sizes": {

@@ -18,7 +18,7 @@ Usage: registry_curve.py [--sizes 2500,...,160000] [--reps 3] [--json out]
 import argparse
 import json
 
-from scan_bench import bench_ours_liboqs, bench_dksap
+from scan_bench import bench_dksap, bench_ours_liboqs
 
 
 def linear_fit(xs, ys):

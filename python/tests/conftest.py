@@ -1,6 +1,6 @@
 import pytest
 
-from pq_stealth import gen_meta_address, send, DEFAULT
+from pq_stealth import DEFAULT, gen_meta_address, send
 
 
 @pytest.fixture(scope="session")

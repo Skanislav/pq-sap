@@ -32,9 +32,12 @@ class ClassicalParamSet:
 
 
 PARAM_SETS = {
-    "secp256k1+ML-KEM-512": ClassicalParamSet("secp256k1+ML-KEM-512", ML_KEM_512, 800, 768),
-    "secp256k1+ML-KEM-768": ClassicalParamSet("secp256k1+ML-KEM-768", ML_KEM_768, 1184, 1088),
-    "secp256k1+ML-KEM-1024": ClassicalParamSet("secp256k1+ML-KEM-1024", ML_KEM_1024, 1568, 1568),
+    "secp256k1+ML-KEM-512": ClassicalParamSet(
+        "secp256k1+ML-KEM-512", ML_KEM_512, 800, 768),
+    "secp256k1+ML-KEM-768": ClassicalParamSet(
+        "secp256k1+ML-KEM-768", ML_KEM_768, 1184, 1088),
+    "secp256k1+ML-KEM-1024": ClassicalParamSet(
+        "secp256k1+ML-KEM-1024", ML_KEM_1024, 1568, 1568),
 }
 
 DEFAULT = PARAM_SETS["secp256k1+ML-KEM-768"]

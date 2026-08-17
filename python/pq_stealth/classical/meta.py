@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from coincurve import PrivateKey
 
-from .params import ClassicalParamSet, DEFAULT
 from .encoding import encode_meta_address
+from .params import DEFAULT, ClassicalParamSet
 
 
 @dataclass(frozen=True)
@@ -41,4 +41,5 @@ def gen_meta_address(params: ClassicalParamSet = DEFAULT,
     else:
         kem_ek, kem_dk = params.kem.keygen()
 
-    return (MetaPublic(spend_pub, kem_ek, params), MetaSecret(spend.secret, kem_dk, params))
+    return (MetaPublic(spend_pub, kem_ek, params),
+            MetaSecret(spend.secret, kem_dk, params))

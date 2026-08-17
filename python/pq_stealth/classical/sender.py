@@ -6,12 +6,11 @@ announcement rail is identical, only the stealth-address derivation differs
 (secp256k1 blinding instead of ML-DSA).
 """
 
-from .meta import MetaPublic
-from .blinding import derive_stealth_pubkey
-from .encoding import eth_address
-
 # the announcement rail is shared with the ML-DSA scheme
 from ..sender import Announcement, compute_view_tag
+from .blinding import derive_stealth_pubkey
+from .encoding import eth_address
+from .meta import MetaPublic
 
 
 def send(meta_pub: MetaPublic, encaps_m: bytes | None = None) -> Announcement:
@@ -24,4 +23,5 @@ def send(meta_pub: MetaPublic, encaps_m: bytes | None = None) -> Announcement:
         ss, ct = p.kem.encaps(meta_pub.kem_ek)
 
     stealth_pub = derive_stealth_pubkey(meta_pub.spend_pub, ss)
-    return Announcement(eth_address(stealth_pub), ct, compute_view_tag(ss, p.view_tag_bytes))
+    return Announcement(eth_address(stealth_pub), ct,
+                        compute_view_tag(ss, p.view_tag_bytes))

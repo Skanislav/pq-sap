@@ -1,6 +1,11 @@
-from pq_stealth import (decode_meta_address, pack_blinded_sk,
-                        unpack_blinded_sk, derive_blinding, DEFAULT,
-                        check_announcement)
+from pq_stealth import (
+    DEFAULT,
+    check_announcement,
+    decode_meta_address,
+    derive_blinding,
+    pack_blinded_sk,
+    unpack_blinded_sk,
+)
 from pq_stealth.encoding import pack_t, unpack_t
 
 

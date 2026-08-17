@@ -15,7 +15,7 @@ The blinded secret key (s1' = s1+s', s2' = s2+e') has infinity norm up to
 
 from Crypto.Hash import keccak
 
-from .params import ParamSet, Q, Q_BITS, N, D_ROUND, META_ADDRESS_VERSION
+from .params import D_ROUND, META_ADDRESS_VERSION, Q_BITS, N, ParamSet, Q
 
 
 # --------------------------------------------------------------------------

@@ -14,7 +14,7 @@ from coincurve import PublicKey
 
 # reuse the ML-DSA scheme's keccak; the address rule below is EOA-specific
 from ..encoding import keccak256
-from .params import ClassicalParamSet, COMPRESSED_PUBKEY_BYTES, META_ADDRESS_VERSION
+from .params import COMPRESSED_PUBKEY_BYTES, META_ADDRESS_VERSION, ClassicalParamSet
 
 
 def eth_address(pubkey: PublicKey) -> bytes:

@@ -22,7 +22,9 @@ import hashlib
 import json
 import time
 
-VIEW_TAG = lambda ss: hashlib.sha256(ss).digest()[0]
+
+def VIEW_TAG(ss):
+    return hashlib.sha256(ss).digest()[0]
 
 
 # --------------------------------------------------------------------------
@@ -30,7 +32,8 @@ VIEW_TAG = lambda ss: hashlib.sha256(ss).digest()[0]
 # --------------------------------------------------------------------------
 def bench_ours_liboqs(n: int) -> tuple[float, int]:
     import oqs
-    from pq_stealth import gen_meta_address, derive_stealth_pk, DEFAULT
+
+    from pq_stealth import DEFAULT, derive_stealth_pk, gen_meta_address
 
     meta_pub, meta_priv = gen_meta_address(DEFAULT)
     with oqs.KeyEncapsulation("ML-KEM-768") as noise_kem:
@@ -52,7 +55,7 @@ def bench_ours_liboqs(n: int) -> tuple[float, int]:
 
 
 def bench_ours_pure(n: int) -> tuple[float, int]:
-    from pq_stealth import gen_meta_address, derive_stealth_pk, DEFAULT
+    from pq_stealth import DEFAULT, derive_stealth_pk, gen_meta_address
 
     meta_pub, meta_priv = gen_meta_address(DEFAULT)
     kem = DEFAULT.kem

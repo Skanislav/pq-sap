@@ -7,24 +7,44 @@ value sent to these addresses is unspendable on-chain until protocol-level
 post-quantum signature support exists.
 """
 
-from .params import PARAM_SETS, DEFAULT, ParamSet
-from .meta import gen_meta_address, MetaPublic, MetaSecret
-from .sender import send, Announcement, compute_view_tag
-from .recipient import scan, check_announcement, Payment
 from .blinding import derive_blinding, derive_stealth_pk
-from .signing import (sign_blinded, verify, prove_possession,
-                      verify_possession)
-from .encoding import (encode_meta_address, decode_meta_address,
-                       stealth_address, keccak256,
-                       pack_blinded_sk, unpack_blinded_sk)
+from .encoding import (
+    decode_meta_address,
+    encode_meta_address,
+    keccak256,
+    pack_blinded_sk,
+    stealth_address,
+    unpack_blinded_sk,
+)
+from .meta import MetaPublic, MetaSecret, gen_meta_address
+from .params import DEFAULT, PARAM_SETS, ParamSet
+from .recipient import Payment, check_announcement, scan
+from .sender import Announcement, compute_view_tag, send
+from .signing import prove_possession, sign_blinded, verify, verify_possession
 
 __all__ = [
-    "PARAM_SETS", "DEFAULT", "ParamSet",
-    "gen_meta_address", "MetaPublic", "MetaSecret",
-    "send", "Announcement", "compute_view_tag",
-    "scan", "check_announcement", "Payment",
-    "derive_blinding", "derive_stealth_pk",
-    "sign_blinded", "verify", "prove_possession", "verify_possession",
-    "encode_meta_address", "decode_meta_address", "stealth_address",
-    "keccak256", "pack_blinded_sk", "unpack_blinded_sk",
+    "DEFAULT",
+    "PARAM_SETS",
+    "Announcement",
+    "MetaPublic",
+    "MetaSecret",
+    "ParamSet",
+    "Payment",
+    "check_announcement",
+    "compute_view_tag",
+    "decode_meta_address",
+    "derive_blinding",
+    "derive_stealth_pk",
+    "encode_meta_address",
+    "gen_meta_address",
+    "keccak256",
+    "pack_blinded_sk",
+    "prove_possession",
+    "scan",
+    "send",
+    "sign_blinded",
+    "stealth_address",
+    "unpack_blinded_sk",
+    "verify",
+    "verify_possession",
 ]
