@@ -26,6 +26,15 @@ publishes, so `auxGen` takes the public key too, and the bound gains a term
 (`auxKeyIndependence`) for the question that the coarser model could not even
 express.
 
+Detection: `ofKEMFull.scan` decapsulates and then RECOMPUTES the auxiliary data
+from the recovered shared secret and the recipient's own public key, accepting
+only when it matches the announced one. Testing merely that decapsulation
+returned `some` would be vacuous on any KEM with implicit rejection -- ML-KEM's
+`decaps` is `fun dk c => return some ...` and never rejects, so that test is the
+constant `true` and every recipient "detects" every announcement. This is why
+the recipient's private state is `SK x PK`: a scanning wallet holds its own
+meta-address next to the decapsulation key, and needs both.
+
 Still open beyond this file: anonymity -> MLWE for ML-KEM, the deeper piece
 VCVio does not cover (Grubbs-Maram-Paterson), which is where the novel work
 sits.
@@ -50,6 +59,29 @@ namespace KEM
 
 variable {PK SK C K : Type} (kem : KEM PK SK C K)
   (adv : StealthScheme.UnlinkAdv PK C)
+
+/-! ## Correctness -/
+
+/-- Perfect correctness of a KEM: honest key generation and encapsulation never
+fail, and decapsulation of an honestly produced ciphertext returns exactly the
+shared secret that was encapsulated.
+
+This is VCVio's `KEMScheme.PerfectlyCorrect`
+(`VCVio/CryptoFoundations/KeyEncapMech.lean`) spelled out stage by stage. That
+definition is `Pr[= true | CorrectExp] = 1` for the experiment "generate a
+keypair, encapsulate, decapsulate, compare"; `probOutput_eq_one_iff` says a
+probability-one statement is exactly "never fails" together with "the support is
+the single intended value", and the fields below are that pair applied to each
+stage. Splitting it this way is what lets the completeness proof consume the
+hypothesis pointwise, on the keypair and ciphertext actually drawn. -/
+structure PerfectlyCorrect : Prop where
+  /-- Honest key generation never fails. -/
+  keygen_neverFails : Pr[⊥ | kem.keygen] = 0
+  /-- Encapsulation to an honestly generated public key never fails. -/
+  encaps_neverFails : ∀ pk sk, (pk, sk) ∈ support kem.keygen → Pr[⊥ | kem.encaps pk] = 0
+  /-- Decapsulation recovers the encapsulated shared secret with certainty. -/
+  decaps_eq_encapsulated : ∀ pk sk, (pk, sk) ∈ support kem.keygen →
+    ∀ c k, (c, k) ∈ support (kem.encaps pk) → Pr[= some k | kem.decaps sk c] = 1
 
 /-! ## Anonymity (key privacy)
 
@@ -100,7 +132,14 @@ variable {PK SK C K : Type}
 
 /-- Instantiate a stealth scheme from a KEM: the announcement is the KEM
 ciphertext (the recipient-dependent part), and detection tests whether
-decapsulation succeeds. -/
+decapsulation succeeds.
+
+A teaching model for the unlinkability reduction, not the scheme. With nothing
+but a ciphertext in the announcement there is nothing for the recipient to check
+against, so detection is only as strong as the KEM's rejection behaviour -- and
+on a KEM with implicit rejection (ML-KEM) that is no strength at all: `decaps`
+never returns `none`, so `scan` is the constant `true`. `ofKEMFull` is the
+version with a detectable announcement. -/
 def StealthScheme.ofKEM (kem : KEM PK SK C K) : StealthScheme PK SK C where
   keygen := kem.keygen
   announce pk := do
@@ -160,16 +199,61 @@ function of the shared secret alone, but the stealth address is not: it is
 are the RECIPIENT's own meta-address material and only `(s', e')` come from the
 shared secret. An announcement therefore carries recipient-dependent data even
 once the shared secret is idealized, and a model with `auxGen : K -> Aux`
-understates what is published. -/
-def StealthScheme.ofKEMFull (kem : KEM PK SK C K) (auxGen : K → PK → Aux) :
-    StealthScheme PK SK (C × Aux) where
-  keygen := kem.keygen
+understates what is published.
+
+Detection recomputes: the recipient decapsulates, rebuilds the auxiliary data
+from the recovered shared secret and its OWN public key, and accepts only on a
+match. That is what a scanner actually does, and it is why the private state is
+`SK x PK` -- the decapsulation key alone does not determine the tag. -/
+def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) : StealthScheme PK (SK × PK) (C × Aux) where
+  keygen := do
+    let ks ← kem.keygen
+    pure (ks.1, (ks.2, ks.1))
   announce pk := do
-    let (c, k) ← kem.encaps pk
-    pure (c, auxGen k pk)
+    let ck ← kem.encaps pk
+    pure (ck.1, auxGen ck.2 pk)
   scan sk ca := do
-    let k ← kem.decaps sk ca.1
-    pure k.isSome
+    let k? ← kem.decaps sk.1 ca.1
+    pure (k?.elim false fun k => decide (ca.2 = auxGen k sk.2))
+
+omit [SampleableType K] in
+/-- **Detection completeness, sorry-free.** A recipient always detects an
+announcement addressed to them, given only that the KEM is perfectly correct.
+
+The content is that the two sides compute the same auxiliary data: the sender
+builds it from the encapsulated shared secret and the recipient's public key,
+the recipient rebuilds it from the decapsulated secret and its own public key,
+and KEM correctness identifies the two secrets. The claim is not vacuous --
+`deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls) is the same statement
+failing for a KEM whose decapsulation rejects. -/
+theorem perfectlyComplete_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) (hkem : kem.PerfectlyCorrect) :
+    (StealthScheme.ofKEMFull kem auxGen).PerfectlyComplete := by
+  have hCE : (StealthScheme.ofKEMFull kem auxGen).CorrectExp =
+      (do let ks ← kem.keygen
+          let ck ← kem.encaps ks.1
+          let k? ← kem.decaps ks.2 ck.1
+          pure (k?.elim false fun k => decide (auxGen ck.2 ks.1 = auxGen k ks.1))) := by
+    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFull, bind_assoc, pure_bind]
+  have hdec : ∀ ks ∈ support kem.keygen, ∀ ck ∈ support (kem.encaps ks.1),
+      Pr[⊥ | kem.decaps ks.2 ck.1] = 0 ∧
+        support (kem.decaps ks.2 ck.1) = {some ck.2} := fun ks hks ck hck =>
+    probOutput_eq_one_iff.1 (hkem.decaps_eq_encapsulated ks.1 ks.2 (by simpa using hks)
+      ck.1 ck.2 (by simpa using hck))
+  rw [StealthScheme.PerfectlyComplete, hCE, probOutput_eq_one_iff_forall]
+  refine ⟨?_, ?_⟩
+  · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
+    exact ⟨hkem.keygen_neverFails, fun ks hks =>
+      ⟨hkem.encaps_neverFails ks.1 ks.2 (by simpa using hks), fun ck hck =>
+        (hdec ks hks ck hck).1⟩⟩
+  · intro y hy
+    simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
+    obtain ⟨ks, hks, ck, hck, k?, hk?, rfl⟩ := hy
+    rw [(hdec ks hks ck hck).2] at hk?
+    simp only [Set.mem_singleton_iff] at hk?
+    subst hk?
+    simp
 
 /-- The ciphertext-anonymity adversary induced by a full-announcement
 adversary: it synthesizes the auxiliary data from a FRESH random shared secret
@@ -201,6 +285,8 @@ def randAuxBranchTrue (a : PK × PK × adv.State) : ProbComp Bool := do
   let (c, _) ← kem.encaps a.2.1
   let k' ← ($ᵗ K)
   adv.distinguish a.2.2 (c, auxGen k' a.2.1)
+
+variable [DecidableEq Aux]
 
 /-- Shared-secret-hiding advantage on the `b = 1` branch: distinguishing an
 announcement whose auxiliary data uses the REAL shared secret from one whose

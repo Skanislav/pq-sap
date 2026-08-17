@@ -35,7 +35,7 @@ def KEM.toKEMScheme (kem : KEM PK SK C K) : KEMScheme ProbComp K PK SK C where
   encaps := kem.encaps
   decaps := kem.decaps
 
-variable {Aux : Type} [SampleableType K]
+variable {Aux : Type} [DecidableEq Aux] [SampleableType K]
   (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
   (adv : StealthScheme.UnlinkAdv PK (C × Aux))
 

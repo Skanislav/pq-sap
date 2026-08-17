@@ -40,7 +40,7 @@ variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (prims : Primitives params encoding)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
   [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
-  {Aux : Type}
+  {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
 
 /-- Our `KEM`, backed by VCVio's concrete ML-KEM. -/
@@ -54,7 +54,7 @@ tag and stealth address folded in, the latter depending on the recipient's own
 key as well as the shared secret. -/
 def mlkemStealthScheme :
     StealthScheme (EncapsulationKey params encoding)
-      (DecapsulationKey params encoding)
+      (DecapsulationKey params encoding × EncapsulationKey params encoding)
       (Ciphertext params encoding × Aux) :=
   StealthScheme.ofKEMFull (mlkem ring encoding prims) auxGen
 

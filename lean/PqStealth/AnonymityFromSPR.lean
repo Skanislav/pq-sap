@@ -82,7 +82,7 @@ end KEM
 
 /-! ## Capstone: the full unlinkability decomposition -/
 
-variable {Aux : Type} [SampleableType K]
+variable {Aux : Type} [DecidableEq Aux] [SampleableType K]
 
 /-- **Full-chain unlinkability bound, sorry-free.** Stealth unlinkability with
 the complete announcement decomposes into five named advantages: two
@@ -124,7 +124,7 @@ variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
   [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
   [SampleableType (Ciphertext params encoding)]
-  {Aux : Type}
+  {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
 
 /-- **Unlinkability on real ML-KEM, fully decomposed.** The simulator is
