@@ -2,6 +2,7 @@ import PqStealth.Blinding
 import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
+import PqStealth.ConstructionA
 
 import PqStealth.MLKEMInstance
 import PqStealth.Ownership
