@@ -1,21 +1,19 @@
-/-
-A concrete, RUNNABLE instantiation of the DKSAP model.
-
-Everything else in this development is abstract, which is what makes the
-theorems apply to any curve and also what makes nothing executable. This module
-fixes a tiny instance -- the additive group of `ZMod 23`, in which discrete
-logarithms are just division -- so the scheme and the key-recovery attack
-against it can be RUN. That is precisely why the attack is executable here, and
-also why this instance offers no security whatsoever. The point demonstrated:
-`dksap_key_recovery`, applied to these numbers, says the recovered scalar is the
-recipient's actual spending key -- and you can watch that happen.
-
-See `docs/dksap-asymmetry.md`.
--/
-
 import PqStealth.DKSAP
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.Tactic.NormNum.Prime
+
+/-!
+# A runnable DKSAP instance
+
+Everything else here is abstract, which is what makes the theorems apply to any
+curve and also what makes nothing executable. This module fixes a tiny instance
+-- the additive group of `ZMod 23`, where discrete logs are division -- so the
+scheme and the attack can be RUN: exactly why the attack is executable here, and
+why the instance offers no security. Each `#eval` is wrapped in `#guard_msgs`,
+so the numbers in the docstrings are build-checked assertions.
+
+See `docs/dksap-asymmetry.md`.
+-/
 
 namespace PqStealth.Demo
 
@@ -61,9 +59,7 @@ def honestKey : F := m + hash (v • R)
 
 /-! ## The attack
 
-Discrete logarithms in this toy group are division by the generator, so the
-"oracle" is a one-liner. In a real group this step is what a quantum adversary
-supplies and a classical one cannot. -/
+In a real group this step is what a quantum adversary supplies. -/
 
 /-- The generator's multiplicative inverse, `5 * 14 = 70 = 1 mod 23`. -/
 def genInv : F := 14
@@ -78,10 +74,7 @@ def dlog (x : F) : F := genInv * x
 /-- What the adversary computes, from published data only. -/
 def recovered : F := recover hash (dlog M) (dlog V) R
 
-/-! ## Run it
-
-Each `#eval` is wrapped in `#guard_msgs`, so the value in its docstring is an
-assertion the build checks rather than a line printed at every build. -/
+/-! ## Run it -/
 
 /-- info: 22 -/
 #guard_msgs in

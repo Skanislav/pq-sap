@@ -16,23 +16,35 @@ Line references are to the current tree; VCVio references are relative to
 `lean/.lake/packages/VCVio/`.
 
 
-## Status (2026-08-17, branch `lean-improvements`)
+## Status (2026-08-17, branches `lean-improvements` then `lean-simplify`)
 
-Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (52
-theorems), full `lake build` green (2781 jobs, no warnings):
+Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (46
+theorems), full `lake build` green (2777 jobs, no warnings). Names below are
+the post-refactor ones.
+
+Simplification refactor landed on `lean-simplify`: 13 modules (12 content
+modules plus the axiom audit) and 2,579 lines, down from 17 modules and 3,685
+lines — 1,334 code / 827 prose / 418 blank, against 1,590 / 1,638 / 457 before.
+`KEM` is now VCVio's `KEMScheme ProbComp` outright, the unlinkability adversary
+is a function, every hidden-bit game is indexed by the bit instead of duplicated
+per branch, the module essays moved to `docs/*.md`, and no `omit … in` remains.
+No theorem was weakened; the generic-`(ring, encoding, prims)` ML-KEM
+restatements were dropped as subsumed by the ML-KEM-768 capstones, which have
+strictly fewer hypotheses, and the missing `mlkem768_unlinkAdvantage_le_indCpa`
+was added.
 
 | # | Outcome |
 |---|---|
-| 1 | Done — `ofKEMFull` scan recomputes the aux data (`MetaPriv = SK × PK`); `KEM.PerfectlyCorrect`; `perfectlyComplete_ofKEMFull`. |
-| 2 | Done — `MLKEM768.lean`: `DecidableEq` instances, generic ciphertext sampler, `mlkem768_unlinkAdvantage_le{,_full_decomposition}` with no instance hypotheses on ML-KEM types. Sharper than the issue text: `SampleableType (Ciphertext mlkem768 …)` is provably **uninhabited** (`ByteArray` is infinite), so the generic ML-KEM capstone now takes an explicit `sim`. Upstream asks for VCVio recorded in the module docstring. |
+| 1 | Done — `ofKEMFull` scan recomputes the aux data (`MetaPriv = SK × PK`); correctness is VCVio's `KEMScheme.PerfectlyCorrect`; `perfectlyComplete_ofKEMFull`. |
+| 2 | Done — `MLKEM.lean`: `DecidableEq` instances, `mlkem768_unlinkAdvantage_le{,_full_decomposition,_le_indCpa}` with no instance hypotheses on ML-KEM types. Sharper than the issue text: `SampleableType (Ciphertext mlkem768 …)` is provably **uninhabited** (`ByteArray` is infinite), so the generic ML-KEM capstone now takes an explicit `sim`. Upstream asks for VCVio recorded in the module docstring. |
 | 3 | Done (model + sanity lemma + reduction adversary) — `ConstructionA.lean`; `auxKeyIndependence_eq_zero_of_pk_independent`, `stealthAddr_eq_blinded_pk`, seeded-MLWE `mlweAdvOfUnlinkAdv`, `idealAux_indep_of_t`. **Correction to the issue text:** the blinding term is not bounded by MLWE alone — `rho` sits outside the mask, so closing it needs the address hash as a random oracle (documented; new follow-up). |
-| 6 | Done — `sharedSecretHidingTrue/False_eq_indCpaAdvantage`, `unlinkAdvantage_ofKEMFull_le_indCpa`, `mlkem_unlinkAdvantage_le_indCpa`. **Finding:** VCVio's `kpke_ind_cpa_security` / `kpke_delta_correct` / `ind_cca_security` are `sorry` at the pinned commit and concern K-PKE, so KEM-IND-CPA → MLWE stays paper-level; the missing lemma is stated in `SharedSecretHidingMLWE.lean` (elaborates as written). Stale prose claiming otherwise was scrubbed from the Lean files and README; `docs/DECISIONS.md` D-013 still says "→ MLWE [Lean bridge + VCVio]" and should be corrected. |
+| 6 | Done — `sharedSecretHiding_eq_indCpaAdvantage` (one theorem, `∀ b`), `unlinkAdvantage_ofKEMFull_le_indCpa`, `mlkem768_unlinkAdvantage_le_indCpa`. **Finding:** VCVio's `kpke_ind_cpa_security` / `kpke_delta_correct` / `ind_cca_security` are `sorry` at the pinned commit and concern K-PKE, so KEM-IND-CPA → MLWE stays paper-level; the missing lemma is stated in `MLKEM.lean` (elaborates as written). Stale prose claiming otherwise was scrubbed from the Lean files and README; `docs/DECISIONS.md` D-013 still says "→ MLWE [Lean bridge + VCVio]" and should be corrected. |
 | 8 | Done (a–c, d documented) — `IsShortPair`, honest `IsSigningKey`, `blinded_is_signing_key`; `[A | I | -t]` reshaping with `spendForgeryAdvantage_eq_sis_advantage` scored by exactly `SIS.matrixProblem`'s predicate; `spendForgeryAdvantageReal`; `honest_witness_relation` removed. Uniform-challenge gap (HNF absorption + MLWE pseudorandomness of `t`) documented. |
 | 11 | Done (untested by nature) — `.github/workflows/lean.yml`. |
-| 12 | Done — `PqStealth/Axioms.lean`, 52 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
-| 13 | Done — `GameControls.lean`: leaky scheme advantage `= 1 − Pr[key collision]` exactly, leaky KEM, dead KEM not complete, tag-ignoring scan complete-but-not-sound. |
+| 12 | Done — `PqStealth/Axioms.lean`, 46 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
+| 13 | Done — `Controls.lean`: leaky scheme advantage `= 1 − Pr[key collision]` exactly, leaky KEM, dead KEM not complete, tag-ignoring scan complete-but-not-sound. |
 | 15 | Done — `Demo.lean` `#eval`s guarded; build is silent. |
-| 20 | Partly — README job counts removed, reading order added, `honest_witness_relation` deduped. Naming/`abbrev` items open. |
+| 20 | Done — README rewritten around the 12-module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
 
 Open: #4, #5, #7, #9, #10, #14, #16, #17, #18, #19, #21, plus the two new
 follow-ups above (random-oracle model for the address hash; upstream VCVio

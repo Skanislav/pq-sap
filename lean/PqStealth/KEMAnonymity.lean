@@ -1,48 +1,20 @@
-/-
-KEM anonymity (key privacy) and the unlinkability reduction.
-
-The teaching point made concrete: a stealth scheme's UNLINKABILITY reduces to
-the KEM's ANONYMITY (does a ciphertext hide which public key it was
-encapsulated to), NOT to IND-CCA (which hides the message). VCVio ships ML-KEM
-IND-CCA statements (their MLWE reductions are `sorry` at the pinned commit),
-but NOT anonymity -- so we state the
-anonymity assumption here, in the same shape VCVio uses for its own games, and
-prove the reduction.
-
-This file:
-  1. defines an abstract `KEM` and its anonymity game (reusing the
-     distinguisher `UnlinkAdv`, whose shape is exactly a key-privacy adversary);
-  2. instantiates `StealthScheme` from a KEM, with the announcement modelled as
-     the KEM ciphertext (the only recipient-dependent part);
-  3. proves, sorry-free, that unlinkability of that scheme EQUALS the KEM's
-     anonymity advantage.
-
-Scope of the model: `ofKEM` treats the announcement as just the ciphertext.
-`ofKEMFull` below is the faithful version, in which the announcement also
-carries a view tag and a stealth address. Those two are NOT alike: the view tag
-comes from the shared secret alone, but the stealth address is built from the
-recipient's own `rho` and `t` as well. Modelling the auxiliary data as a
-function of the shared secret only would understate what an announcement
-publishes, so `auxGen` takes the public key too, and the bound gains a term
-(`auxKeyIndependence`) for the question that the coarser model could not even
-express.
-
-Detection: `ofKEMFull.scan` decapsulates and then RECOMPUTES the auxiliary data
-from the recovered shared secret and the recipient's own public key, accepting
-only when it matches the announced one. Testing merely that decapsulation
-returned `some` would be vacuous on any KEM with implicit rejection -- ML-KEM's
-`decaps` is `fun dk c => return some ...` and never rejects, so that test is the
-constant `true` and every recipient "detects" every announcement. This is why
-the recipient's private state is `SK x PK`: a scanning wallet holds its own
-meta-address next to the decapsulation key, and needs both.
-
-Still open beyond this file: anonymity -> MLWE for ML-KEM, the deeper piece
-VCVio does not cover (Grubbs-Maram-Paterson), which is where the novel work
-sits.
--/
-
 import PqStealth.Games
 import VCVio.CryptoFoundations.KeyEncapMech
+
+/-!
+# KEM anonymity and the unlinkability reduction
+
+Proved: `KEM` (VCVio's `KEMScheme` over `ProbComp`) and its anonymity game --
+key privacy, which VCVio does not ship; `ofKEM`, whose unlinkability EQUALS the
+KEM's anonymity advantage; `ofKEMFull`, the faithful scheme whose announcement
+also carries `auxGen sharedSecret pk` and whose scan recomputes it, with
+`unlinkAdvantage_ofKEMFull_le` bounding unlinkability by two
+shared-secret-hiding terms, `auxKeyIndependence`, and anonymity; and detection
+completeness of `ofKEMFull` from VCVio's `KEMScheme.PerfectlyCorrect`.
+
+Assumed: nothing here. `anonymity → MLWE` for ML-KEM is the open piece
+(`AnonymityFromSPR`). See `docs/announcement-model.md`.
+-/
 
 open OracleComp OracleSpec
 
@@ -50,10 +22,8 @@ namespace PqStealth
 
 /-! ## An abstract KEM
 
-A KEM is VCVio's `KEMScheme` over `ProbComp` (`CryptoFoundations/KeyEncapMech.lean`),
-with the type arguments reordered to `PK SK C K`; correctness and KEM IND-CPA
-are therefore VCVio's own, and the anonymity API below is what this development
-adds. `abbrev` rather than `def` so that dot notation reaches both. -/
+`abbrev` rather than `def` so dot notation reaches both this namespace and
+`KEMScheme`; correctness and KEM IND-CPA are therefore VCVio's own. -/
 
 /-- A key encapsulation mechanism over `ProbComp`: key generation, encapsulation
 (producing a ciphertext and a shared secret), and decapsulation. -/
@@ -61,11 +31,9 @@ abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C
 
 /-! ## A `Pr[= true | …] = 1` transfer lemma -/
 
-/-- Transfer a probability-one Boolean verdict along a pointwise implication:
-if `p` holds with certainty and `p` implies `q` on the support, then `q` holds
-with certainty. Used to derive detection completeness from KEM correctness,
-whose verdict (`the decapsulated key is the encapsulated one`) is strictly
-stronger than the scheme's (`the recomputed auxiliary data matches`). -/
+/-- Transfer a probability-one Boolean verdict along a pointwise implication.
+Used to derive detection completeness from the strictly stronger verdict of KEM
+correctness. -/
 theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α → Bool}
     (h : ∀ a ∈ support oa, p a = true → q a = true)
     (hp : Pr[= true | (do let a ← oa; pure (p a))] = 1) :
@@ -89,9 +57,8 @@ variable {PK SK C K : Type} (kem : KEM PK SK C K)
 
 /-! ## Correctness
 
-Correctness is VCVio's `KEMScheme.PerfectlyCorrect ProbCompRuntime.probComp`,
-which unfolds to `Pr[= true | kem.CorrectExp] = 1`. `run` names the shared draw
-prefix of that experiment so the verdict can be varied. -/
+VCVio's `KEMScheme.PerfectlyCorrect`; `run` names the shared draw prefix so the
+verdict can be varied. -/
 
 /-- The draw prefix common to KEM correctness and to detection completeness:
 a keypair, an encapsulation to its public key, and a decapsulation of the
@@ -111,8 +78,7 @@ theorem correctExp_eq [DecidableEq K] :
 /-! ## Anonymity (key privacy)
 
 The hidden bit selects which of two public keys the challenge ciphertext is
-encapsulated to; the adversary, given both public keys and the ciphertext, must
-guess. The distinguisher is exactly `UnlinkAdv PK C`. -/
+encapsulated to. The distinguisher is exactly `UnlinkAdv PK C`. -/
 
 /-- Shared prefix: two keypairs, both public keys published. -/
 def anonSetup : ProbComp (PK × PK) := do
@@ -149,16 +115,9 @@ end KEM
 
 variable {PK SK C K : Type}
 
-/-- Instantiate a stealth scheme from a KEM: the announcement is the KEM
-ciphertext (the recipient-dependent part), and detection tests whether
-decapsulation succeeds.
-
-A teaching model for the unlinkability reduction, not the scheme. With nothing
-but a ciphertext in the announcement there is nothing for the recipient to check
-against, so detection is only as strong as the KEM's rejection behaviour -- and
-on a KEM with implicit rejection (ML-KEM) that is no strength at all: `decaps`
-never returns `none`, so `scan` is the constant `true`. `ofKEMFull` is the
-version with a detectable announcement. -/
+/-- Stealth scheme from a KEM: announcement = ciphertext, detection = "did
+decapsulation succeed". A teaching model, not the scheme -- on an
+implicit-rejection KEM its `scan` is the constant `true`. -/
 def StealthScheme.ofKEM (kem : KEM PK SK C K) : StealthScheme PK SK C where
   keygen := kem.keygen
   announce pk := do
@@ -168,11 +127,9 @@ def StealthScheme.ofKEM (kem : KEM PK SK C K) : StealthScheme PK SK C where
     let k ← kem.decaps sk c
     pure k.isSome
 
-/-- **The reduction, sorry-free.** Unlinkability of the KEM-based stealth scheme
-equals the KEM's anonymity advantage: with the announcement modelled as the
-ciphertext, the two experiments are the same computation. What remains for the
-analysis is (a) folding in the view tag / stealth address without leaking the
-recipient, and (b) the open `anonymity -> MLWE` step for ML-KEM. -/
+/-- **The reduction.** Unlinkability of the KEM-based stealth scheme EQUALS the
+KEM's anonymity advantage: with the announcement modelled as the ciphertext, the
+two experiments are the same computation. -/
 theorem unlinkAdvantage_ofKEM_eq_anonAdvantage
     (kem : KEM PK SK C K) (adv : StealthScheme.UnlinkAdv PK C) :
     (StealthScheme.ofKEM kem).unlinkAdvantage adv = kem.anonAdvantage adv := by
@@ -184,46 +141,16 @@ theorem unlinkAdvantage_ofKEM_eq_anonAdvantage
 
 /-! ## Folding in the view tag and stealth address
 
-The real announcement is not just the ciphertext: it also carries a view tag and
-a stealth address. Model both with `auxGen : K -> PK -> Aux`, so the
-announcement is `(ciphertext, auxGen sharedSecret pk)` and detection still works
-(the recipient recomputes the shared secret). The public-key argument is what
-makes this faithful: the view tag is a function of the shared secret alone, but
-the stealth address folds in the recipient's own `rho` and `t`.
-
-Unlinkability then rests on three separate things, and the bound below names
-each rather than merging them:
-
-  * the auxiliary data hides the recipient insofar as the shared secret is
-    pseudorandom -- a KEM IND-CPA question (VCVio's
-    `KeyEncapMech.IND_CPA_Advantage`, proved equal in `SharedSecretHiding`;
-    its reduction to MLWE is the paper-level FO step), one term per branch;
-  * once the secret is idealized, the auxiliary data must still not betray WHICH
-    public key produced it -- `auxKeyIndependence`, which for this scheme is the
-    blinding argument (`A * s' + e'` masking `t`) and is again MLWE, not a KEM
-    property;
-  * and the ciphertext itself must hide the recipient -- KEM anonymity.
-
-The middle term is the one a shared-secret-only model cannot state at all. -/
+The announcement is `(ciphertext, auxGen sharedSecret pk)`. Unlinkability then
+rests on three separate things -- shared-secret hiding, key independence of the
+auxiliary data, and ciphertext anonymity -- and the bound below names each
+rather than merging them. See `docs/announcement-model.md`. -/
 
 variable {Aux : Type}
 
-/-- Stealth scheme from a KEM with a full announcement: the ciphertext plus
-auxiliary data (view tag, stealth address).
-
-`auxGen` takes the recipient's public key as well as the shared secret, and
-that second argument is load-bearing rather than cosmetic. The view tag is a
-function of the shared secret alone, but the stealth address is not: it is
-`keccak(pack_pk(rho, Power2Round(A * s' + e' + t)))`, in which `rho` and `t`
-are the RECIPIENT's own meta-address material and only `(s', e')` come from the
-shared secret. An announcement therefore carries recipient-dependent data even
-once the shared secret is idealized, and a model with `auxGen : K -> Aux`
-understates what is published.
-
-Detection recomputes: the recipient decapsulates, rebuilds the auxiliary data
-from the recovered shared secret and its OWN public key, and accepts only on a
-match. That is what a scanner actually does, and it is why the private state is
-`SK x PK` -- the decapsulation key alone does not determine the tag. -/
+/-- Stealth scheme from a KEM with a full announcement: ciphertext plus
+`auxGen sharedSecret pk`. Detection recomputes the auxiliary data from the
+decapsulated secret and the recipient's OWN key, hence the `SK × PK` state. -/
 def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
     (auxGen : K → PK → Aux) : StealthScheme PK (SK × PK) (C × Aux) where
   keygen := do
@@ -236,16 +163,9 @@ def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
     let k? ← kem.decaps sk.1 ca.1
     pure (k?.elim false fun k => decide (ca.2 = auxGen k sk.2))
 
-/-- **Detection completeness, sorry-free.** A recipient always detects an
-announcement addressed to them, given only that the KEM is perfectly correct in
-VCVio's sense (`KEMScheme.PerfectlyCorrect`).
-
-The content is that the two sides compute the same auxiliary data: the sender
-builds it from the encapsulated shared secret and the recipient's public key,
-the recipient rebuilds it from the decapsulated secret and its own public key,
-and KEM correctness identifies the two secrets. The correctness hypothesis is
-doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (`Controls`) drops
-it and proves the conclusion false. -/
+/-- **Detection completeness.** A recipient always detects an announcement
+addressed to them, given only VCVio's `KEMScheme.PerfectlyCorrect`. That
+hypothesis is doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete`. -/
 theorem perfectlyComplete_ofKEMFull [DecidableEq K] [DecidableEq Aux]
     (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
     (hkem : kem.PerfectlyCorrect ProbCompRuntime.probComp) :
@@ -274,13 +194,9 @@ theorem unlinkSetup_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
 
 variable [SampleableType K]
 
-/-- The ciphertext-anonymity adversary induced by a full-announcement
-adversary: it synthesizes the auxiliary data from a FRESH random shared secret
-and a FIXED public key -- recipient 0, which the anonymity game hands it during
-setup. Both choices carry weight. The random secret removes the dependence on
-the real encapsulation; the fixed key is what makes the reduction constructible
-at all, since a derived adversary cannot consult "whichever key the challenger
-used" without already knowing the hidden bit. -/
+/-- The ciphertext-anonymity adversary induced by a full-announcement one: it
+synthesizes the auxiliary data from a FRESH random shared secret and a FIXED
+public key, recipient 0's. See `docs/announcement-model.md`. -/
 def StealthScheme.UnlinkAdv.cipherOf
     (adv : StealthScheme.UnlinkAdv PK (C × Aux)) (auxGen : K → PK → Aux) :
     StealthScheme.UnlinkAdv PK C :=
@@ -291,11 +207,8 @@ def StealthScheme.UnlinkAdv.cipherOf
 variable (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
   (adv : StealthScheme.UnlinkAdv PK (C × Aux))
 
-/-- The intermediate game on branch `b`: the challenge ciphertext still goes to
-recipient `b`, and the auxiliary data is still built from recipient `b`'s own
-public key, but from a fresh random shared secret rather than the real one.
-This game is what separates the two distinct assumptions that a
-shared-secret-only model silently merged into one term. -/
+/-- The intermediate game on branch `b`: same ciphertext and same public key,
+but the auxiliary data is built from a fresh random shared secret. -/
 def randAuxBranch (b : Bool) (a : PK × PK) : ProbComp Bool := do
   let (c, _) ← kem.encaps (if b then a.2 else a.1)
   let k' ← ($ᵗ K)
@@ -309,45 +222,26 @@ theorem randAuxBranch_false :
 
 variable [DecidableEq Aux]
 
-/-- Shared-secret-hiding advantage on branch `b`: distinguishing an
-announcement whose auxiliary data uses the REAL shared secret from one whose
-auxiliary data uses a fresh RANDOM key. This is a KEM IND-CPA (real-or-random)
-advantage (`sharedSecretHiding_eq_indCpaAdvantage`); reducing that to
-MLWE is the paper-level step.
-
-Both sides build the auxiliary data from the SAME public key -- recipient `b`'s.
-That is what makes this a clean real-or-random KEM question and nothing else;
-the separate question of whether the public key itself shows through is carried
-by `auxKeyIndependence`. -/
+/-- Shared-secret-hiding advantage on branch `b`: real shared secret versus a
+fresh random key, from the SAME public key on both sides. A KEM IND-CPA
+advantage (`sharedSecretHiding_eq_indCpaAdvantage`). -/
 noncomputable def sharedSecretHiding (b : Bool) : ℝ :=
   ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
       (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv b).boolDistAdvantage
     ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
       randAuxBranch kem auxGen adv b)
 
-/-- **The term the shared-secret-only model was missing.** Even after the shared
-secret is replaced by a fresh random key, the auxiliary data is still computed
-from a public key -- recipient 1's on one side, recipient 0's on the other. This
-advantage measures whether that difference is observable.
-
-It is a genuinely separate assumption from shared-secret hiding, and for this
-scheme it is where the blinding does its work: with `(s', e')` drawn from a
-random secret, `A * s' + e' + t` masks the recipient's `t`, which is an MLWE
-statement rather than a statement about the KEM. A model whose auxiliary data
-ignores the public key cannot see this term at all -- it is not that the term
-was small, it is that it was invisible. -/
+/-- **The term the shared-secret-only model was missing.** With the shared secret
+already idealized, does the auxiliary data still betray WHICH public key built
+it? For this scheme that is the blinding argument (`ConstructionA`). -/
 noncomputable def auxKeyIndependence : ℝ :=
   ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
       randAuxBranch kem auxGen adv true).boolDistAdvantage
     (kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) true)
 
-/-- **The faithful reduction, sorry-free.** With the view tag and stealth
-address folded in, unlinkability is bounded by the KEM's anonymity advantage
-plus a shared-secret-hiding term per branch. The auxiliary data hides the
-recipient exactly insofar as the shared secret is pseudorandom; when those
-hiding terms are negligible (KEM IND-CPA, assumed -> MLWE), unlinkability collapses back
-to anonymity. Proved by the triangle inequality over the intermediate games
-that replace the real shared secret with a random one. -/
+/-- **The faithful reduction.** With the view tag and stealth address folded in,
+unlinkability is bounded by anonymity, `auxKeyIndependence`, and one
+shared-secret-hiding term per branch. Triangle inequality over `randAuxBranch`. -/
 theorem unlinkAdvantage_ofKEMFull_le :
     (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantage adv ≤
       sharedSecretHiding kem auxGen adv true

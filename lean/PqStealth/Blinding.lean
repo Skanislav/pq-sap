@@ -1,32 +1,24 @@
-/-
-Machine-checked algebraic core for the PQ stealth address scheme
-(docs/TECHNICAL_SPEC.md, Section 4): the blinded-key correctness identity
-and the Power2Round rounding-error bound, built on VCVio's LatticeCrypto
-layer (pinned commit a5f474fd, validated by the week-1 gate build).
-
-Deliberately algebra-only (per plan.md): no game-based security proofs.
--/
-
 import Mathlib.Data.Matrix.Mul
 import LatticeCrypto.Ring.Rounding
 import LatticeCrypto.MLDSA.Concrete.Rounding
+
+/-!
+# The algebraic core: blinded-key correctness
+
+Proved: `A·s' + e' + (A·s₁ + s₂) = A·(s₁ + s') + (s₂ + e')` over any commutative
+ring -- the sender's published value is the honest ML-DSA public key of the
+widened secret, which is why the recipient can sign -- and the `Power2Round`
+rounding-error bound for the announced key, generic and at the concrete ML-DSA
+parameters (`docs/TECHNICAL_SPEC.md` §4).
+
+Assumed: nothing. Pure algebra over VCVio's LatticeCrypto layer.
+-/
 
 open LatticeCrypto Matrix
 
 namespace PqStealth
 
-/-!
-## 1. The blinded-key correctness identity
-
-The recipient's meta key is `t = A *ᵥ s₁ + s₂`; the sender derives the
-blinding pair `(s', e')` from the ML-KEM shared secret and publishes (the
-rounding of) `t' = A *ᵥ s' + e' + t`. The identity says `t'` is exactly
-the ML-DSA public key of the widened secret `(s₁ + s', s₂ + e')` — which
-is why the recipient can sign for the stealth key.
-
-Stated over an arbitrary commutative ring, so it instantiates at
-`R_q = Z_q[X]/(X^256 + 1)` for every ML-DSA parameter set.
--/
+/-! ## 1. The blinded-key correctness identity -/
 
 theorem blinded_key_correctness {R : Type*} [CommRing R] {k l : ℕ}
     (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R) :
@@ -44,15 +36,10 @@ theorem stealth_pk_eq_blinded_keypair {R : Type*} [CommRing R] {k l : ℕ}
   subst ht
   exact blinded_key_correctness A s₁ s' s₂ e'
 
-/-!
-## 2. Rounding-error bound
+/-! ## 2. Rounding-error bound
 
-The announced stealth key is `t₁' = Power2Round(t')`; signing needs the
-dropped part `t₀'`. The rounding error is bounded by `2^(d-1)` — this is
-`Power2RoundOps.Laws.power2Round_bound` in VCVio, restated generically and
-then instantiated at the concrete ML-DSA parameters (`q = 8380417`,
-`d = 13`), giving the concrete bound `2^12 = 4096`.
--/
+`Power2RoundOps.Laws.power2Round_bound` restated for the announced key, then
+instantiated at `q = 8380417`, `d = 13`, giving `2^12 = 4096`. -/
 
 theorem stealth_pk_rounding_error {Coeff : Type*} [CommRing Coeff]
     {ring : NegacyclicRing Coeff} [AddCommGroup ring.Poly] {d : ℕ}

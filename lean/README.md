@@ -3,133 +3,128 @@
 <!-- Update the slug if the repository moves. -->
 [![Lean](https://github.com/Skanislav/pq-sap/actions/workflows/lean.yml/badge.svg)](https://github.com/Skanislav/pq-sap/actions/workflows/lean.yml)
 
-The plan.md Lean deliverable, grown in two layers: the **algebraic core**
-(blinded-key correctness identity, rounding-error bounds — the original
-algebra-only scope) and the **security-game layer** (the scheme's security
-experiments and their structural reductions, added 2026-07-31). All of it
-sorry-free; every theorem depends only on `propext`, `Classical.choice`,
-`Quot.sound`, and that is asserted by the build rather than checked by hand
-(see [Verifying](#verifying)). Full `lake build`: green.
+The plan.md Lean deliverable: an **algebraic core** (blinded-key correctness
+identity, rounding-error bounds) and a **security-game layer** (the scheme's
+security experiments and their structural reductions). All of it sorry-free;
+every headline theorem depends only on `propext`, `Classical.choice`,
+`Quot.sound` (or fewer), and that is asserted by the build rather than checked
+by hand — see [Verifying](#verifying). Full `lake build`: green.
 
-**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `KEMAnonymity`
-→ `ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM768`
-→ `Ownership`. `Demo` is a
-runnable toy instance, so it is the cheapest way in; `PqStealth.lean` carries
-the same map as a module docstring.
+**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `KEMAnonymity` →
+`ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM` →
+`Ownership` → `Controls`. `Demo` is a runnable toy instance, so it is the
+cheapest way in.
 
-`PqStealth/Blinding.lean` contains, all sorry-free:
+The design essays live in [`docs/`](docs/): `announcement-model.md` (the
+announcement, `auxGen`, the decomposition, construction A, the controls),
+`spr-two-hop.md` (KEM anonymity from SPR, the ML-KEM instantiation, the missing
+upstream lemma), `msis-reshaping.md` (the spend side), `dksap-asymmetry.md`
+(the classical comparison). The Lean modules carry short docstrings and point
+here.
 
-- `blinded_key_correctness` — `A·s' + e' + (A·s₁ + s₂) = A·(s₁+s') + (s₂+e')`
-  over any commutative ring (so it instantiates at `R_q` for every ML-DSA
-  parameter set): the sender's published value is exactly the honest ML-DSA
-  public key of the widened secret, which is why the recipient can sign.
-- `stealth_pk_eq_blinded_keypair` — the same with the meta key abstracted.
-- `stealth_pk_rounding_error` — generic restatement of VCVio's
-  `Power2RoundOps.Laws.power2Round_bound` for the announced (rounded) key.
-- `stealth_pk_rounding_error_concrete` — instantiated at the concrete
-  ML-DSA parameters (q = 8380417, d = 13) via VCVio's proven
-  `MLDSA.Concrete.concretePower2RoundLaws`: error ≤ 2^12.
-
-`PqStealth/Invariants.lean` extends the core with three more sorry-free results
-(the in-scope Lean items from `docs/DECISIONS.md`):
-
-- **Widened-bound signing invariant** — `cInfNorm_add_le` proves the centered
-  infinity norm is sub-additive (via mathlib's `natAbs_valMinAbs_add_le`), so the
-  blinded secret `s₁+s'` is `2·eta`-bounded (`blinded_norm_bound`), and the
-  signer bound doubles: `beta' = tau·(2·eta) = 2·beta` against VCVio's `beta`
-  (`beta_blinded_eq_two_beta`).
-- **Ownership ↔ signing-key bridge** — the MLWE relation the Noir circuit proves
-  (`IsOwnershipWitness`) *together with the coefficient bound* is possession of an
-  ML-DSA signing key (`ownership_iff_signing`, `IsSigningKey`), and the blinded
-  secret is such a key for the derived stealth key at the widened bound `2·eta`
-  (`blinded_is_signing_key`, from the correctness identity and `blinded_norm_bound`).
-- **Encoding roundtrip** — the on-chain stealth pk roundtrips via VCVio's
-  encoding law (`stealth_pk_roundtrips`), and the meta-address wrapper roundtrips
-  whenever the inner key packing does (`meta_address_roundtrips`).
-
-## Security-game layer (2026-07-31)
-
-The game layer is formalized on VCVio's `OracleComp`/`ProbComp` framework,
-mirroring its own `AsymmEncAlg`/IND-CPA idiom. The proved reduction skeleton,
-with the announcement modelled faithfully as
-`(ciphertext, aux(sharedSecret, recipientPk))` and detection recomputing `aux`:
+## The proved decomposition
 
 ```
-unlinkability ≤ ssHidingTrue + auxKeyIndep + (sprTrue + sprFalse) + ssHidingFalse
-  ssHiding    = VCVio KEMScheme.IND_CPA_Advantage, exactly   [Lean]
-                (→ MLWE: paper-level; VCVio's own K-PKE lemma is a `sorry` placeholder)
-  auxKeyIndep = the blinding term of construction A          [Lean model; = 0 for tag-only aux]
-                (→ MLWE needs a random-oracle model of the address hash: documented)
-  SPR → 2·MLWE                                              [two-hop, documented]
-spend forgery = matrix-SIS advantage on [A | I | -t]         [Lean; uniform-challenge gap documented]
+unlinkability ≤ sharedSecretHiding true + auxKeyIndependence
+                + (sprAdv true + sprAdv false) + sharedSecretHiding false
+  sharedSecretHiding = VCVio KEMScheme.IND_CPA_Advantage, exactly   [Lean]
+                       (→ MLWE: paper-level; VCVio's K-PKE lemma is a `sorry`)
+  auxKeyIndependence = the blinding term of construction A          [Lean model]
+                       (= 0 for tag-only aux; → MLWE needs the address hash
+                        as a random oracle: documented, not proved)
+  sprAdv             → 2·MLWE per branch                      [two-hop, documented]
+spend forgery        = matrix-SIS advantage on [A | I | -t]   [Lean; uniform-challenge
+                                                               gap documented]
 instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM types
 ```
 
-- **`Games.lean`** — abstract `StealthScheme` (keygen/announce/scan in
-  `ProbComp`); detection completeness; the unlinkability game stated as
-  **anonymity** (the hidden bit picks the *recipient*, not the message — this
-  is key privacy, not IND-CPA). `unlinkAdvantage_eq_branchDistAdvantage` is
-  the first game hop.
-- **`KEMAnonymity.lean`** — abstract `KEM`; the KEM anonymity game (absent
-  from VCVio, which stops at IND-CCA); `ofKEM` (announcement = ciphertext,
-  unlinkability *equals* anonymity) and `ofKEMFull` (view tag + stealth
-  address folded in via `auxGen`); `unlinkAdvantage_ofKEMFull_le` — the
-  auxiliary data hides the recipient exactly insofar as the shared secret is
-  pseudorandom. `ofKEMFull.scan` recomputes the announced auxiliary data from
-  the decapsulated secret and the recipient's own public key (a test "did
-  decapsulation succeed" is vacuous on an implicit-rejection KEM like ML-KEM);
-  `perfectlyComplete_ofKEMFull` proves detection from `KEM.PerfectlyCorrect`.
-- **`GameControls.lean`** — controls for the game layer: a scheme announcing
-  the recipient's meta-address has the maximal `unlinkAdvantage`
-  (`1 − Pr[key collision]`, the true ceiling of the two-recipient game), and
-  likewise a KEM whose ciphertext is the public key for `anonAdvantage`; on
-  the negative side a rejecting KEM breaks completeness, and the scan without
-  the tag comparison is complete but flags every announcement.
-- **`ConstructionA.lean`** — the announcement of construction A inside the
-  game model: `auxGen` = view tag plus `hashAddr (pack rho (power2Round
-  (A·s' + e' + t)))` with the symmetric primitives as parameters;
-  `stealthAddr_eq_blinded_pk` (the correctness identity used in the games),
-  `auxKeyIndependence_eq_zero_of_pk_independent` (the term vanishes for
-  tag-only aux — a sanity control), the seeded-MLWE reduction adversary for
-  the blinding hop, and the uniform-mask independence lemma. The docstring
-  explains why the blinding term is *not* bounded by MLWE alone: `rho` sits
-  outside the mask, so closing it needs the address hash as a random oracle.
+## Module map
+
+Twelve content modules plus the axiom audit and the root.
+
+Algebraic core (no probability, no games):
+
+- **`Blinding.lean`** — `blinded_key_correctness`: `A·s' + e' + (A·s₁ + s₂) =
+  A·(s₁+s') + (s₂+e')` over any commutative ring, so the sender's published
+  value is the honest ML-DSA public key of the widened secret;
+  `stealth_pk_eq_blinded_keypair`; the `Power2Round` error bound generically
+  (`stealth_pk_rounding_error`) and at `q = 8380417`, `d = 13` (`≤ 2^12`).
+- **`Invariants.lean`** — `cInfNorm_add_le` (centered-norm sub-additivity),
+  hence `blinded_norm_bound` and `beta_blinded_eq_two_beta` (the signer bound
+  doubles); `ownership_iff_signing` — the ownership relation *plus* the
+  coefficient bound is possession of an ML-DSA signing key — and
+  `blinded_is_signing_key`; the stealth-key and meta-address encoding
+  roundtrips.
+
+Security-game layer (VCVio `OracleComp`/`ProbComp`):
+
+- **`Games.lean`** — the abstract `StealthScheme`; detection completeness and
+  the false-positive experiment; unlinkability as **recipient anonymity** (the
+  hidden bit picks the *recipient*, not the message — key privacy, not
+  IND-CPA), with `unlinkAdvantage_eq_branchDistAdvantage` as the first hop.
+  The adversary is a function, and every hidden-bit game is indexed by the bit.
+- **`KEMAnonymity.lean`** — `KEM` *is* VCVio's `KEMScheme ProbComp`; the KEM
+  anonymity game (absent from VCVio, which stops at IND-CCA); `ofKEM`
+  (announcement = ciphertext, unlinkability *equals* anonymity) and `ofKEMFull`
+  (view tag + stealth address folded in via `auxGen`, with a scan that
+  recomputes and compares them, hence the `SK × PK` private state);
+  `unlinkAdvantage_ofKEMFull_le`; `perfectlyComplete_ofKEMFull` from VCVio's
+  own `KEMScheme.PerfectlyCorrect`.
+- **`ConstructionA.lean`** — the real announcement inside the game model:
+  `auxGen` = view tag plus `hashAddr (pack rho (power2Round (A·s' + e' + t)))`,
+  with the symmetric primitives bundled uninterpreted as `Prims` and the
+  samplers as `Samplers`; `stealthAddr_eq_blinded_pk`,
+  `announced_key_isOwnershipWitness`,
+  `auxKeyIndependence_eq_zero_of_pk_independent`, the seeded-MLWE
+  `blindingProblem` with its reduction adversary, and `idealAux_indep_of_t`.
+  Why the blinding term is *not* closed by MLWE alone (`rho` sits outside the
+  mask) is in `docs/announcement-model.md`.
 - **`SharedSecretHiding.lean`** — each hiding term proved equal to a
   real-or-random guessing bias and then to VCVio's
   `KEMScheme.IND_CPA_Advantage` of the explicit reduction adversary
-  (`sharedSecretHidingTrue/False_eq_indCpaAdvantage`; the sample-reordering is
-  proved, not documented); `unlinkAdvantage_ofKEMFull_le_indCpa`.
-- **`SharedSecretHidingMLWE.lean`** — the same on VCVio's ML-KEM
-  (`mlkem_unlinkAdvantage_le_indCpa`), and the precise statement of the
-  KEM-IND-CPA → MLWE lemma VCVio does not yet provide.
-- **`MLKEMInstance.lean`** — bridge to VCVio's concrete
-  `MLKEM.asKEMScheme` (same `ProbComp` monad, identical fields); the
-  unlinkability bound specialized to real ML-KEM.
-- **`MLKEM768.lean`** — the ML-KEM-768 parameter set: the `DecidableEq`
-  instances VCVio's concrete encoding lacks, a machine-checked proof that no
-  uniform distribution on the concrete ciphertext type exists (`ByteArray` is
-  infinite), the uniform-1088-byte simulator, and `mlkem768_unlinkAdvantage_le`
-  / `…_full_decomposition` with no instance hypotheses on the ML-KEM types.
-- **`AnonymityFromSPR.lean`** — the open `anonymity → MLWE` arrow,
-  structured: `anonAdvantage_le_sprAdv` proves anonymity ≤ per-branch
-  ciphertext-pseudorandomness (the GMP / Maram–Xagawa route), and the
-  capstone `…_full_decomposition` bounds unlinkability by named terms with an
-  explicit key-independent simulator. The remaining lattice step
-  (`SPR(K-PKE) ≤ 2·MLWE`, key hop then ciphertext hop) and the ANO-CCA/FO
-  caveat are documented in the module docstring.
-- **`Ownership.lean`** — spend-side: forging an ownership witness for
-  `A·s + e = t` as VCVio's `SIS.Problem`; `honest_witness_valid` shows the
-  blinded secret always spends. The inhomogeneous instance is reshaped into
-  VCVio's homogeneous matrix-SIS via `[A | I | -t]` with an *equality* of
-  advantages (`spendForgeryAdvantage_eq_sis_advantage`), scored by exactly
-  `SIS.matrixProblem`'s predicate; the remaining uniformity gap (HNF absorption,
-  MLWE pseudorandomness of `t`) is documented in the module docstring.
+  `indCpaAdv … b` (`sharedSecretHiding_eq_indCpaAdvantage`; the sample
+  reordering is proved, not documented), hence
+  `unlinkAdvantage_ofKEMFull_le_indCpa`.
+- **`AnonymityFromSPR.lean`** — the open `anonymity → MLWE` arrow, structured:
+  `KEM.anonAdvantage_le_sprAdv` bounds anonymity by per-branch ciphertext
+  pseudorandomness (the Grubbs–Maram–Paterson / Maram–Xagawa route), and
+  `unlinkAdvantage_ofKEMFull_le_full_decomposition` is the five-term capstone.
+- **`MLKEM.lean`** — ML-KEM-768: the `DecidableEq` instances VCVio's concrete
+  encoding lacks; a machine-checked proof that **no** uniform distribution on
+  the concrete ciphertext type exists (`ByteArray` is infinite), so the
+  simulator is an explicit argument; the uniform-1088-byte FIPS 203 simulator;
+  and `mlkem768_unlinkAdvantage_le`, `…_le_full_decomposition`,
+  `…_le_indCpa` with no instance hypotheses on the ML-KEM types. The exact
+  missing upstream lemma (`MLKEM.kem_ind_cpa_security`) is recorded verbatim.
+- **`Ownership.lean`** — the spend side: forging an ownership witness for
+  `A·s + e = t` as VCVio's `SIS.Problem`, with `honest_witness_valid`; the
+  `[A | I | -t]` reshaping into VCVio's homogeneous matrix-SIS with an
+  *equality* of advantages (`spendForgeryAdvantage_eq_sis_advantage`), scored
+  by exactly `SIS.matrixProblem`'s predicate
+  (`augmentedSISProblem_isValid_eq_matrixProblem`); the ML-DSA instance.
+
+Classical comparison and controls:
+
+- **`DKSAP.lean`** — the deployed dual-key scheme (ERC-5564 scheme 1), its
+  completeness, the discrete-log key-recovery attack
+  (`dksap_key_recovery` — key recovery, hence universal forgery), and its
+  classical unlinkability bounded by two hashed-Diffie–Hellman terms, the
+  idealized middle game contributing exactly zero.
+- **`Controls.lean`** — a recipient-leaking scheme has the maximal
+  `unlinkAdvantage` (`1 − keyCollisionProb`, the true ceiling of the
+  two-recipient game), and likewise a KEM whose ciphertext is the public key
+  for `anonAdvantage`; a rejecting KEM breaks completeness; the tag-ignoring
+  scan is complete but false-positives with probability `1`; a DKSAP variant
+  that drops the spending key is not complete.
+- **`Demo.lean`** — a runnable `ZMod 23` instance of DKSAP and its attack, with
+  every `#eval` wrapped in `#guard_msgs`.
+- **`Axioms.lean`** — 46 build-checked `#print axioms` assertions.
 
 What is *not* claimed: the computational assumptions at the bottom
-(KEM IND-CPA → MLWE, SPR two-hop, the random-oracle step for the blinding
-term, ANO-CCA lift through implicit-rejection FO, forking-lemma SoK
-extraction, uniform-challenge MSIS) are paper-level, stated and cited in the
-docstrings. In particular VCVio's ML-KEM security theorems are `sorry`
+(KEM IND-CPA → MLWE, the SPR two-hop, the random-oracle step for the blinding
+term, the ANO-CCA lift through implicit-rejection FO, forking-lemma SoK
+extraction, uniform-challenge MSIS) are paper-level, stated and cited in
+`docs/`. In particular VCVio's ML-KEM security theorems are `sorry`
 placeholders at the pinned commit and nothing here depends on them.
 
 ## Pin (week-1 gate, validated 2026-07-25)
@@ -160,15 +155,15 @@ and linked with `elan toolchain link`.)
 `lake build` *is* the check — there is nothing to run afterwards.
 
 - **Sorry-freedom and the axiom basis** are asserted by
-  `PqStealth/Axioms.lean`, which the root module imports. It carries one
-  `#guard_msgs in #print axioms …` block per headline theorem, freezing that
-  theorem's exact axiom list (mostly `propext, Classical.choice, Quot.sound`;
-  the pure-algebra facts need less). A `sorry` introduced anywhere in a
-  headline theorem's dependency cone adds `sorryAx` to its list and turns the
-  mismatch into a compile error.
+  `PqStealth/Axioms.lean`, which the root module imports. It carries 46
+  `#guard_msgs (whitespace := lax) in #print axioms …` blocks, one per headline
+  theorem, freezing that theorem's exact axiom list (mostly
+  `propext, Classical.choice, Quot.sound`; the pure-algebra facts need less).
+  A `sorry` introduced anywhere in a headline theorem's dependency cone adds
+  `sorryAx` to its list and turns the mismatch into a compile error.
 - **The runnable DKSAP demo** is asserted the same way:
-  `PqStealth/Demo.lean` wraps each `#eval` in `#guard_msgs`, so the numbers
-  in its docstrings are checked, and the build prints nothing.
+  `PqStealth/Demo.lean` wraps each `#eval` in `#guard_msgs` (6 blocks), so the
+  numbers in its docstrings are checked, and the build prints nothing.
 - **CI** (`.github/workflows/lean.yml`) runs exactly the two commands above
   on every push and pull request; the badge at the top of this file reports
   the result. Note that VCVio is not in the mathlib binary cache and compiles

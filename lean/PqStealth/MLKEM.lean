@@ -1,61 +1,3 @@
-/-
-The ML-KEM instantiation, at the FIPS 203 ML-KEM-768 parameter set.
-
-The abstract games (`Games.lean`) and the anonymity reduction
-(`KEMAnonymity.lean`) are generic over a KEM. VCVio ships a concrete ML-KEM
-whose checked interface is packaged as `MLKEM.asKEMScheme : KEMScheme ProbComp
-...`, over the same `ProbComp` monad our `KEM` is an abbreviation for, so
-`mlkem768KEM` IS that scheme rather than a transport of it. This file supplies
-the instances the concrete encoding lacks and states the capstones at
-`concreteNTTRingOps / mlkem768Encoding / mlkem768Primitives`, where the only
-remaining arguments are the adversary and the auxiliary-data function.
-
-Two facts about the concrete encoding shape the file.
-
-* `MLKEM.Concrete.concreteEncoding` sets all three encoded types to `ByteArray`
-  but is a plain `def`, so instance search cannot see through it. The three
-  `DecidableEq` instances below close that; they are `inferInstanceAs`
-  transports, definitionally `ByteArray.instDecidableEq`.
-
-* `ByteArray` is unbounded, hence infinite, hence the ciphertext type is
-  infinite (`infinite_mlkem768Ciphertext`) and admits NO `SampleableType`
-  instance at all: `SampleableType` requires every element of the type to lie in
-  the support of a single `ProbComp`, which forces finiteness. This is recorded
-  as `isEmpty_sampleableType_mlkem768Ciphertext`, and it is why
-  `unlinkAdvantage_ofKEMFull_le_full_decomposition` takes its simulator as an
-  explicit argument rather than as `$ᵗ (Ciphertext params encoding)`: at the
-  concrete parameter set that uniform sample does not exist.
-
-The simulator used here is therefore not `$ᵗ (Ciphertext ...)` but
-`mlkem768UniformCiphertext`: uniform over the fixed-length byte strings of the
-FIPS 203 ciphertext layout, `32 * du * k = 960` bytes of `u` followed by
-`32 * dv = 128` bytes of `v`, 1088 bytes in total. That is the distribution the
-SPR literature means by "uniform ciphertext bytes", and it is a sharper
-simulator than uniform-over-the-encoded-type would be, since the latter would
-range over byte arrays of every length. `size_uEncoded_encrypt_mlkem768` checks
-the `u` half of that layout against what honest K-PKE encryption actually emits.
-
-Documented gap: the matching `v`-half check is not machine-checked here. VCVio
-proves it (`byteEncode_size`, `LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`)
-but that theorem and the `bitsToBytes` definition it rests on are `private`, so
-the fact is unavailable outside that module and the goal cannot even be stated
-in terms one can unfold. The `32 * dv` figure below is therefore taken from FIPS
-203 Algorithm 5 on the strength of the specification alone;
-`uEncodedBytes_add_vEncodedBytes_eq_ciphertextBytes` confirms only that the two
-figures chosen here sum to VCVio's `Params.ciphertextBytes`, which is arithmetic
-and corroborates neither summand.
-
-What the chain reaches, and where it stops. The shared-secret-hiding terms of
-`mlkem768_unlinkAdvantage_le_indCpa` are `KEMScheme.IND_CPA_Advantage` of
-explicit reduction adversaries against `MLKEM.asKEMScheme` itself
-(`SharedSecretHiding.lean`). Turning those into MLWE terms needs a lemma VCVio
-does not have; the statement is recorded below and in `docs/spr-two-hop.md`.
-VCVio's own ML-KEM security theorems (`kpke_ind_cpa_security`,
-`kpke_delta_correct`, `ind_cca_security` in `LatticeCrypto/MLKEM/Security.lean`)
-are `sorry` placeholders at the pinned commit and concern K-PKE rather than the
-KEM, so nothing here depends on them.
--/
-
 import PqStealth.AnonymityFromSPR
 import PqStealth.SharedSecretHiding
 import VCVio.CryptoFoundations.KeyEncapMech
@@ -68,10 +10,7 @@ namespace PqStealth
 
 /-! ## Decidable equality on the concrete encoded types
 
-`concreteEncoding` sets `EncodedTHat = EncodedU = EncodedV = ByteArray`, but as
-a plain `def` it is opaque to instance search. These three transports make the
-equality visible, so `MLKEM.asKEMScheme` and everything built on it elaborate at
-`mlkem768Encoding`. -/
+Transports making the `ByteArray` equality visible through the opaque `def`. -/
 
 instance : DecidableEq mlkem768Encoding.EncodedTHat :=
   inferInstanceAs (DecidableEq ByteArray)
@@ -84,9 +23,7 @@ instance : DecidableEq mlkem768Encoding.EncodedV :=
 
 /-! ## The concrete ciphertext type is infinite
 
-`SampleableType β` bundles a `ProbComp β` whose support is all of `β`; supports
-of `ProbComp`s are finite, so a `SampleableType` instance forces `β` finite.
-`ByteArray` is not, and neither is the concrete ciphertext type. -/
+A `SampleableType` instance forces finiteness; `ByteArray` is not finite. -/
 
 /-- `ByteArray` is infinite: the all-zero arrays have pairwise distinct lengths. -/
 theorem infinite_byteArray : Infinite ByteArray :=
@@ -106,11 +43,9 @@ theorem infinite_mlkem768Ciphertext :
       (⟨b, ByteArray.mk #[]⟩ : Ciphertext mlkem768 mlkem768Encoding))
     (by intro a b hab; exact congrArg KPKE.Ciphertext.uEncoded hab)
 
-/-- **No uniform distribution on the ML-KEM-768 ciphertext type exists.** A
-`SampleableType` instance would make the type finite, and it is not. Hence
-`$ᵗ (Ciphertext params encoding)` is unavailable at this parameter set, and the
-concrete decomposition below supplies `mlkem768UniformCiphertext` as the
-explicit simulator of `unlinkAdvantage_ofKEMFull_le_full_decomposition`. -/
+/-- **No uniform distribution on the ML-KEM-768 ciphertext type exists**, since a
+`SampleableType` instance would make it finite. This is why the decomposition
+takes its simulator as an explicit argument. -/
 theorem isEmpty_sampleableType_mlkem768Ciphertext :
     IsEmpty (SampleableType (Ciphertext mlkem768 mlkem768Encoding)) :=
   ⟨fun h =>
@@ -157,11 +92,9 @@ theorem size_uEncoded_encrypt_mlkem768
 
 /-! ## The uniform-ciphertext-bytes simulator -/
 
-/-- Uniform sampling over the ML-KEM-768 ciphertext byte space: 960 uniform
-bytes for `u`, 128 for `v`. This is the key-independent simulator the SPR
-(strong-pseudorandomness) argument compares real encapsulations against; its
-support is the set of encoded ciphertexts of the FIPS 203 length, a strict
-subset of the encoded type, which is all of `ByteArray × ByteArray`. -/
+/-- Uniform over the ML-KEM-768 ciphertext byte space: 960 bytes of `u`, 128 of
+`v`. The key-independent simulator the SPR argument compares real encapsulations
+against, and sharper than uniform-over-the-encoded-type would be. -/
 def mlkem768UniformCiphertext : ProbComp (Ciphertext mlkem768 mlkem768Encoding) := do
   let u ← $ᵗ (Bytes (uEncodedBytes mlkem768))
   let v ← $ᵗ (Bytes (vEncodedBytes mlkem768))
@@ -184,9 +117,7 @@ variable {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey mlkem768 mlkem768Encoding → Aux)
 
 /-- The post-quantum stealth scheme on ML-KEM-768: discovery via real ML-KEM,
-announcement = `(ciphertext, auxGen sharedSecret encapsulationKey)` -- the view
-tag and stealth address folded in, the latter depending on the recipient's own
-key as well as the shared secret. -/
+announcement `(ciphertext, auxGen sharedSecret encapsulationKey)`. -/
 def mlkem768StealthScheme :
     StealthScheme (EncapsulationKey mlkem768 mlkem768Encoding)
       (DecapsulationKey mlkem768 mlkem768Encoding
@@ -194,15 +125,9 @@ def mlkem768StealthScheme :
       (Ciphertext mlkem768 mlkem768Encoding × Aux) :=
   StealthScheme.ofKEMFull mlkem768KEM auxGen
 
-/-- **The unlinkability bound on ML-KEM-768**, with no instance hypotheses on
-the ML-KEM types left open: the only arguments are the auxiliary-data function,
-decidable equality on the caller-chosen `Aux` (needed by `scan`), and the
-adversary.
-Unlinkability is bounded by ML-KEM-768's anonymity advantage, its two
-shared-secret-hiding (IND-CPA) terms, and the auxiliary-data key-independence
-term. The key-independence term is the blinding argument (`ConstructionA`); the
-anonymity term is the one link neither VCVio nor FIPS 203 supplies
-(Grubbs-Maram-Paterson), i.e. the novel piece. -/
+/-- **The unlinkability bound on ML-KEM-768**, with no instance hypotheses on the
+ML-KEM types left open: only the auxiliary-data function, `DecidableEq` on the
+caller's `Aux`, and the adversary remain. -/
 theorem mlkem768_unlinkAdvantage_le
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux)) :
@@ -213,12 +138,9 @@ theorem mlkem768_unlinkAdvantage_le
       + sharedSecretHiding mlkem768KEM auxGen adv false :=
   unlinkAdvantage_ofKEMFull_le mlkem768KEM auxGen adv
 
-/-- **Unlinkability on ML-KEM-768, fully decomposed**, with no instance
-hypotheses on the ML-KEM types left open. The hiding terms are ML-KEM-768's KEM IND-CPA advantage
-(`SharedSecretHiding`); the SPR terms are the key hop and the ciphertext hop
-(paper-level, see `AnonymityFromSPR`). The simulator is uniform over the 1088-byte FIPS 203 ciphertext layout
-rather than `$ᵗ (Ciphertext ...)`, which does not exist here
-(`isEmpty_sampleableType_mlkem768Ciphertext`). -/
+/-- **Unlinkability on ML-KEM-768, fully decomposed.** The simulator is uniform
+over the 1088-byte FIPS 203 layout rather than `$ᵗ (Ciphertext ...)`, which does
+not exist here (`isEmpty_sampleableType_mlkem768Ciphertext`). -/
 theorem mlkem768_unlinkAdvantage_le_full_decomposition
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux)) :
@@ -231,12 +153,9 @@ theorem mlkem768_unlinkAdvantage_le_full_decomposition
   unlinkAdvantage_ofKEMFull_le_full_decomposition mlkem768KEM auxGen
     mlkem768UniformCiphertext adv
 
-/-- **The ML-KEM-768 unlinkability bound in IND-CPA form.**
-`mlkem768_unlinkAdvantage_le` with both hiding terms replaced by VCVio KEM
-IND-CPA advantages of explicit reduction adversaries against
-`MLKEM.asKEMScheme`. Bounding those two terms by MLWE is exactly the missing
-upstream lemma recorded below; the remaining two terms (auxiliary-data key
-independence, ML-KEM anonymity) are not KEM IND-CPA questions at all. -/
+/-- **The ML-KEM-768 unlinkability bound in IND-CPA form**: both hiding terms are
+VCVio KEM IND-CPA advantages of explicit reduction adversaries against
+`MLKEM.asKEMScheme`. Bounding them by MLWE is the missing lemma below. -/
 theorem mlkem768_unlinkAdvantage_le_indCpa
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux)) :
@@ -271,21 +190,27 @@ theorem MLKEM.kem_ind_cpa_security {params : Params} (ring : NTTRingOps)
             |LearningWithErrors.advantage mlwe mlweAdv|
 ```
 
-What `LatticeCrypto/MLKEM/Security.lean` supplies instead is
-`kpke_ind_cpa_security`, which bounds `AsymmEncAlg.IND_CPA_advantage` of K-PKE --
-the underlying public-key encryption scheme -- rather than
-`KEMScheme.IND_CPA_Advantage` of the KEM, and which is `sorry` upstream. The
-step between the two is the T-transform half of Fujisaki-Okamoto: the KEM's
-shared secret is derived from a uniformly random message via a hash modelled as
-a random oracle, so KEM IND-CPA follows from K-PKE IND-CPA plus message entropy.
-Neither that reduction nor `kpke_ind_cpa_security` itself is in scope here, so
-this file states equalities and bounds, never an MLWE bound; importing one would
-import `sorryAx`. See `docs/spr-two-hop.md`. -/
+`LatticeCrypto/MLKEM/Security.lean` supplies `kpke_ind_cpa_security` instead: it
+is about K-PKE rather than the KEM, and is `sorry` upstream. The step between
+them is the T-transform half of Fujisaki-Okamoto. See `docs/spr-two-hop.md`. -/
 
-/-! ## The instances resolve
+/-!
+# ML-KEM-768
 
-These record, in the build, the synthesis checks that the abstract capstones
-leave as hypotheses. -/
+Proved: the three `DecidableEq` instances VCVio's concrete encoding lacks (it
+sets all encoded types to `ByteArray` but as a plain `def`); that the concrete
+ciphertext type is INFINITE, hence `SampleableType` on it is provably
+uninhabited and the SPR simulator must be an explicit argument; the
+uniform-1088-byte FIPS 203 simulator and the `u` half of its layout against what
+honest K-PKE encryption emits; and the three capstones -- `_le`,
+`_le_full_decomposition`, `_le_indCpa` -- with no instance hypotheses left open.
+
+Assumed: the `v`-half byte count, taken from FIPS 203 because VCVio's
+`byteEncode_size` is `private`; and KEM-IND-CPA → MLWE, the missing upstream
+lemma recorded below. See `docs/spr-two-hop.md`.
+-/
+
+/-! ## The instances resolve -/
 
 example : DecidableEq mlkem768Encoding.EncodedTHat := inferInstance
 example : DecidableEq mlkem768Encoding.EncodedU := inferInstance

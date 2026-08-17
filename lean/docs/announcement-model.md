@@ -291,7 +291,7 @@ with different seeds are genuinely different distributions for a general
 
 ## Controls: why the definitions have teeth
 
-`Falsification.lean` pins one completeness claim (DKSAP) from below by proving a
+`Controls.lean` pins one completeness claim (DKSAP) from below by proving a
 deliberately broken variant broken. The game layer needs the same treatment on
 both sides, because a definition can be wrong in two opposite ways: an advantage
 that no scheme can make large measures nothing, and a detection test that no

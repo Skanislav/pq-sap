@@ -1,32 +1,21 @@
-/-
-Spend-side security: the ownership proof as a hard search problem (MSIS).
-
-Spending a stealth account means proving knowledge of a short `(s, e)` with
-`A * s + e = t` (the signing-key relation from `Invariants`), bound to the
-transaction. Forging a spend therefore means producing such a witness for a
-target `t` you were not given -- an inhomogeneous Short Integer Solution
-instance.
-
-This file
-  1. casts spend forgery as a VCVio `SIS.Problem`, with the honest side proved
-     trivial (the blinded secret is always a valid witness);
-  2. reshapes that inhomogeneous instance into the *homogeneous* matrix-SIS
-     shape VCVio's `SIS.matrixProblem` uses, via the standard `[A | I | -t]`
-     augmentation, and proves the two advantages are *equal* -- so the MSIS
-     claim is a theorem about VCVio's predicate rather than a naming
-     convention;
-  3. instantiates all of it at the ML-DSA ring `Rq` with the real centered
-     infinity-norm bound, and shows the game-level validity predicate is
-     exactly `IsSigningKey`.
-
-Scope: this captures the SEARCH core (produce a witness = solve MSIS). The full
-signature-of-knowledge unforgeability -- message binding via Fiat-Shamir, the
-forking-lemma extraction, HVZK -- is the deeper reduction to `SelfTargetMSIS`;
-see the follow-up section at the end of this file.
--/
-
 import PqStealth.Invariants
 import LatticeCrypto.HardnessAssumptions.ShortIntegerSolution
+
+/-!
+# The spend side: ownership forgery as matrix-SIS
+
+Proved: spend forgery -- producing a short `(s, e)` with `A *ᵥ s + e = t` for a
+target you were not given -- cast as a VCVio `SIS.Problem`, with the honest
+blinded witness always valid; the `[A | I | -t]` augmentation reshaping that
+inhomogeneous instance into VCVio's HOMOGENEOUS matrix-SIS, with an EQUALITY of
+advantages and a validity predicate equal on the nose to `SIS.matrixProblem`'s;
+and the ML-DSA instance, where winning the game is literally producing a signing
+key (`ownershipValid_mldsaShort_iff_isSigningKey`).
+
+Assumed: HNF absorption and MLWE pseudorandomness of `t` -- the challenge here
+is the scheme's distribution, not uniform -- and the whole Fiat-Shamir /
+signature-of-knowledge layer. See `docs/msis-reshaping.md`.
+-/
 
 open OracleComp OracleSpec Matrix ENNReal
 
@@ -76,15 +65,9 @@ theorem spendForgeryAdvantage_ne_top (keyGen : ProbComp (OwnershipKey R k l))
     spendForgeryAdvantage keyGen isShort adv ≠ ⊤ :=
   ne_top_of_le_ne_top ENNReal.one_ne_top probOutput_le_one
 
-/-- The forgery advantage as a real number.
-
-VCVio states search advantages in `ℝ≥0∞` (`SIS.advantage` is a `probOutput`),
-while every distinguishing advantage in this development
-(`ProbComp.boolDistAdvantage` and the KEM/MLWE bounds built on it) is `ℝ`. The
-`ℝ≥0∞` form is kept as the definition -- it is the one that is definitionally
-VCVio's -- and this is the `ℝ` view used when a spend bound has to be added to,
-or chained with, those advantages. Nothing is lost in the conversion:
-`spendForgeryAdvantage_ne_top`. -/
+/-- The forgery advantage as a real number: the `ℝ` view used when a spend bound
+is chained with the distinguishing advantages, which are all `ℝ`. Nothing is
+lost (`spendForgeryAdvantage_ne_top`). -/
 noncomputable def spendForgeryAdvantageReal (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) : ℝ :=
@@ -105,15 +88,9 @@ end Search
 
 /-! ## 2. Reshaping into homogeneous matrix-SIS
 
-VCVio's `SIS.matrixProblem` is the *homogeneous* problem: find a short nonzero
-`z` with `M *ᵥ z = 0`. The ownership problem is inhomogeneous (`A *ᵥ s + e = t`).
-The standard bridge is the augmentation `M = [A | I | -t]`, under which
-`M *ᵥ (s, e, 1) = A *ᵥ s + e - t`: kernel vectors whose last coordinate is `1`
-are exactly the ownership witnesses, with `e` absorbed by the identity block.
-Carrying the marker `1` in the shortness predicate makes the correspondence a
-bijection on *valid* solutions, so the advantages are equal, not merely
-comparable.
--/
+`M = [A | I | -t]` gives `M *ᵥ (s, e, 1) = A *ᵥ s + e - t`; carrying the marker
+`1` in the shortness predicate makes the correspondence a bijection on VALID
+solutions, so the advantages are equal, not merely comparable. -/
 
 /-- The `[A | I | -t]` augmentation of an ownership key: the `k × (l+k+1)`
 matrix whose homogeneous kernel elements with last coordinate `1` are exactly
@@ -135,10 +112,9 @@ def readKey (M : Matrix (Fin k) (Fin (l + k + 1)) R) : OwnershipKey R k l where
   A := fun i j => M i ((j.castAdd k).castAdd 1)
   t := fun i => -M i (Fin.natAdd (l + k) 0)
 
-/-- Shortness lifted to the augmented solution space: the original bound on the
-`(s, e)` block, plus the requirement that the affine marker coordinate is `1`.
-The marker check is what pins the kernel vector to the inhomogeneous solution
-it came from. -/
+/-- Shortness on the augmented space: the original bound on `(s, e)`, plus the
+affine marker coordinate being `1` — which is what pins a kernel vector to the
+inhomogeneous solution it came from. -/
 def augmentedShort [DecidableEq R]
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (z : Fin (l + k + 1) → R) : Bool :=
@@ -196,11 +172,9 @@ theorem augmented_isValid_eq_ownershipValid [DecidableEq R] [Nontrivial R]
     ne_eq, not_false_eq_true, decide_true, Bool.true_and, ownershipValid,
     sub_eq_zero]
 
-/-- The homogeneous reshaping of the ownership problem: sample a stealth key and
-hand the adversary `[A | I | -t]`; a solution is a short nonzero kernel vector
-carrying the affine marker. The validity predicate is *literally* VCVio's
-matrix-SIS predicate (`augmentedSISProblem_isValid_eq_matrixProblem`); only the
-challenge distribution is the scheme's rather than uniform. -/
+/-- The homogeneous reshaping: hand the adversary `[A | I | -t]` and ask for a
+short nonzero kernel vector carrying the marker. The validity predicate is
+LITERALLY VCVio's; only the challenge distribution is the scheme's. -/
 def augmentedSISProblem [DecidableEq R]
     (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool) :
@@ -221,12 +195,9 @@ def augmentedAdversary [DecidableEq R]
     let w ← adv (readKey M)
     return augmentedWitness w
 
-/-- **Spend forgery in homogeneous matrix-SIS form.** The ownership forgery
-advantage equals the advantage of the reshaped adversary against
-`[A | I | -t]` -- an equality, not a bound: the augmentation and the marker
-coordinate make valid solutions correspond one-to-one. The right-hand side uses
-the scheme's challenge distribution, not a uniform matrix; see *What is proved
-and what is assumed* below. -/
+/-- **Spend forgery in homogeneous matrix-SIS form.** An EQUALITY, not a bound:
+the augmentation and the marker make valid solutions correspond one-to-one. The
+challenge distribution is the scheme's, not a uniform matrix. -/
 theorem spendForgeryAdvantage_eq_sis_advantage [DecidableEq R] [Nontrivial R]
     (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
@@ -239,15 +210,9 @@ theorem spendForgeryAdvantage_eq_sis_advantage [DecidableEq R] [Nontrivial R]
     bind_assoc, pure_bind, readKey_augmentedMatrix,
     augmented_isValid_eq_ownershipValid]
 
-/-- The `≤` form of `spendForgeryAdvantage_eq_sis_advantage`, for chaining into
-larger bounds.
-
-Read the right-hand side precisely: it is `augmentedSISProblem`, whose
-`sampleChallenge` is the scheme's `keyGen >>= pure ∘ augmentedMatrix`, *not*
-VCVio's uniform `SIS.matrixProblem`. Only the scoring function is VCVio's, and
-that on the nose (`augmentedSISProblem_isValid_eq_matrixProblem`). So this is
-not yet "spend forgery is bounded by the MSIS assumption"; it is that bound
-modulo the two lemmas stated in *What is proved and what is assumed* below. -/
+/-- The `≤` form, for chaining. NOT yet "spend forgery is bounded by the MSIS
+assumption": the challenge is the scheme's distribution, and only the scoring
+function is VCVio's. See `docs/msis-reshaping.md`. -/
 theorem spendForgeryAdvantage_le_msis [DecidableEq R] [Nontrivial R]
     (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
@@ -257,10 +222,8 @@ theorem spendForgeryAdvantage_le_msis [DecidableEq R] [Nontrivial R]
           (augmentedAdversary keyGen isShort adv) :=
   le_of_eq (spendForgeryAdvantage_eq_sis_advantage keyGen isShort adv)
 
-/-- Non-vacuity of the reshaping: the honest blinded witness, when short, passes
-the augmented homogeneous check too. A real ownership solution maps to a real
-kernel vector, so `spendForgeryAdvantage_eq_sis_advantage` is not an equality
-between two unsatisfiable predicates. -/
+/-- Non-vacuity: the honest blinded witness, when short, passes the augmented
+check too, so the equality above is not between two unsatisfiable predicates. -/
 theorem honest_augmented_witness_valid [DecidableEq R] [Nontrivial R]
     (keyGen : ProbComp (OwnershipKey R k l))
     (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R)
@@ -276,10 +239,9 @@ section VCVioMatrixSIS
 
 variable [DecidableEq R] [SampleableType R]
 
-/-- The reshaped problem's validity predicate *is* VCVio's `SIS.matrixProblem`
-predicate at `n = k`, `m = l + k + 1`. This is the literal link to VCVio's MSIS:
-after `spendForgeryAdvantage_eq_sis_advantage`, a spend forger is scored by
-exactly the function `SIS.matrixProblem` scores solutions by. -/
+/-- The reshaped problem's validity predicate IS VCVio's `SIS.matrixProblem`
+predicate at `n = k`, `m = l + k + 1`: a spend forger is scored by exactly the
+function `SIS.matrixProblem` scores solutions by. -/
 theorem augmentedSISProblem_isValid_eq_matrixProblem
     (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool) :
@@ -291,50 +253,15 @@ end VCVioMatrixSIS
 
 /-! ### What is proved and what is assumed
 
-`spendForgeryAdvantage_eq_sis_advantage` is an exact *reshaping*: it puts spend
-forgery into VCVio's homogeneous matrix-SIS shape and shows the two advantages
-are equal, with the scoring function equal on the nose to `SIS.matrixProblem`'s
-(`augmentedSISProblem_isValid_eq_matrixProblem`). It is *not* yet a reduction to
-the standard uniform-MSIS assumption, because
-`(augmentedSISProblem keyGen isShort).sampleChallenge` is the scheme's
-distribution `keyGen >>= (pure ∘ augmentedMatrix)`, whereas
-`(SIS.matrixProblem k (l+k+1) isShort').sampleChallenge` is
-`$ᵗ Matrix (Fin k) (Fin (l+k+1)) R`. Two statements close that gap; neither is
-proved here.
-
-* **HNF absorption.** A challenge of the shape `[A | I | -t]` is as hard as a
-  uniform one. Precisely: for every `adv` there exists `adv'` with
-
-  `SIS.advantage (augmentedSISProblem uniformKeyGen isShort) adv ≤`
-  `SIS.advantage (SIS.matrixProblem k (l+k+1) (augmentedShort isShort)) adv'`
-
-  where `uniformKeyGen` samples `A` and `t` uniformly. The textbook proof
-  column-reduces a uniform challenge into Hermite normal form, which over a
-  module ring needs an invertible `k × k` block -- the `Rq`-specific step.
-
-* **Target pseudorandomness.** The real `keyGen` is an MLWE sample: `A` is
-  uniform but `t = A *ᵥ s₁ + s₂` with `(s₁, s₂)` short. Replacing it by
-  `uniformKeyGen` costs the MLWE distinguishing advantage. Precisely, for every
-  `adv` the two advantages
-  `SIS.advantage (augmentedSISProblem mlweKeyGen isShort) adv` and
-  `SIS.advantage (augmentedSISProblem uniformKeyGen isShort) adv` differ by at
-  most the advantage of the derived distinguisher against
-  `LearningWithErrors.moduleMatrixProblem` -- the same assumption the detection
-  side of this development already uses.
-
-Chaining the equality proved here with those two gives
-`spendForgeryAdvantage ≤ msisAdvantage + mlweAdvantage`, the bound the spec
-claims.
--/
+The equality above is an exact RESHAPING, not yet a reduction to uniform MSIS:
+the challenge is `keyGen >>= (pure ∘ augmentedMatrix)`, not `$ᵗ Matrix …`. Two
+statements close that gap, neither proved here -- HNF absorption, and MLWE
+pseudorandomness of `t`. Both are spelled out in `docs/msis-reshaping.md`. -/
 
 /-! ## 3. The ML-DSA instance
 
-Everything above at `R := Rq`, with `isShort` the real ML-DSA range check: every
-coordinate polynomial of `s` and of `e` has centered infinity norm at most the
-bound. The Boolean predicate the game uses is then decidably equivalent to
-`IsSigningKey` from `Invariants`, so "the adversary wins the SIS game" and "the
-adversary produced a signing key it was never given" are the same statement.
--/
+Everything above at `R := Rq` with the real range check, so that winning the SIS
+game and producing a signing key one was never given are the same statement. -/
 
 open LatticeCrypto MLDSA MLDSA.Concrete
 
@@ -359,10 +286,8 @@ of `IsShortPair`. -/
 def mldsaShort (bound : ℕ) (w : (Fin l → Rq) × (Fin k → Rq)) : Bool :=
   decide ((∀ i, cInfNorm (w.1 i) ≤ bound) ∧ (∀ i, cInfNorm (w.2 i) ≤ bound))
 
-/-- Winning the ML-DSA spend-forgery game is exactly producing a signing key:
-the game's Boolean validity predicate holds iff `IsSigningKey` does. This is the
-join between the game layer of this file and the algebraic bridge in
-`Invariants`. -/
+/-- Winning the ML-DSA spend-forgery game is exactly producing a signing key: the
+game's Boolean validity predicate holds iff `IsSigningKey` does. -/
 theorem ownershipValid_mldsaShort_iff_isSigningKey (bound : ℕ)
     (key : OwnershipKey Rq k l) (w : (Fin l → Rq) × (Fin k → Rq)) :
     ownershipValid (mldsaShort bound) key w = true
@@ -371,10 +296,9 @@ theorem ownershipValid_mldsaShort_iff_isSigningKey (bound : ℕ)
     IsSigningKey, IsOwnershipWitness, IsShortPair]
   exact and_comm
 
-/-- **The ML-DSA spend bound.** At `Rq` with the real range check, the
-probability of forging an ML-DSA signing key for a freshly sampled stealth key
-equals the matrix-SIS advantage of the reshaped adversary against
-`[A | I | -t]`. -/
+/-- **The ML-DSA spend bound.** At `Rq` with the real range check, forging an
+ML-DSA signing key for a fresh stealth key has exactly the matrix-SIS advantage
+of the reshaped adversary against `[A | I | -t]`. -/
 theorem mldsa_spendForgeryAdvantage_eq_sis_advantage
     (keyGen : ProbComp (OwnershipKey Rq k l)) (bound : ℕ)
     (adv : SIS.Adversary (ownershipSISProblem keyGen (mldsaShort bound))) :
@@ -385,27 +309,10 @@ theorem mldsa_spendForgeryAdvantage_eq_sis_advantage
 
 /-! ## 4. Follow-up: signature-of-knowledge unforgeability
 
-What is proved above is the *search* core: a spend is a witness for an MSIS
-instance, and forging one is solving that instance. The spend actually deployed
-(decision D-012) is a signature of knowledge -- the ownership witness proved in
-zero knowledge and bound to the transaction -- so full unforgeability is EUF-CMA
-of a Fiat-Shamir-with-aborts signature, not just hardness of the search problem.
-
-The route, none of which is implemented here:
-
-* Package the ownership relation as a Sigma protocol
-  (`VCVio/CryptoFoundations/SigmaProtocol.lean`): commitment `A *ᵥ y`,
-  challenge `c` from `sampleInBall`, response `z = y + c * s` with rejection
-  sampling at the widened bound `2*beta` (`beta_blinded_eq_two_beta`).
-* Prove special soundness and HVZK for it; the widened bound is exactly what
-  the blinded secret needs (`blinded_is_signing_key`).
-* Apply VCVio's Fiat-Shamir transform to get a signature of knowledge, with the
-  transaction as the bound message.
-* Reduce EUF-CMA of the result to `SelfTargetMSIS.Problem`
-  (`LatticeCrypto/HardnessAssumptions/ShortIntegerSolution.lean`), which is the
-  assumption ML-DSA's own unforgeability rests on; the extraction step is the
-  forking lemma over the random oracle already modelled by
-  `SelfTargetMSIS.experiment`.
--/
+What is proved above is the SEARCH core. The deployed spend is a signature of
+knowledge, so full unforgeability is EUF-CMA of a Fiat-Shamir-with-aborts
+signature reducing to `SelfTargetMSIS`. The route -- Sigma protocol at the
+widened bound, special soundness and HVZK, Fiat-Shamir, forking lemma -- is laid
+out in `docs/msis-reshaping.md`; none of it is implemented here. -/
 
 end PqStealth

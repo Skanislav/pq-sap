@@ -1,7 +1,7 @@
 # DKSAP: sound classically, totally broken given a discrete-log oracle
 
-Background for `PqStealth/DKSAP.lean`, `PqStealth/DKSAPClassical.lean`,
-`PqStealth/Falsification.lean` and `PqStealth/Demo.lean`.
+Background for `PqStealth/DKSAP.lean`, `PqStealth/Controls.lean` (the broken
+variant) and `PqStealth/Demo.lean`.
 
 DKSAP is scheme 1 of ERC-5564: the SECP256K1 dual-key stealth address protocol,
 the only stealth scheme actually deployed today and the baseline this project
@@ -64,7 +64,7 @@ in the prime-order group DKSAP is instantiated over (`F = ZMod p`). It is
 genuinely needed: the recovered viewing scalar is fed to `h`, so an answer that
 is only correct up to the group law would derive a different shared secret.
 VCVio assumes the sibling condition `Function.Bijective (· • g)` in the same
-situation, and `DKSAPClassical` uses that bijectivity form.
+situation, and the classical half of `DKSAP.lean` uses that bijectivity form.
 
 ### What the discrete-log oracle abstracts, and what it does not
 
@@ -103,7 +103,8 @@ exists.
 
 On its own the break is a weak claim — in a world where every discrete log is
 available, every discrete-log-based scheme dies, and showing one of them die
-proves little about the design. `DKSAPClassical.lean` supplies the contrast:
+proves little about the design. The classical half of `DKSAP.lean` supplies the
+contrast:
 DKSAP is unlinkable, and all of that unlinkability rests on a single assumption
 about the hashed Diffie–Hellman value.
 
