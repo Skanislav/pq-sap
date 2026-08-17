@@ -12,7 +12,8 @@ sorry-free; every theorem depends only on `propext`, `Classical.choice`,
 (see [Verifying](#verifying)). Full `lake build`: green.
 
 **Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `KEMAnonymity`
-→ `SharedSecretHiding` → `AnonymityFromSPR` → `Ownership`. `Demo` is a
+→ `ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM768`
+→ `Ownership`. `Demo` is a
 runnable toy instance, so it is the cheapest way in; `PqStealth.lean` carries
 the same map as a module docstring.
 
@@ -38,26 +39,30 @@ the same map as a module docstring.
   signer bound doubles: `beta' = tau·(2·eta) = 2·beta` against VCVio's `beta`
   (`beta_blinded_eq_two_beta`).
 - **Ownership ↔ signing-key bridge** — the MLWE relation the Noir circuit proves
-  (`IsOwnershipWitness`) is definitionally the possession of a signing key
-  (`ownership_iff_signing`), and the blinded secret is such a witness for the
-  derived key (`blinded_is_ownership_witness`, from the correctness identity).
+  (`IsOwnershipWitness`) *together with the coefficient bound* is possession of an
+  ML-DSA signing key (`ownership_iff_signing`, `IsSigningKey`), and the blinded
+  secret is such a key for the derived stealth key at the widened bound `2·eta`
+  (`blinded_is_signing_key`, from the correctness identity and `blinded_norm_bound`).
 - **Encoding roundtrip** — the on-chain stealth pk roundtrips via VCVio's
   encoding law (`stealth_pk_roundtrips`), and the meta-address wrapper roundtrips
   whenever the inner key packing does (`meta_address_roundtrips`).
 
 ## Security-game layer (2026-07-31)
 
-Five modules formalize the security analysis's game layer on VCVio's
-`OracleComp`/`ProbComp` framework, mirroring its own `AsymmEncAlg`/IND-CPA
-idiom. The proved reduction skeleton, with the announcement modelled
-faithfully as `(ciphertext, aux(sharedSecret))`:
+The game layer is formalized on VCVio's `OracleComp`/`ProbComp` framework,
+mirroring its own `AsymmEncAlg`/IND-CPA idiom. The proved reduction skeleton,
+with the announcement modelled faithfully as
+`(ciphertext, aux(sharedSecret, recipientPk))` and detection recomputing `aux`:
 
 ```
-unlinkability ≤ ssHidingTrue + (sprTrue + sprFalse) + ssHidingFalse
-  ssHiding = KEM IND-CPA (real-or-random) → MLWE   [bridge + VCVio]
-  SPR → 2·MLWE                                     [two-hop, documented]
-spend forgery ≤ MSIS   (and the honest witness is always valid)
-instantiated on VCVio's concrete ML-KEM
+unlinkability ≤ ssHidingTrue + auxKeyIndep + (sprTrue + sprFalse) + ssHidingFalse
+  ssHiding    = VCVio KEMScheme.IND_CPA_Advantage, exactly   [Lean]
+                (→ MLWE: paper-level; VCVio's own K-PKE lemma is a `sorry` placeholder)
+  auxKeyIndep = the blinding term of construction A          [Lean model; = 0 for tag-only aux]
+                (→ MLWE needs a random-oracle model of the address hash: documented)
+  SPR → 2·MLWE                                              [two-hop, documented]
+spend forgery = matrix-SIS advantage on [A | I | -t]         [Lean; uniform-challenge gap documented]
+instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM types
 ```
 
 - **`Games.lean`** — abstract `StealthScheme` (keygen/announce/scan in
@@ -80,28 +85,52 @@ instantiated on VCVio's concrete ML-KEM
   likewise a KEM whose ciphertext is the public key for `anonAdvantage`; on
   the negative side a rejecting KEM breaks completeness, and the scan without
   the tag comparison is complete but flags every announcement.
+- **`ConstructionA.lean`** — the announcement of construction A inside the
+  game model: `auxGen` = view tag plus `hashAddr (pack rho (power2Round
+  (A·s' + e' + t)))` with the symmetric primitives as parameters;
+  `stealthAddr_eq_blinded_pk` (the correctness identity used in the games),
+  `auxKeyIndependence_eq_zero_of_pk_independent` (the term vanishes for
+  tag-only aux — a sanity control), the seeded-MLWE reduction adversary for
+  the blinding hop, and the uniform-mask independence lemma. The docstring
+  explains why the blinding term is *not* bounded by MLWE alone: `rho` sits
+  outside the mask, so closing it needs the address hash as a random oracle.
 - **`SharedSecretHiding.lean`** — each hiding term proved equal to a
-  real-or-random guessing bias (i.e. a KEM IND-CPA advantage), plus the
-  concrete VCVio `IND_CPA_Adversary` reduction adversaries (type-checked;
-  the exact advantage equality across sample-reordering is documented glue).
+  real-or-random guessing bias and then to VCVio's
+  `KEMScheme.IND_CPA_Advantage` of the explicit reduction adversary
+  (`sharedSecretHidingTrue/False_eq_indCpaAdvantage`; the sample-reordering is
+  proved, not documented); `unlinkAdvantage_ofKEMFull_le_indCpa`.
+- **`SharedSecretHidingMLWE.lean`** — the same on VCVio's ML-KEM
+  (`mlkem_unlinkAdvantage_le_indCpa`), and the precise statement of the
+  KEM-IND-CPA → MLWE lemma VCVio does not yet provide.
 - **`MLKEMInstance.lean`** — bridge to VCVio's concrete
   `MLKEM.asKEMScheme` (same `ProbComp` monad, identical fields); the
   unlinkability bound specialized to real ML-KEM.
+- **`MLKEM768.lean`** — the ML-KEM-768 parameter set: the `DecidableEq`
+  instances VCVio's concrete encoding lacks, a machine-checked proof that no
+  uniform distribution on the concrete ciphertext type exists (`ByteArray` is
+  infinite), the uniform-1088-byte simulator, and `mlkem768_unlinkAdvantage_le`
+  / `…_full_decomposition` with no instance hypotheses on the ML-KEM types.
 - **`AnonymityFromSPR.lean`** — the open `anonymity → MLWE` arrow,
   structured: `anonAdvantage_le_sprAdv` proves anonymity ≤ per-branch
   ciphertext-pseudorandomness (the GMP / Maram–Xagawa route), and the
-  capstone `…_full_decomposition` bounds unlinkability by four named,
-  MLWE-reducible terms. The remaining lattice step (`SPR(K-PKE) ≤ 2·MLWE`,
-  key hop then ciphertext hop) and the ANO-CCA/FO caveat are documented in
-  the module docstring.
+  capstone `…_full_decomposition` bounds unlinkability by named terms with an
+  explicit key-independent simulator. The remaining lattice step
+  (`SPR(K-PKE) ≤ 2·MLWE`, key hop then ciphertext hop) and the ANO-CCA/FO
+  caveat are documented in the module docstring.
 - **`Ownership.lean`** — spend-side: forging an ownership witness for
-  `A·s + e = t` cast as VCVio's `SIS.Problem` (MSIS); `honest_witness_valid`
-  shows the blinded secret always spends (via the correctness identity)
-  while forgery is MSIS-hard.
+  `A·s + e = t` as VCVio's `SIS.Problem`; `honest_witness_valid` shows the
+  blinded secret always spends. The inhomogeneous instance is reshaped into
+  VCVio's homogeneous matrix-SIS via `[A | I | -t]` with an *equality* of
+  advantages (`spendForgeryAdvantage_eq_sis_advantage`), scored by exactly
+  `SIS.matrixProblem`'s predicate; the remaining uniformity gap (HNF absorption,
+  MLWE pseudorandomness of `t`) is documented in the module docstring.
 
 What is *not* claimed: the computational assumptions at the bottom
-(SPR two-hop, ANO-CCA lift through implicit-rejection FO, forking-lemma SoK
-extraction) are paper-level, stated and cited in the docstrings.
+(KEM IND-CPA → MLWE, SPR two-hop, the random-oracle step for the blinding
+term, ANO-CCA lift through implicit-rejection FO, forking-lemma SoK
+extraction, uniform-challenge MSIS) are paper-level, stated and cited in the
+docstrings. In particular VCVio's ML-KEM security theorems are `sorry`
+placeholders at the pinned commit and nothing here depends on them.
 
 ## Pin (week-1 gate, validated 2026-07-25)
 

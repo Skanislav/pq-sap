@@ -19,10 +19,10 @@ Two facts about the concrete encoding shape the file.
   infinite (`infinite_mlkem768Ciphertext`) and admits NO `SampleableType`
   instance at all: `SampleableType` requires every element of the type to lie in
   the support of a single `ProbComp`, which forces finiteness. This is recorded
-  as `isEmpty_sampleableType_mlkem768Ciphertext`, and it means
-  `mlkem_unlinkAdvantage_le_full_decomposition`'s
-  `[SampleableType (Ciphertext params encoding)]` hypothesis is unsatisfiable at
-  the concrete parameter set. The generic product instance
+  as `isEmpty_sampleableType_mlkem768Ciphertext`, and it is why
+  `mlkem_unlinkAdvantage_le_full_decomposition` takes its simulator as an
+  explicit argument rather than as `$ᵗ (Ciphertext params encoding)`: at the
+  concrete parameter set that uniform sample does not exist. The generic product instance
   `instSampleableTypeCiphertext` is still provided -- it applies to any encoding
   whose encoded components are finite, e.g. a fixed-length-vector encoding.
 
@@ -117,9 +117,9 @@ theorem infinite_mlkem768Ciphertext :
 
 /-- **No uniform distribution on the ML-KEM-768 ciphertext type exists.** A
 `SampleableType` instance would make the type finite, and it is not. Hence
-`mlkem_unlinkAdvantage_le_full_decomposition`, whose simulator is
-`$ᵗ (Ciphertext params encoding)`, has no instance at this parameter set, and
-the concrete decomposition below uses `mlkem768UniformCiphertext` instead. -/
+`$ᵗ (Ciphertext params encoding)` is unavailable at this parameter set, and the
+concrete decomposition below supplies `mlkem768UniformCiphertext` as the
+explicit simulator of `mlkem_unlinkAdvantage_le_full_decomposition`. -/
 theorem isEmpty_sampleableType_mlkem768Ciphertext :
     IsEmpty (SampleableType (Ciphertext mlkem768 mlkem768Encoding)) :=
   ⟨fun h =>
@@ -230,8 +230,8 @@ theorem mlkem768_unlinkAdvantage_le_full_decomposition
       + (mlkem768KEM.sprAdvTrue mlkem768UniformCiphertext (adv.cipherOf auxGen)
          + mlkem768KEM.sprAdvFalse mlkem768UniformCiphertext (adv.cipherOf auxGen))
       + sharedSecretHidingFalse mlkem768KEM auxGen adv :=
-  unlinkAdvantage_ofKEMFull_le_full_decomposition
-    mlkem768KEM auxGen mlkem768UniformCiphertext adv
+  mlkem_unlinkAdvantage_le_full_decomposition concreteNTTRingOps mlkem768Encoding
+    mlkem768Primitives auxGen mlkem768UniformCiphertext adv
 
 end Capstones
 

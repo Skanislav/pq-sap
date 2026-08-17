@@ -216,6 +216,7 @@ theorem evalDist_rorGameTrue_eq_normalForm :
     simp only [StealthScheme.unlinkSetup, randAuxBranchTrue,
       StealthScheme.ofKEMFull, bind_assoc, pure_bind, Bool.false_eq_true, if_false]
 
+omit [DecidableEq Aux] in
 /-- VCVio's IND-CPA game for the `b = 1` reduction adversary is the normal form:
 the two keypair draws commute, and the hidden bit commutes to the front past the
 whole pre-challenge phase. -/
@@ -293,6 +294,7 @@ theorem boolBiasAdvantage_rorNormalFormFalse :
   unfold sharedSecretHidingFalse ProbComp.boolDistAdvantage
   exact abs_sub_comm _ _
 
+omit [DecidableEq Aux] in
 /-- VCVio's IND-CPA game for the `b = 0` reduction adversary is the normal form.
 Here the challenge keypair is already recipient 0, so only the hidden bit has to
 commute to the front. -/

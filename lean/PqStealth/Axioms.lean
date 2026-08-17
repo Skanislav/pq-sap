@@ -35,6 +35,10 @@ import PqStealth.DKSAP
 import PqStealth.Demo
 import PqStealth.Falsification
 import PqStealth.DKSAPClassical
+import PqStealth.ConstructionA
+import PqStealth.SharedSecretHidingMLWE
+import PqStealth.MLKEM768
+import PqStealth.GameControls
 
 /-! ## Algebraic core (`Blinding`) -/
 
@@ -165,3 +169,109 @@ import PqStealth.DKSAPClassical
 /-- info: 'PqStealth.dksapBroken_not_perfectlyComplete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms PqStealth.dksapBroken_not_perfectlyComplete
+
+/-! ## Honest signing keys (`Invariants`) -/
+
+/-- info: 'PqStealth.blinded_is_signing_key' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.blinded_is_signing_key
+
+/-! ## Detection completeness of the KEM-based scheme (`KEMAnonymity`) -/
+
+/-- info: 'PqStealth.perfectlyComplete_ofKEMFull' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.perfectlyComplete_ofKEMFull
+
+/-! ## Construction A inside the game model (`ConstructionA`) -/
+
+/-- info: 'PqStealth.auxKeyIndependence_eq_zero_of_pk_independent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.auxKeyIndependence_eq_zero_of_pk_independent
+
+/-- info: 'PqStealth.ConstructionA.stealthAddr_eq_blinded_pk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.ConstructionA.stealthAddr_eq_blinded_pk
+
+/-- info: 'PqStealth.ConstructionA.announced_key_isOwnershipWitness' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.ConstructionA.announced_key_isOwnershipWitness
+
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantage_scheme_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.ConstructionA.unlinkAdvantage_scheme_le
+
+/-- info: 'PqStealth.ConstructionA.idealAux_indep_of_t' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.ConstructionA.idealAux_indep_of_t
+
+/-! ## Hiding terms are VCVio's KEM IND-CPA advantage (`SharedSecretHiding`, `SharedSecretHidingMLWE`) -/
+
+/-- info: 'PqStealth.sharedSecretHidingTrue_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.sharedSecretHidingTrue_eq_indCpaAdvantage
+
+/-- info: 'PqStealth.sharedSecretHidingFalse_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.sharedSecretHidingFalse_eq_indCpaAdvantage
+
+/-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le_indCpa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.unlinkAdvantage_ofKEMFull_le_indCpa
+
+/-- info: 'PqStealth.mlkem_unlinkAdvantage_le_indCpa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.mlkem_unlinkAdvantage_le_indCpa
+
+/-! ## ML-KEM-768 without instance hypotheses (`MLKEM768`) -/
+
+/-- info: 'PqStealth.mlkem768_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.mlkem768_unlinkAdvantage_le
+
+/-- info: 'PqStealth.mlkem768_unlinkAdvantage_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.mlkem768_unlinkAdvantage_le_full_decomposition
+
+/-- info: 'PqStealth.isEmpty_sampleableType_mlkem768Ciphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.isEmpty_sampleableType_mlkem768Ciphertext
+
+/-! ## Spend forgery as matrix-SIS (`Ownership`) -/
+
+/-- info: 'PqStealth.spendForgeryAdvantage_eq_sis_advantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.spendForgeryAdvantage_eq_sis_advantage
+
+/-- info: 'PqStealth.spendForgeryAdvantage_le_msis' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.spendForgeryAdvantage_le_msis
+
+/-- info: 'PqStealth.mldsa_spendForgeryAdvantage_eq_sis_advantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.mldsa_spendForgeryAdvantage_eq_sis_advantage
+
+/-- info: 'PqStealth.augmentedSISProblem_isValid_eq_matrixProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.augmentedSISProblem_isValid_eq_matrixProblem
+
+/-! ## Game-layer controls (`GameControls`) -/
+
+/-- info: 'PqStealth.unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
+
+/-- info: 'PqStealth.leakyKEM_anonAdvantage_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.leakyKEM_anonAdvantage_eq
+
+/-- info: 'PqStealth.deadKEM_ofKEMFull_not_perfectlyComplete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.deadKEM_ofKEMFull_not_perfectlyComplete
+
+/-- info: 'PqStealth.perfectlyComplete_ofKEMFullNoTag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.perfectlyComplete_ofKEMFullNoTag
+
+/-- info: 'PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
+#print axioms PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one

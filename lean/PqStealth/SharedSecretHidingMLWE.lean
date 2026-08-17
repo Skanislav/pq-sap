@@ -55,8 +55,8 @@ section MLKEMHiding
 variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (prims : Primitives params encoding)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
-  [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
-  {Aux : Type}
+  [DecidableEq encoding.EncodedV]
+  {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
   (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
     (Ciphertext params encoding × Aux))

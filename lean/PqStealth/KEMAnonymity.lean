@@ -4,7 +4,8 @@ KEM anonymity (key privacy) and the unlinkability reduction.
 The teaching point made concrete: a stealth scheme's UNLINKABILITY reduces to
 the KEM's ANONYMITY (does a ciphertext hide which public key it was
 encapsulated to), NOT to IND-CCA (which hides the message). VCVio ships ML-KEM
-IND-CCA and its reduction to MLWE, but NOT anonymity -- so we state the
+IND-CCA statements (their MLWE reductions are `sorry` at the pinned commit),
+but NOT anonymity -- so we state the
 anonymity assumption here, in the same shape VCVio uses for its own games, and
 prove the reduction.
 
@@ -178,7 +179,8 @@ each rather than merging them:
 
   * the auxiliary data hides the recipient insofar as the shared secret is
     pseudorandom -- a KEM IND-CPA question (VCVio's
-    `KeyEncapMech.IND_CPA_Advantage`, reducible to MLWE), one term per branch;
+    `KeyEncapMech.IND_CPA_Advantage`, proved equal in `SharedSecretHiding`;
+    its reduction to MLWE is the paper-level FO step), one term per branch;
   * once the secret is idealized, the auxiliary data must still not betray WHICH
     public key produced it -- `auxKeyIndependence`, which for this scheme is the
     blinding argument (`A * s' + e'` masking `t`) and is again MLWE, not a KEM
@@ -291,7 +293,8 @@ variable [DecidableEq Aux]
 /-- Shared-secret-hiding advantage on the `b = 1` branch: distinguishing an
 announcement whose auxiliary data uses the REAL shared secret from one whose
 auxiliary data uses a fresh RANDOM key. This is a KEM IND-CPA (real-or-random)
-advantage; reducing it to MLWE is the remaining step. -/
+advantage (`sharedSecretHidingTrue_eq_indCpaAdvantage`); reducing that to
+MLWE is the paper-level step. -/
 noncomputable def sharedSecretHidingTrue : ℝ :=
   ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup adv >>=
       (StealthScheme.ofKEMFull kem auxGen).unlinkBranchTrue adv).boolDistAdvantage
@@ -327,7 +330,7 @@ noncomputable def sharedSecretHidingFalse : ℝ :=
 address folded in, unlinkability is bounded by the KEM's anonymity advantage
 plus a shared-secret-hiding term per branch. The auxiliary data hides the
 recipient exactly insofar as the shared secret is pseudorandom; when those
-hiding terms are negligible (KEM IND-CPA -> MLWE), unlinkability collapses back
+hiding terms are negligible (KEM IND-CPA, assumed -> MLWE), unlinkability collapses back
 to anonymity. Proved by the triangle inequality over the intermediate games
 that replace the real shared secret with a random one. -/
 theorem unlinkAdvantage_ofKEMFull_le :
