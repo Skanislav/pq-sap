@@ -182,10 +182,11 @@ end KeyRecovery
 
 /-! ## DKSAP under a classical adversary -/
 
-section Classical
+section Ideal
 
-variable [SampleableType F] [DecidableEq G] (g : G)
+variable [SampleableType F] (g : G) (adv : StealthScheme.UnlinkAdv (G × G) (G × G))
 
+variable (F) in
 /-- DKSAP with an idealized sender: the shared scalar is drawn uniformly at
 random instead of being derived as `h(r * V)`. Everything else is unchanged.
 
@@ -203,21 +204,6 @@ def dksapIdeal : StealthScheme (G × G) (F × F) (G × G) where
     pure (r • g, MV.1 + s • g)
   scan _ _ := pure false
 
-variable (h : G → F) (adv : StealthScheme.UnlinkAdv (G × G) (G × G))
-
-/-! ## The two hops
-
-Each branch of the unlinkability game moves from the real derived scalar to a
-uniform one; the gap is the hashed Diffie-Hellman advantage on that branch. -/
-
-/-- Hashed-DH advantage on branch `b`: distinguishing an announcement whose
-scalar is the real `h(r * V)` from one whose scalar is uniform. Under DDH with
-`h` a random oracle this is negligible; it is the classical assumption the
-scheme rests on, and it is exactly what a discrete-log oracle destroys. -/
-noncomputable def hashedDH (b : Bool) : ℝ :=
-  ((dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv b).boolDistAdvantage
-    ((dksapIdeal (F := F) g).unlinkSetup >>= (dksapIdeal (F := F) g).unlinkBranch adv b)
-
 /-! ## The idealized scheme is perfectly unlinkable
 
 Not "negligibly" -- exactly zero. With a uniform scalar the announced stealth
@@ -225,7 +211,6 @@ key is a uniformly distributed group element whatever the recipient's key was,
 so the two branches are the same distribution and no adversary, however
 powerful, does better than guessing. -/
 
-omit [DecidableEq G] in
 /-- With a uniform scalar, announcing to `M1` and announcing to `M0` are the
 same computation. The substitution is `s |-> d + s`, where `d` is the discrete
 log of `M1 - M0`; it is a bijection of the scalar field, so it carries the
@@ -248,7 +233,6 @@ theorem dksapIdeal_announce_indep
         probOutput_bind_bijective_uniform_cross F (fun s : F => d + s) hbij'
           (fun s' => cont (M0 + s' • g)) z
 
-omit [DecidableEq G] in
 /-- The same independence for a whole announcement, ephemeral key included. -/
 theorem dksapIdeal_branch_indep
     (hbij : Function.Bijective (fun x : F => x • g))
@@ -260,13 +244,12 @@ theorem dksapIdeal_branch_indep
   simp only [probOutput_bind_eq_tsum] at inner ⊢
   exact tsum_congr fun r => by rw [inner r]
 
-omit [DecidableEq G] in
 /-- **Perfect unlinkability of the idealized scheme, sorry-free.** The
 unlinkability advantage is exactly zero: an announcement built from a uniform
 scalar carries no information whatsoever about which recipient it was for. -/
 theorem dksapIdeal_unlinkAdvantage_eq_zero
     (hbij : Function.Bijective (fun x : F => x • g)) :
-    (dksapIdeal (F := F) g).unlinkAdvantage adv = 0 := by
+    (dksapIdeal F g).unlinkAdvantage adv = 0 := by
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage, ProbComp.boolDistAdvantage]
   refine abs_eq_zero.mpr (sub_eq_zero.mpr ?_)
   congr 1
@@ -276,6 +259,26 @@ theorem dksapIdeal_unlinkAdvantage_eq_zero
   simp only [StealthScheme.unlinkBranch, dksapIdeal, bind_assoc, pure_bind,
     if_true, Bool.false_eq_true, if_false]
   exact dksapIdeal_branch_indep g hbij _ _ _ _
+
+end Ideal
+
+section Classical
+
+variable [SampleableType F] [DecidableEq G] (g : G) (h : G → F)
+  (adv : StealthScheme.UnlinkAdv (G × G) (G × G))
+
+/-! ## The two hops
+
+Each branch of the unlinkability game moves from the real derived scalar to a
+uniform one; the gap is the hashed Diffie-Hellman advantage on that branch. -/
+
+/-- Hashed-DH advantage on branch `b`: distinguishing an announcement whose
+scalar is the real `h(r * V)` from one whose scalar is uniform. Under DDH with
+`h` a random oracle this is negligible; it is the classical assumption the
+scheme rests on, and it is exactly what a discrete-log oracle destroys. -/
+noncomputable def hashedDH (b : Bool) : ℝ :=
+  ((dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv b).boolDistAdvantage
+    ((dksapIdeal F g).unlinkSetup >>= (dksapIdeal F g).unlinkBranch adv b)
 
 /-! ## The classical security statement -/
 
@@ -298,10 +301,10 @@ theorem dksap_unlinkAdvantage_le_hashedDH
     ((dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv false)]
   set Pt := (dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv true
   set Pf := (dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv false
-  set It := (dksapIdeal (F := F) g).unlinkSetup >>=
-    (dksapIdeal (F := F) g).unlinkBranch adv true
-  set If := (dksapIdeal (F := F) g).unlinkSetup >>=
-    (dksapIdeal (F := F) g).unlinkBranch adv false
+  set It := (dksapIdeal F g).unlinkSetup >>=
+    (dksapIdeal F g).unlinkBranch adv true
+  set If := (dksapIdeal F g).unlinkSetup >>=
+    (dksapIdeal F g).unlinkBranch adv false
   have hzero : It.boolDistAdvantage If = 0 := by
     rw [← StealthScheme.unlinkAdvantage_eq_branchDistAdvantage]
     exact dksapIdeal_unlinkAdvantage_eq_zero g adv hbij

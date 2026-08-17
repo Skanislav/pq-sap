@@ -206,7 +206,7 @@ each rather than merging them:
 
 The middle term is the one a shared-secret-only model cannot state at all. -/
 
-variable {Aux : Type} [SampleableType K]
+variable {Aux : Type}
 
 /-- Stealth scheme from a KEM with a full announcement: the ciphertext plus
 auxiliary data (view tag, stealth address).
@@ -236,7 +236,6 @@ def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
     let k? ← kem.decaps sk.1 ca.1
     pure (k?.elim false fun k => decide (ca.2 = auxGen k sk.2))
 
-omit [SampleableType K] in
 /-- **Detection completeness, sorry-free.** A recipient always detects an
 announcement addressed to them, given only that the KEM is perfectly correct in
 VCVio's sense (`KEMScheme.PerfectlyCorrect`).
@@ -245,7 +244,7 @@ The content is that the two sides compute the same auxiliary data: the sender
 builds it from the encapsulated shared secret and the recipient's public key,
 the recipient rebuilds it from the decapsulated secret and its own public key,
 and KEM correctness identifies the two secrets. The correctness hypothesis is
-doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls) drops
+doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (`Controls`) drops
 it and proves the conclusion false. -/
 theorem perfectlyComplete_ofKEMFull [DecidableEq K] [DecidableEq Aux]
     (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
@@ -264,6 +263,16 @@ theorem perfectlyComplete_ofKEMFull [DecidableEq K] [DecidableEq Aux]
     simp only [ha, Option.elim_some, decide_true]
   · rw [← kem.correctExp_eq]
     exact hkem
+
+/-- The unlinkability prefix of the full-announcement scheme is the KEM's
+anonymity prefix: both draw two keypairs and publish the public keys. -/
+theorem unlinkSetup_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) :
+    (StealthScheme.ofKEMFull kem auxGen).unlinkSetup = kem.anonSetup := by
+  simp only [StealthScheme.unlinkSetup, KEM.anonSetup, StealthScheme.ofKEMFull,
+    bind_assoc, pure_bind]
+
+variable [SampleableType K]
 
 /-- The ciphertext-anonymity adversary induced by a full-announcement
 adversary: it synthesizes the auxiliary data from a FRESH random shared secret
@@ -299,14 +308,6 @@ theorem randAuxBranch_false :
     randAuxBranch kem auxGen adv false = kem.anonBranch (adv.cipherOf auxGen) false := rfl
 
 variable [DecidableEq Aux]
-
-omit [SampleableType K] in
-/-- The unlinkability prefix of the full-announcement scheme is the KEM's
-anonymity prefix: both draw two keypairs and publish the public keys. -/
-theorem unlinkSetup_ofKEMFull :
-    (StealthScheme.ofKEMFull kem auxGen).unlinkSetup = kem.anonSetup := by
-  simp only [StealthScheme.unlinkSetup, KEM.anonSetup, StealthScheme.ofKEMFull,
-    bind_assoc, pure_bind]
 
 /-- Shared-secret-hiding advantage on branch `b`: distinguishing an
 announcement whose auxiliary data uses the REAL shared secret from one whose

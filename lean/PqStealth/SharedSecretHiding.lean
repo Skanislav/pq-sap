@@ -41,37 +41,9 @@ namespace PqStealth
 
 variable {PK SK C K : Type}
 
-variable {Aux : Type} [DecidableEq Aux] [SampleableType K]
+variable {Aux : Type} [SampleableType K]
   (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
   (adv : StealthScheme.UnlinkAdv PK (C × Aux))
-
-/-! ## Each hiding term is a real-or-random guessing advantage -/
-
-/-- The shared-secret real-or-random game on branch `b`: guess whether the
-auxiliary data was built from the real shared secret (the honest announcement)
-or a fresh random key.
-
-Both sides build the auxiliary data from the SAME public key -- recipient `b`'s.
-That is what makes this a clean real-or-random KEM question and nothing else;
-the separate question of whether the public key itself shows through is carried
-by `auxKeyIndependence`. The orientation is VCVio's: the REAL secret sits on
-hidden bit `true`, for both values of `b`. -/
-noncomputable def rorGame (b : Bool) : ProbComp Bool := do
-  let hb ← ($ᵗ Bool)
-  let z ← if hb then
-      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-        (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv b
-    else
-      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-        randAuxBranch kem auxGen adv b
-  pure (hb == z)
-
-/-- **Sorry-free.** Each shared-secret-hiding term equals the bias of its
-real-or-random guessing game -- i.e. it is a KEM IND-CPA advantage. -/
-theorem sharedSecretHiding_eq_rorBias (b : Bool) :
-    sharedSecretHiding kem auxGen adv b = (rorGame kem auxGen adv b).boolBiasAdvantage := by
-  unfold sharedSecretHiding rorGame
-  exact (ProbComp.boolBiasAdvantage_eq_boolDistAdvantage_uniformBool_branch _ _).symm
 
 /-! ## The concrete VCVio IND-CPA reduction adversary
 
@@ -150,24 +122,6 @@ noncomputable def rorNormalForm (b : Bool) : ProbComp Bool := do
     (ck.1, auxGen (if hb then ck.2 else kRand) (if b then pk1.1 else pk0.1))
   pure (hb == z)
 
-/-- The real-or-random game has the normal form's output distribution: on the
-real branch the idealized secret is drawn and ignored. -/
-theorem evalDist_rorGame_eq_normalForm (b : Bool) :
-    𝒟[rorGame kem auxGen adv b] = 𝒟[rorNormalForm kem auxGen adv b] := by
-  unfold rorGame rorNormalForm
-  refine evalDist_bind_congr' _ fun hb => ?_
-  cases hb with
-  | true =>
-    simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranch,
-      StealthScheme.ofKEMFull, bind_assoc, pure_bind, if_true]
-    refine evalDist_bind_congr' _ fun pk0 => evalDist_bind_congr' _ fun pk1 =>
-      evalDist_bind_congr' _ fun ck => ?_
-    exact (evalDist_uniformSample_bind_const _).symm
-  | false =>
-    simp only [StealthScheme.unlinkSetup, randAuxBranch,
-      StealthScheme.ofKEMFull, bind_assoc, pure_bind, Bool.false_eq_true, if_false]
-
-omit [DecidableEq Aux] in
 /-- VCVio's IND-CPA game for the branch-`b` reduction adversary is the normal
 form. The hidden bit commutes to the front past the whole pre-challenge phase;
 on `b = true` the two keypair draws additionally have to be swapped, since
@@ -224,6 +178,53 @@ theorem indCpaGame_eq_evalDist_normalForm (b : Bool) :
         let kRand ← ($ᵗ K)
         let z ← adv pk0.1 pk1.1 (ck.1, auxGen (if hb then ck.2 else kRand) pk0.1)
         pure (hb == z))
+
+variable [DecidableEq Aux]
+
+/-! ## Each hiding term is a real-or-random guessing advantage -/
+
+/-- The shared-secret real-or-random game on branch `b`: guess whether the
+auxiliary data was built from the real shared secret (the honest announcement)
+or a fresh random key.
+
+Both sides build the auxiliary data from the SAME public key -- recipient `b`'s.
+That is what makes this a clean real-or-random KEM question and nothing else;
+the separate question of whether the public key itself shows through is carried
+by `auxKeyIndependence`. The orientation is VCVio's: the REAL secret sits on
+hidden bit `true`, for both values of `b`. -/
+noncomputable def rorGame (b : Bool) : ProbComp Bool := do
+  let hb ← ($ᵗ Bool)
+  let z ← if hb then
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
+        (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv b
+    else
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
+        randAuxBranch kem auxGen adv b
+  pure (hb == z)
+
+/-- **Sorry-free.** Each shared-secret-hiding term equals the bias of its
+real-or-random guessing game -- i.e. it is a KEM IND-CPA advantage. -/
+theorem sharedSecretHiding_eq_rorBias (b : Bool) :
+    sharedSecretHiding kem auxGen adv b = (rorGame kem auxGen adv b).boolBiasAdvantage := by
+  unfold sharedSecretHiding rorGame
+  exact (ProbComp.boolBiasAdvantage_eq_boolDistAdvantage_uniformBool_branch _ _).symm
+
+/-- The real-or-random game has the normal form's output distribution: on the
+real branch the idealized secret is drawn and ignored. -/
+theorem evalDist_rorGame_eq_normalForm (b : Bool) :
+    𝒟[rorGame kem auxGen adv b] = 𝒟[rorNormalForm kem auxGen adv b] := by
+  unfold rorGame rorNormalForm
+  refine evalDist_bind_congr' _ fun hb => ?_
+  cases hb with
+  | true =>
+    simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranch,
+      StealthScheme.ofKEMFull, bind_assoc, pure_bind, if_true]
+    refine evalDist_bind_congr' _ fun pk0 => evalDist_bind_congr' _ fun pk1 =>
+      evalDist_bind_congr' _ fun ck => ?_
+    exact (evalDist_uniformSample_bind_const _).symm
+  | false =>
+    simp only [StealthScheme.unlinkSetup, randAuxBranch,
+      StealthScheme.ofKEMFull, bind_assoc, pure_bind, Bool.false_eq_true, if_false]
 
 /-- **The glue, proved.** Each shared-secret-hiding term is exactly the VCVio
 KEM IND-CPA advantage of the reduction adversary `indCpaAdv … b`. -/

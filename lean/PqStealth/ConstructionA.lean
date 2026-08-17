@@ -137,12 +137,42 @@ namespace ConstructionA
 /-! ## 2. The announcement
 
 `R` is the polynomial ring (`R_q = Z_q[X]/(X^256+1)` at ML-DSA-65), `k`/`l` the
-module dimensions. Everything else is an uninterpreted parameter standing for a
-symmetric primitive; see the module docstring. -/
+module dimensions. Every symmetric primitive is an uninterpreted parameter, and
+the six of them are bundled into one `Prims` record rather than threaded
+separately through every statement; see the module docstring for what that
+abstraction does and does not buy. -/
+
+/-- The symmetric primitives of construction A, bundled: SHAKE128 matrix
+expansion, `ExpandS ∘ SHAKE256` blinding, `Power2Round`, `pack_pk`, the address
+hash `keccak256 … [12:32]`, and the `SHA-256` view tag. All uninterpreted, so
+everything proved about them holds for every instantiation. -/
+structure Prims (R Rho Bytes T1 Tag Addr K : Type) (k l : ℕ) where
+  /-- SHAKE128 expansion of the matrix seed. -/
+  expandA : Rho → Matrix (Fin k) (Fin l) R
+  /-- The blinding pair `(s', e')` derived from the shared secret. -/
+  expandBlind : K → (Fin l → R) × (Fin k → R)
+  /-- The high-order part of a stealth key. -/
+  power2Round : (Fin k → R) → T1
+  /-- `pack_pk`: the seed and the rounded key as bytes. -/
+  pack : Rho → T1 → Bytes
+  /-- The address hash. -/
+  hashAddr : Bytes → Addr
+  /-- The view tag derived from the shared secret. -/
+  viewTag : K → Tag
+
+/-- The three samplers key generation draws the ML-DSA spending keypair from.
+Separate rather than one joint sampler because the MLWE reduction has to
+resample `(s₁, s₂)` for a `rho` handed to it by the challenger. -/
+structure Samplers (R Rho : Type) (k l : ℕ) where
+  /-- The matrix seed. -/
+  sampleRho : ProbComp Rho
+  /-- The short secret `s₁`. -/
+  sampleS : ProbComp (Fin l → R)
+  /-- The short error `s₂`. -/
+  sampleE : ProbComp (Fin k → R)
 
 variable {R : Type} [CommRing R] {k l : ℕ}
   {Rho Bytes T1 Tag Addr KEMpk KEMsk C : Type} {K : Type}
-  [DecidableEq Tag] [DecidableEq Addr]
 
 /-- The recipient's meta-address as the model sees it: the ML-KEM
 encapsulation key, the matrix seed `rho`, and the FULL-precision spending key
@@ -154,23 +184,17 @@ abbrev MetaPub (KEMpk Rho R : Type) (k : ℕ) : Type := KEMpk × Rho × (Fin k �
 ML-DSA spending secret `(s₁, s₂)`. -/
 abbrev MetaPriv (KEMsk R : Type) (k l : ℕ) : Type := KEMsk × (Fin l → R) × (Fin k → R)
 
-variable (expandA : Rho → Matrix (Fin k) (Fin l) R)
-  (expandBlind : K → (Fin l → R) × (Fin k → R))
-  (power2Round : (Fin k → R) → T1)
-  (pack : Rho → T1 → Bytes)
-  (hashAddr : Bytes → Addr)
-  (viewTag : K → Tag)
+variable (P : Prims R Rho Bytes T1 Tag Addr K k l)
 
 /-- The auxiliary data of a construction-A announcement: the view tag and the
 stealth address. The view tag is a function of the shared secret alone; the
 stealth address folds in the recipient's own `rho` and `t`, which is why
 `StealthScheme.ofKEMFull` gives `auxGen` the public key. -/
 def auxGen (kk : K) (pk : MetaPub KEMpk Rho R k) : Tag × Addr :=
-  (viewTag kk,
-    hashAddr (pack pk.2.1 (power2Round
-      (expandA pk.2.1 *ᵥ (expandBlind kk).1 + (expandBlind kk).2 + pk.2.2))))
+  (P.viewTag kk,
+    P.hashAddr (P.pack pk.2.1 (P.power2Round
+      (P.expandA pk.2.1 *ᵥ (P.expandBlind kk).1 + (P.expandBlind kk).2 + pk.2.2))))
 
-omit [DecidableEq Tag] [DecidableEq Addr] in
 /-- **Where the correctness identity enters the game model.** For an honestly
 generated meta-address (`t = A *ᵥ s₁ + s₂`), the address announced by
 `auxGen` is `power2Round` of the honest ML-DSA public key of the widened secret
@@ -179,22 +203,21 @@ the recipient holds a signing key for. Immediate from
 `stealth_pk_eq_blinded_keypair`. -/
 theorem stealthAddr_eq_blinded_pk (kk : K) (ek : KEMpk) (rho : Rho)
     (s₁ : Fin l → R) (s₂ : Fin k → R) :
-    (auxGen expandA expandBlind power2Round pack hashAddr viewTag kk
-        (ek, rho, expandA rho *ᵥ s₁ + s₂)).2 =
-      hashAddr (pack rho (power2Round
-        (expandA rho *ᵥ (s₁ + (expandBlind kk).1) + (s₂ + (expandBlind kk).2)))) := by
-  rw [auxGen, stealth_pk_eq_blinded_keypair (expandA rho) s₁ (expandBlind kk).1 s₂
-    (expandBlind kk).2 _ rfl]
+    (auxGen (KEMpk := KEMpk) P kk (ek, rho, P.expandA rho *ᵥ s₁ + s₂)).2 =
+      P.hashAddr (P.pack rho (P.power2Round
+        (P.expandA rho *ᵥ (s₁ + (P.expandBlind kk).1) + (s₂ + (P.expandBlind kk).2)))) := by
+  rw [auxGen, stealth_pk_eq_blinded_keypair (P.expandA rho) s₁ (P.expandBlind kk).1 s₂
+    (P.expandBlind kk).2 _ rfl]
 
 /-- The widened secret behind an announced stealth key is an ownership witness
 for it, so the ZK spend statement of `Invariants.lean` is satisfiable for every
 announcement construction A produces. -/
 theorem announced_key_isOwnershipWitness (kk : K) (rho : Rho)
     (s₁ : Fin l → R) (s₂ : Fin k → R) :
-    IsOwnershipWitness (expandA rho)
-      (expandA rho *ᵥ (expandBlind kk).1 + (expandBlind kk).2
-        + (expandA rho *ᵥ s₁ + s₂))
-      (s₁ + (expandBlind kk).1) (s₂ + (expandBlind kk).2) :=
+    IsOwnershipWitness (P.expandA rho)
+      (P.expandA rho *ᵥ (P.expandBlind kk).1 + (P.expandBlind kk).2
+        + (P.expandA rho *ᵥ s₁ + s₂))
+      (s₁ + (P.expandBlind kk).1) (s₂ + (P.expandBlind kk).2) :=
   blinded_is_ownership_witness _ _ _ _ _
 
 /-! ## 3. The KEM whose public key is a meta-address
@@ -205,33 +228,31 @@ generation additionally draws the ML-DSA seed `rho` and secret `(s₁, s₂)` an
 publishes `t = A *ᵥ s₁ + s₂`. Encapsulation and decapsulation ignore the extra
 components — the ciphertext is still a plain ML-KEM ciphertext. -/
 
-variable (sampleRho : ProbComp Rho) (sampleS : ProbComp (Fin l → R))
-  (sampleE : ProbComp (Fin k → R))
+variable (Smp : Samplers R Rho k l)
 
 /-- The composite KEM: an ML-KEM keypair plus the ML-DSA spending keypair, with
-the meta-address as the public key.
-
-The spending keypair is drawn from three separate samplers rather than one
-opaque joint one; the MLWE reduction below has to resample `(s₁, s₂)` for a
-`rho` handed to it by the challenger, which a joint sampler cannot support. -/
+the meta-address as the public key. -/
 def metaKem (kem : KEM KEMpk KEMsk C K) :
     KEM (MetaPub KEMpk Rho R k) (MetaPriv KEMsk R k l) C K where
   keygen := do
     let (ek, dk) ← kem.keygen
-    let rho ← sampleRho
-    let s₁ ← sampleS
-    let s₂ ← sampleE
-    pure ((ek, rho, expandA rho *ᵥ s₁ + s₂), (dk, s₁, s₂))
+    let rho ← Smp.sampleRho
+    let s₁ ← Smp.sampleS
+    let s₂ ← Smp.sampleE
+    pure ((ek, rho, P.expandA rho *ᵥ s₁ + s₂), (dk, s₁, s₂))
   encaps pk := kem.encaps pk.1
   decaps sk c := kem.decaps sk.1 c
 
+section Scheme
+
+variable [DecidableEq Tag] [DecidableEq Addr] [SampleableType K]
+
 /-- Construction A as a `StealthScheme`: ML-KEM ciphertext plus view tag plus
 stealth address, addressed to a full meta-address. -/
-def scheme [SampleableType K] (kem : KEM KEMpk KEMsk C K) :
+def scheme (kem : KEM KEMpk KEMsk C K) :
     StealthScheme (MetaPub KEMpk Rho R k)
       (MetaPriv KEMsk R k l × MetaPub KEMpk Rho R k) (C × (Tag × Addr)) :=
-  StealthScheme.ofKEMFull (metaKem expandA sampleRho sampleS sampleE kem)
-    (auxGen expandA expandBlind power2Round pack hashAddr viewTag)
+  StealthScheme.ofKEMFull (metaKem P Smp kem) (auxGen P)
 
 /-- **The algebraic core feeding the game layer, in one statement.** The
 unlinkability advantage of construction A — the concrete announcement, with the
@@ -244,19 +265,16 @@ an opaque parameter. Definitionally `unlinkAdvantage_ofKEMFull_le` at
 See the module docstring for what the `auxKeyIndependence` summand costs: it is
 not zero for this `auxGen`, and bounding it needs `hashAddr ∘ pack` modelled as
 a random oracle. -/
-theorem unlinkAdvantage_scheme_le [SampleableType K] (kem : KEM KEMpk KEMsk C K)
+theorem unlinkAdvantage_scheme_le (kem : KEM KEMpk KEMsk C K)
     (adv : StealthScheme.UnlinkAdv (MetaPub KEMpk Rho R k) (C × (Tag × Addr))) :
-    (scheme expandA expandBlind power2Round pack hashAddr viewTag
-        sampleRho sampleS sampleE kem).unlinkAdvantage adv ≤
-      sharedSecretHiding (metaKem expandA sampleRho sampleS sampleE kem)
-          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv true
-        + auxKeyIndependence (metaKem expandA sampleRho sampleS sampleE kem)
-          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv
-        + (metaKem expandA sampleRho sampleS sampleE kem).anonAdvantage
-          (adv.cipherOf (auxGen expandA expandBlind power2Round pack hashAddr viewTag))
-        + sharedSecretHiding (metaKem expandA sampleRho sampleS sampleE kem)
-          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv false :=
+    (scheme P Smp kem).unlinkAdvantage adv ≤
+      sharedSecretHiding (metaKem P Smp kem) (auxGen P) adv true
+        + auxKeyIndependence (metaKem P Smp kem) (auxGen P) adv
+        + (metaKem P Smp kem).anonAdvantage (adv.cipherOf (auxGen P))
+        + sharedSecretHiding (metaKem P Smp kem) (auxGen P) adv false :=
   unlinkAdvantage_ofKEMFull_le _ _ adv
+
+end Scheme
 
 /-! ## 4. The blinding hop towards decision-MLWE
 
@@ -278,11 +296,13 @@ vector `y`, decide whether `y = expandA rho *ᵥ s + e` for short `(s, e)` or `y
 is uniform. An instance of VCVio's generic `LearningWithErrors.Problem`, so
 `LearningWithErrors.advantage` applies to it unchanged. -/
 def blindingProblem : LearningWithErrors.Problem Rho (Fin l → R) (Fin k → R) where
-  sampleChallenge := sampleRho
-  sampleSecret := sampleS
-  sampleError := sampleE
-  noiseless := fun s rho => expandA rho *ᵥ s
+  sampleChallenge := Smp.sampleRho
+  sampleSecret := Smp.sampleS
+  sampleError := Smp.sampleE
+  noiseless := fun s rho => P.expandA rho *ᵥ s
   sampleUniform := $ᵗ (Fin k → R)
+
+section Reduction
 
 variable [SampleableType K]
 
@@ -297,10 +317,10 @@ the MLWE challenger and the tag separately, so its game 0 matches the real
 def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
     Pr[= x | (do let kk ← ($ᵗ K)
-                 pure (viewTag kk, (expandBlind kk).1, (expandBlind kk).2))] =
+                 pure (P.viewTag kk, (P.expandBlind kk).1, (P.expandBlind kk).2))] =
       Pr[= x | (do let tg ← sampleTag
-                   let s ← sampleS
-                   let e ← sampleE
+                   let s ← Smp.sampleS
+                   let e ← Smp.sampleE
                    pure (tg, s, e))]
 
 /-- **The blinding hop as a reduction, type-checked.** An adversary against the
@@ -317,21 +337,22 @@ With `y` real this is the construction-A announcement to recipient 1 (under
 the ideal-blinding announcement of `idealAux_indep_of_t`. -/
 def mlweAdvOfUnlinkAdv (kem : KEM KEMpk KEMsk C K)
     (adv : StealthScheme.UnlinkAdv (MetaPub KEMpk Rho R k) (C × (Tag × Addr))) :
-    LearningWithErrors.Adversary
-      (blindingProblem expandA sampleRho sampleS sampleE) :=
+    LearningWithErrors.Adversary (blindingProblem P Smp) :=
   fun chal => do
     let (ek0, _) ← kem.keygen
-    let rho0 ← sampleRho
-    let s₁ ← sampleS
-    let s₂ ← sampleE
+    let rho0 ← Smp.sampleRho
+    let s₁ ← Smp.sampleS
+    let s₂ ← Smp.sampleE
     let (ek1, _) ← kem.keygen
-    let s₁' ← sampleS
-    let s₂' ← sampleE
-    let t₁ := expandA chal.1 *ᵥ s₁' + s₂'
+    let s₁' ← Smp.sampleS
+    let s₂' ← Smp.sampleE
+    let t₁ := P.expandA chal.1 *ᵥ s₁' + s₂'
     let (c, _) ← kem.encaps ek1
     let tg ← sampleTag
-    adv (ek0, rho0, expandA rho0 *ᵥ s₁ + s₂) (ek1, chal.1, t₁)
-      (c, (tg, hashAddr (pack chal.1 (power2Round (chal.2 + t₁)))))
+    adv (ek0, rho0, P.expandA rho0 *ᵥ s₁ + s₂) (ek1, chal.1, t₁)
+      (c, (tg, P.hashAddr (P.pack chal.1 (P.power2Round (chal.2 + t₁)))))
+
+end Reduction
 
 /-! ### The middle game
 
@@ -339,18 +360,10 @@ Once the mask is uniform the announcement no longer depends on the recipient's
 spending key. This is the lattice analogue of `dksapIdeal_announce_indep`, with
 the shift `u ↦ u + (t - t')` in place of the group translation. -/
 
-/-- A uniform mask absorbs any fixed offset: `u + t` for uniform `u` is
-distributed as `u`. -/
-theorem uniform_mask_absorb {β : Type} (cont : (Fin k → R) → ProbComp β)
-    (t : Fin k → R) (z : β) :
-    Pr[= z | (do let u ← ($ᵗ (Fin k → R)); cont (u + t))] =
-      Pr[= z | (do let u ← ($ᵗ (Fin k → R)); cont u)] :=
-  probOutput_bind_add_right_uniform (Fin k → R) t cont z
-
-omit [DecidableEq Tag] [DecidableEq Addr] in
 /-- **The middle-game independence lemma.** With the mask drawn uniformly, the
 announcement to a recipient with spending key `t` and one to a recipient with
-spending key `t'` are the same distribution — the blinding does erase `t`.
+spending key `t'` are the same distribution — the blinding does erase `t`,
+since a uniform mask absorbs any fixed offset.
 
 Note what the statement does NOT quantify over: `rho` is shared between the two
 sides. It has to be. `rho` enters through `pack`, outside the masked argument,
@@ -359,11 +372,13 @@ a general `hashAddr`; see the module docstring. -/
 theorem idealAux_indep_of_t (cont : Tag × Addr → ProbComp Bool) (tg : Tag)
     (rho : Rho) (t t' : Fin k → R) (z : Bool) :
     Pr[= z | (do let u ← ($ᵗ (Fin k → R))
-                 cont (tg, hashAddr (pack rho (power2Round (u + t)))))] =
+                 cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t)))))] =
       Pr[= z | (do let u ← ($ᵗ (Fin k → R))
-                   cont (tg, hashAddr (pack rho (power2Round (u + t')))))] := by
-  rw [uniform_mask_absorb (fun v => cont (tg, hashAddr (pack rho (power2Round v)))) t z,
-    uniform_mask_absorb (fun v => cont (tg, hashAddr (pack rho (power2Round v)))) t' z]
+                   cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t')))))] := by
+  rw [probOutput_bind_add_right_uniform (Fin k → R) t
+      (fun v => cont (tg, P.hashAddr (P.pack rho (P.power2Round v)))) z,
+    probOutput_bind_add_right_uniform (Fin k → R) t'
+      (fun v => cont (tg, P.hashAddr (P.pack rho (P.power2Round v)))) z]
 
 end MLWE
 

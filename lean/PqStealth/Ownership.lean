@@ -42,9 +42,13 @@ structure OwnershipKey (R : Type) [CommRing R] (k l : ℕ) where
   A : Matrix (Fin k) (Fin l) R
   t : Fin k → R
 
+section Search
+
+variable [DecidableEq (Fin k → R)]
+
 /-- A spend witness `(s, e)` is valid when it is short and satisfies the
 ownership relation `A * s + e = t`. -/
-def ownershipValid [DecidableEq (Fin k → R)]
+def ownershipValid
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (key : OwnershipKey R k l) (w : (Fin l → R) × (Fin k → R)) : Bool :=
   isShort w && decide (key.A *ᵥ w.1 + w.2 = key.t)
@@ -52,8 +56,7 @@ def ownershipValid [DecidableEq (Fin k → R)]
 /-- The spend / ownership forgery problem in VCVio's SIS framework: sample a
 stealth key, the adversary must produce a valid witness. An inhomogeneous MSIS
 instance; bound to the message via Fiat-Shamir it is `SelfTargetMSIS`. -/
-def ownershipSISProblem [DecidableEq (Fin k → R)]
-    (keyGen : ProbComp (OwnershipKey R k l))
+def ownershipSISProblem (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool) :
     SIS.Problem (OwnershipKey R k l) ((Fin l → R) × (Fin k → R)) where
   sampleChallenge := keyGen
@@ -61,15 +64,13 @@ def ownershipSISProblem [DecidableEq (Fin k → R)]
 
 /-- Spend unforgeability advantage: the probability of forging a valid ownership
 witness for a fresh stealth key. Definitionally VCVio's SIS advantage. -/
-noncomputable def spendForgeryAdvantage [DecidableEq (Fin k → R)]
-    (keyGen : ProbComp (OwnershipKey R k l))
+noncomputable def spendForgeryAdvantage (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) : ℝ≥0∞ :=
   SIS.advantage (ownershipSISProblem keyGen isShort) adv
 
 /-- The forgery advantage is a probability, hence finite. -/
-theorem spendForgeryAdvantage_ne_top [DecidableEq (Fin k → R)]
-    (keyGen : ProbComp (OwnershipKey R k l))
+theorem spendForgeryAdvantage_ne_top (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) :
     spendForgeryAdvantage keyGen isShort adv ≠ ⊤ :=
@@ -82,35 +83,25 @@ while every distinguishing advantage in this development
 (`ProbComp.boolDistAdvantage` and the KEM/MLWE bounds built on it) is `ℝ`. The
 `ℝ≥0∞` form is kept as the definition -- it is the one that is definitionally
 VCVio's -- and this is the `ℝ` view used when a spend bound has to be added to,
-or chained with, those advantages. `ofReal_spendForgeryAdvantageReal` says
-nothing is lost in the conversion. -/
-noncomputable def spendForgeryAdvantageReal [DecidableEq (Fin k → R)]
-    (keyGen : ProbComp (OwnershipKey R k l))
+or chained with, those advantages. Nothing is lost in the conversion:
+`spendForgeryAdvantage_ne_top`. -/
+noncomputable def spendForgeryAdvantageReal (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) : ℝ :=
   (spendForgeryAdvantage keyGen isShort adv).toReal
 
-/-- The two advantage views agree: the `ℝ≥0∞` advantage is recovered from the
-`ℝ` one, since it is finite. -/
-theorem ofReal_spendForgeryAdvantageReal [DecidableEq (Fin k → R)]
-    (keyGen : ProbComp (OwnershipKey R k l))
-    (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
-    (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) :
-    ENNReal.ofReal (spendForgeryAdvantageReal keyGen isShort adv)
-      = spendForgeryAdvantage keyGen isShort adv :=
-  ENNReal.ofReal_toReal (spendForgeryAdvantage_ne_top keyGen isShort adv)
-
 /-- A short honest witness is a fully valid spend witness for its stealth key:
 the relation half is the correctness identity (`blinded_is_ownership_witness`),
 the shortness half is the hypothesis. Honest spending never fails. -/
-theorem honest_witness_valid [DecidableEq (Fin k → R)]
-    (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R)
+theorem honest_witness_valid (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R)
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (hshort : isShort (s₁ + s', s₂ + e') = true) :
     ownershipValid isShort ⟨A, A *ᵥ s' + e' + (A *ᵥ s₁ + s₂)⟩ (s₁ + s', s₂ + e')
       = true := by
   simp only [ownershipValid, hshort, Bool.true_and, decide_eq_true_eq]
   exact blinded_is_ownership_witness A s₁ s' s₂ e'
+
+end Search
 
 /-! ## 2. Reshaping into homogeneous matrix-SIS
 
@@ -368,11 +359,6 @@ of `IsShortPair`. -/
 def mldsaShort (bound : ℕ) (w : (Fin l → Rq) × (Fin k → Rq)) : Bool :=
   decide ((∀ i, cInfNorm (w.1 i) ≤ bound) ∧ (∀ i, cInfNorm (w.2 i) ≤ bound))
 
-/-- Spend forgery at the ML-DSA ring with the real norm bound. -/
-noncomputable def mldsaOwnershipProblem (keyGen : ProbComp (OwnershipKey Rq k l)) (bound : ℕ) :
-    SIS.Problem (OwnershipKey Rq k l) ((Fin l → Rq) × (Fin k → Rq)) :=
-  ownershipSISProblem keyGen (mldsaShort bound)
-
 /-- Winning the ML-DSA spend-forgery game is exactly producing a signing key:
 the game's Boolean validity predicate holds iff `IsSigningKey` does. This is the
 join between the game layer of this file and the algebraic bridge in
@@ -384,15 +370,6 @@ theorem ownershipValid_mldsaShort_iff_isSigningKey (bound : ℕ)
   simp only [ownershipValid, mldsaShort, Bool.and_eq_true, decide_eq_true_eq,
     IsSigningKey, IsOwnershipWitness, IsShortPair]
   exact and_comm
-
-/-- The `ℝ≥0∞` forgery advantage of the ML-DSA instance is the SIS advantage of
-`mldsaOwnershipProblem`, by definition. -/
-theorem spendForgeryAdvantage_eq_mldsaOwnershipProblem_advantage
-    (keyGen : ProbComp (OwnershipKey Rq k l)) (bound : ℕ)
-    (adv : SIS.Adversary (ownershipSISProblem keyGen (mldsaShort bound))) :
-    spendForgeryAdvantage keyGen (mldsaShort bound) adv
-      = SIS.advantage (mldsaOwnershipProblem keyGen bound) adv :=
-  rfl
 
 /-- **The ML-DSA spend bound.** At `Rq` with the real range check, the
 probability of forging an ML-DSA signing key for a freshly sampled stealth key
