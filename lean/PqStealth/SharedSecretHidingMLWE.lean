@@ -11,7 +11,9 @@ unlinkability bound can be restated with those advantages in place of the hiding
 terms.
 
 That is as far as the chain reaches today, and the obstruction is upstream. To
-turn the IND-CPA terms into MLWE terms one needs a lemma VCVio does not have:
+turn the IND-CPA terms into MLWE terms one needs a lemma VCVio does not have.
+The statement below elaborates as written against the pinned VCVio, under
+`import LatticeCrypto.HardnessAssumptions.LearningWithErrors` and `open MLKEM`:
 
   theorem MLKEM.kem_ind_cpa_security {params : Params} (ring : NTTRingOps)
       (encoding : Encoding params) (prims : Primitives params encoding)
