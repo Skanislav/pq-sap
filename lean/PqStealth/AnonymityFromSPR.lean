@@ -122,7 +122,7 @@ open MLKEM
 variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (prims : Primitives params encoding)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
-  [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
+  [DecidableEq encoding.EncodedV]
   [SampleableType (Ciphertext params encoding)]
   {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
