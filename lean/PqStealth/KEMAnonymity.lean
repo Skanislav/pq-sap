@@ -42,47 +42,71 @@ sits.
 -/
 
 import PqStealth.Games
+import VCVio.CryptoFoundations.KeyEncapMech
 
 open OracleComp OracleSpec
 
 namespace PqStealth
 
-/-! ## An abstract KEM -/
+/-! ## An abstract KEM
 
-/-- A key encapsulation mechanism: key generation, encapsulation (producing a
-ciphertext and a shared secret), and decapsulation. -/
-structure KEM (PK SK C K : Type) where
-  keygen : ProbComp (PK × SK)
-  encaps : PK → ProbComp (C × K)
-  decaps : SK → C → ProbComp (Option K)
+A KEM is VCVio's `KEMScheme` over `ProbComp` (`CryptoFoundations/KeyEncapMech.lean`),
+with the type arguments reordered to `PK SK C K`; correctness and KEM IND-CPA
+are therefore VCVio's own, and the anonymity API below is what this development
+adds. `abbrev` rather than `def` so that dot notation reaches both. -/
+
+/-- A key encapsulation mechanism over `ProbComp`: key generation, encapsulation
+(producing a ciphertext and a shared secret), and decapsulation. -/
+abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C
+
+/-! ## A `Pr[= true | …] = 1` transfer lemma -/
+
+/-- Transfer a probability-one Boolean verdict along a pointwise implication:
+if `p` holds with certainty and `p` implies `q` on the support, then `q` holds
+with certainty. Used to derive detection completeness from KEM correctness,
+whose verdict (`the decapsulated key is the encapsulated one`) is strictly
+stronger than the scheme's (`the recomputed auxiliary data matches`). -/
+theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α → Bool}
+    (h : ∀ a ∈ support oa, p a = true → q a = true)
+    (hp : Pr[= true | (do let a ← oa; pure (p a))] = 1) :
+    Pr[= true | (do let a ← oa; pure (q a))] = 1 := by
+  rw [probOutput_eq_one_iff_forall] at hp ⊢
+  obtain ⟨hfail, hall⟩ := hp
+  simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true,
+    and_true] at hfail ⊢
+  refine ⟨hfail, ?_⟩
+  intro y hy
+  simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
+  obtain ⟨a, ha, rfl⟩ := hy
+  refine h a ha (hall (p a) ?_)
+  simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff]
+  exact ⟨a, ha, rfl⟩
 
 namespace KEM
 
 variable {PK SK C K : Type} (kem : KEM PK SK C K)
   (adv : StealthScheme.UnlinkAdv PK C)
 
-/-! ## Correctness -/
+/-! ## Correctness
 
-/-- Perfect correctness of a KEM: honest key generation and encapsulation never
-fail, and decapsulation of an honestly produced ciphertext returns exactly the
-shared secret that was encapsulated.
+Correctness is VCVio's `KEMScheme.PerfectlyCorrect ProbCompRuntime.probComp`,
+which unfolds to `Pr[= true | kem.CorrectExp] = 1`. `run` names the shared draw
+prefix of that experiment so the verdict can be varied. -/
 
-This is VCVio's `KEMScheme.PerfectlyCorrect`
-(`VCVio/CryptoFoundations/KeyEncapMech.lean`) spelled out stage by stage. That
-definition is `Pr[= true | CorrectExp] = 1` for the experiment "generate a
-keypair, encapsulate, decapsulate, compare"; `probOutput_eq_one_iff` says a
-probability-one statement is exactly "never fails" together with "the support is
-the single intended value", and the fields below are that pair applied to each
-stage. Splitting it this way is what lets the completeness proof consume the
-hypothesis pointwise, on the keypair and ciphertext actually drawn. -/
-structure PerfectlyCorrect : Prop where
-  /-- Honest key generation never fails. -/
-  keygen_neverFails : Pr[⊥ | kem.keygen] = 0
-  /-- Encapsulation to an honestly generated public key never fails. -/
-  encaps_neverFails : ∀ pk sk, (pk, sk) ∈ support kem.keygen → Pr[⊥ | kem.encaps pk] = 0
-  /-- Decapsulation recovers the encapsulated shared secret with certainty. -/
-  decaps_eq_encapsulated : ∀ pk sk, (pk, sk) ∈ support kem.keygen →
-    ∀ c k, (c, k) ∈ support (kem.encaps pk) → Pr[= some k | kem.decaps sk c] = 1
+/-- The draw prefix common to KEM correctness and to detection completeness:
+a keypair, an encapsulation to its public key, and a decapsulation of the
+result. -/
+def run : ProbComp ((PK × SK) × (C × K) × Option K) := do
+  let ks ← kem.keygen
+  let ck ← kem.encaps ks.1
+  let k? ← kem.decaps ks.2 ck.1
+  pure (ks, ck, k?)
+
+/-- VCVio's correctness experiment is `run` scored by "the decapsulated key is
+the encapsulated one". -/
+theorem correctExp_eq [DecidableEq K] :
+    kem.CorrectExp = (do let a ← kem.run; pure (decide (a.2.2 = some a.2.1.2))) := by
+  simp only [KEMScheme.CorrectExp, KEM.run, bind_assoc, pure_bind]
 
 /-! ## Anonymity (key privacy)
 
@@ -221,41 +245,32 @@ def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
 
 omit [SampleableType K] in
 /-- **Detection completeness, sorry-free.** A recipient always detects an
-announcement addressed to them, given only that the KEM is perfectly correct.
+announcement addressed to them, given only that the KEM is perfectly correct in
+VCVio's sense (`KEMScheme.PerfectlyCorrect`).
 
 The content is that the two sides compute the same auxiliary data: the sender
 builds it from the encapsulated shared secret and the recipient's public key,
 the recipient rebuilds it from the decapsulated secret and its own public key,
 and KEM correctness identifies the two secrets. The correctness hypothesis is
-doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls)
-isolates the decapsulation clause and proves the conclusion false without it. -/
-theorem perfectlyComplete_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
-    (auxGen : K → PK → Aux) (hkem : kem.PerfectlyCorrect) :
+doing the work: `deadKEM_ofKEMFull_not_perfectlyComplete` (GameControls) drops
+it and proves the conclusion false. -/
+theorem perfectlyComplete_ofKEMFull [DecidableEq K] [DecidableEq Aux]
+    (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
+    (hkem : kem.PerfectlyCorrect ProbCompRuntime.probComp) :
     (StealthScheme.ofKEMFull kem auxGen).PerfectlyComplete := by
   have hCE : (StealthScheme.ofKEMFull kem auxGen).CorrectExp =
-      (do let ks ← kem.keygen
-          let ck ← kem.encaps ks.1
-          let k? ← kem.decaps ks.2 ck.1
-          pure (k?.elim false fun k => decide (auxGen ck.2 ks.1 = auxGen k ks.1))) := by
-    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFull, bind_assoc, pure_bind]
-  have hdec : ∀ ks ∈ support kem.keygen, ∀ ck ∈ support (kem.encaps ks.1),
-      Pr[⊥ | kem.decaps ks.2 ck.1] = 0 ∧
-        support (kem.decaps ks.2 ck.1) = {some ck.2} := fun ks hks ck hck =>
-    probOutput_eq_one_iff.1 (hkem.decaps_eq_encapsulated ks.1 ks.2 (by simpa using hks)
-      ck.1 ck.2 (by simpa using hck))
-  rw [StealthScheme.PerfectlyComplete, hCE, probOutput_eq_one_iff_forall]
-  refine ⟨?_, ?_⟩
-  · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
-    exact ⟨hkem.keygen_neverFails, fun ks hks =>
-      ⟨hkem.encaps_neverFails ks.1 ks.2 (by simpa using hks), fun ck hck =>
-        (hdec ks hks ck hck).1⟩⟩
-  · intro y hy
-    simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
-    obtain ⟨ks, hks, ck, hck, k?, hk?, rfl⟩ := hy
-    rw [(hdec ks hks ck hck).2] at hk?
-    simp only [Set.mem_singleton_iff] at hk?
-    subst hk?
-    simp
+      (do let a ← kem.run
+          pure (a.2.2.elim false fun k => decide (auxGen a.2.1.2 a.1.1 = auxGen k a.1.1))) := by
+    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFull, KEM.run,
+      bind_assoc, pure_bind]
+  rw [StealthScheme.PerfectlyComplete, hCE]
+  refine probOutput_true_eq_one_of_imp (p := fun a => decide (a.2.2 = some a.2.1.2))
+    kem.run ?_ ?_
+  · intro a _ ha
+    simp only [decide_eq_true_eq] at ha
+    simp only [ha, Option.elim_some, decide_true]
+  · rw [← kem.correctExp_eq]
+    exact hkem
 
 /-- The ciphertext-anonymity adversary induced by a full-announcement
 adversary: it synthesizes the auxiliary data from a FRESH random shared secret

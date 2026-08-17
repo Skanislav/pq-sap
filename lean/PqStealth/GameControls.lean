@@ -205,32 +205,21 @@ def StealthScheme.ofKEMFullNoTag : StealthScheme PK (SK × PK) (C × Aux) where
 /-- The tag-ignoring variant IS complete, under the same hypothesis. Half of
 the control: completeness alone does not distinguish the two scans, so it cannot
 be the property that justifies the comparison. -/
-theorem perfectlyComplete_ofKEMFullNoTag (hkem : kem.PerfectlyCorrect) :
+theorem perfectlyComplete_ofKEMFullNoTag [DecidableEq K]
+    (hkem : kem.PerfectlyCorrect ProbCompRuntime.probComp) :
     (StealthScheme.ofKEMFullNoTag kem auxGen).PerfectlyComplete := by
   have hCE : (StealthScheme.ofKEMFullNoTag kem auxGen).CorrectExp =
-      (do let ks ← kem.keygen
-          let ck ← kem.encaps ks.1
-          let k? ← kem.decaps ks.2 ck.1
-          pure k?.isSome) := by
-    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFullNoTag, bind_assoc, pure_bind]
-  have hdec : ∀ ks ∈ support kem.keygen, ∀ ck ∈ support (kem.encaps ks.1),
-      Pr[⊥ | kem.decaps ks.2 ck.1] = 0 ∧
-        support (kem.decaps ks.2 ck.1) = {some ck.2} := fun ks hks ck hck =>
-    probOutput_eq_one_iff.1 (hkem.decaps_eq_encapsulated ks.1 ks.2 (by simpa using hks)
-      ck.1 ck.2 (by simpa using hck))
-  rw [StealthScheme.PerfectlyComplete, hCE, probOutput_eq_one_iff_forall]
-  refine ⟨?_, ?_⟩
-  · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
-    exact ⟨hkem.keygen_neverFails, fun ks hks =>
-      ⟨hkem.encaps_neverFails ks.1 ks.2 (by simpa using hks), fun ck hck =>
-        (hdec ks hks ck hck).1⟩⟩
-  · intro y hy
-    simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
-    obtain ⟨ks, hks, ck, hck, k?, hk?, rfl⟩ := hy
-    rw [(hdec ks hks ck hck).2] at hk?
-    simp only [Set.mem_singleton_iff] at hk?
-    subst hk?
-    simp
+      (do let a ← kem.run; pure a.2.2.isSome) := by
+    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFullNoTag, KEM.run,
+      bind_assoc, pure_bind]
+  rw [StealthScheme.PerfectlyComplete, hCE]
+  refine probOutput_true_eq_one_of_imp (p := fun a => decide (a.2.2 = some a.2.1.2))
+    kem.run ?_ ?_
+  · intro a _ ha
+    simp only [decide_eq_true_eq] at ha
+    simp only [ha, Option.isSome_some]
+  · rw [← kem.correctExp_eq]
+    exact hkem
 
 /-- **The soundness control, proved.** On a KEM with implicit rejection --
 `decaps` always returns `some`, which is exactly what ML-KEM does -- the

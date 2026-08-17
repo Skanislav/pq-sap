@@ -29,14 +29,6 @@ open OracleComp OracleSpec MLKEM
 
 namespace PqStealth
 
-/-- Bridge VCVio's `KEMScheme` (over `ProbComp`) to our `KEM`. The fields are
-identical; only the type-parameter order differs. -/
-def KEM.ofKEMScheme {K PK SK C : Type} (kem : KEMScheme ProbComp K PK SK C) :
-    KEM PK SK C K where
-  keygen := kem.keygen
-  encaps := kem.encaps
-  decaps := kem.decaps
-
 section MLKEMStealth
 
 variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
@@ -46,10 +38,12 @@ variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
 
-/-- Our `KEM`, backed by VCVio's concrete ML-KEM. -/
+/-- Our `KEM`, backed by VCVio's concrete ML-KEM. Since `KEM` is `KEMScheme`
+over `ProbComp` with the type arguments reordered, this is `MLKEM.asKEMScheme`
+itself, not a transport of it. -/
 def mlkem : KEM (EncapsulationKey params encoding) (DecapsulationKey params encoding)
     (Ciphertext params encoding) SharedSecret :=
-  KEM.ofKEMScheme (MLKEM.asKEMScheme ring encoding prims)
+  MLKEM.asKEMScheme ring encoding prims
 
 /-- The concrete ML-KEM-based post-quantum stealth scheme: discovery via ML-KEM,
 announcement = `(ciphertext, auxGen sharedSecret encapsulationKey)` -- the view

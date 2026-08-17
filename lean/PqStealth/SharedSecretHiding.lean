@@ -11,7 +11,7 @@ This file proves that identity, sorry-free, in two steps:
   1. each hiding term is the bias of a real-or-random guessing game -- the KEM
      IND-CPA experiment restricted to the announcement adversary;
   2. that bias equals VCVio's own `KEMScheme.IND_CPA_Advantage` of a concrete
-     reduction adversary against `KEM.toKEMScheme`. The two experiments draw the
+     reduction adversary against the KEM itself. The two experiments draw the
      same independent samples (two keypairs, the hidden bit, the encapsulation,
      an idealized shared secret) in different orders and with one draw left
      unused on one branch; `OracleComp`'s `bind` is a syntactic constructor, so
@@ -40,13 +40,6 @@ open OracleComp OracleSpec
 namespace PqStealth
 
 variable {PK SK C K : Type}
-
-/-- Reverse bridge: our `KEM` as VCVio's `KEMScheme` over `ProbComp`. Enables
-reuse of VCVio's KEM IND-CPA game and its MLWE reduction. -/
-def KEM.toKEMScheme (kem : KEM PK SK C K) : KEMScheme ProbComp K PK SK C where
-  keygen := kem.keygen
-  encaps := kem.encaps
-  decaps := kem.decaps
 
 variable {Aux : Type} [DecidableEq Aux] [SampleableType K]
   (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
@@ -107,7 +100,7 @@ term -- proved below. -/
 /-- IND-CPA reduction adversary for the `b = 1` branch. The state carries both
 public keys, because the auxiliary data must be rebuilt from the same key the
 real announcement used -- here the challenge key, embedded as recipient 1. -/
-def indCpaAdvTrue : (kem.toKEMScheme).IND_CPA_Adversary where
+def indCpaAdvTrue : kem.IND_CPA_Adversary where
   State := PK × PK × adv.State
   preChallenge pk1 := do
     let (pk0, _) ← kem.keygen
@@ -118,7 +111,7 @@ def indCpaAdvTrue : (kem.toKEMScheme).IND_CPA_Adversary where
 /-- IND-CPA reduction adversary for the `b = 0` branch (challenge key as
 recipient 0). On this branch the reduction's reference key and the real
 recipient coincide, so the auxiliary data is rebuilt from recipient 0. -/
-def indCpaAdvFalse : (kem.toKEMScheme).IND_CPA_Adversary where
+def indCpaAdvFalse : kem.IND_CPA_Adversary where
   State := PK × PK × adv.State
   preChallenge pk0 := do
     let (pk1, _) ← kem.keygen
@@ -233,7 +226,7 @@ theorem indCpaGameTrue_eq_evalDist_normalForm :
         let kRand ← ($ᵗ K)
         let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk1.1)
         pure (b == z) : ProbComp Bool)] := by
-    simp only [KEMScheme.IND_CPA_Game, indCpaAdvTrue, KEM.toKEMScheme, bind_assoc, pure_bind,
+    simp only [KEMScheme.IND_CPA_Game, indCpaAdvTrue, bind_assoc, pure_bind,
       ProbCompRuntime.probComp, ProbCompRuntime.liftProbComp, ProbCompLift.id]
     rfl
   rw [hgame, evalDist_bind_bind_swap kem.keygen kem.keygen
@@ -311,7 +304,7 @@ theorem indCpaGameFalse_eq_evalDist_normalForm :
         let kRand ← ($ᵗ K)
         let z ← adv.distinguish st (ck.1, auxGen (if b then ck.2 else kRand) pk0.1)
         pure (b == z) : ProbComp Bool)] := by
-    simp only [KEMScheme.IND_CPA_Game, indCpaAdvFalse, KEM.toKEMScheme, bind_assoc, pure_bind,
+    simp only [KEMScheme.IND_CPA_Game, indCpaAdvFalse, bind_assoc, pure_bind,
       ProbCompRuntime.probComp, ProbCompRuntime.liftProbComp, ProbCompLift.id]
     rfl
   rw [hgame]

@@ -4,8 +4,8 @@ Composing the shared-secret-hiding equalities with VCVio's ML-KEM chain.
 `SharedSecretHiding.lean` proves that each shared-secret-hiding term of
 `unlinkAdvantage_ofKEMFull_le` IS a `KEMScheme.IND_CPA_Advantage`. On the
 concrete instance the scheme in question is VCVio's own `MLKEM.asKEMScheme`:
-`mlkem` round-trips through `KEM.ofKEMScheme` / `KEM.toKEMScheme` definitionally
-(`KEM.toKEMScheme_ofKEMScheme`), so the reduction adversaries built here are
+`mlkem` IS that scheme (`KEM` is `KEMScheme ProbComp` with the type arguments
+reordered), so the reduction adversaries built here are
 literally IND-CPA adversaries against `MLKEM.asKEMScheme`, and the ML-KEM
 unlinkability bound can be restated with those advantages in place of the hiding
 terms.
@@ -44,11 +44,6 @@ import PqStealth.MLKEMInstance
 open OracleComp OracleSpec MLKEM
 
 namespace PqStealth
-
-/-- The two `KEM` / `KEMScheme` bridges are inverse on the nose, so an IND-CPA
-adversary against `(KEM.ofKEMScheme kem).toKEMScheme` is one against `kem`. -/
-@[simp] theorem KEM.toKEMScheme_ofKEMScheme {K PK SK C : Type}
-    (kem : KEMScheme ProbComp K PK SK C) : (KEM.ofKEMScheme kem).toKEMScheme = kem := rfl
 
 section MLKEMHiding
 
