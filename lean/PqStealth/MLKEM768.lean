@@ -209,10 +209,10 @@ theorem mlkem768_unlinkAdvantage_le
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux)) :
     (mlkem768StealthScheme auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue mlkem768KEM auxGen adv
+      sharedSecretHiding mlkem768KEM auxGen adv true
       + auxKeyIndependence mlkem768KEM auxGen adv
       + mlkem768KEM.anonAdvantage (adv.cipherOf auxGen)
-      + sharedSecretHidingFalse mlkem768KEM auxGen adv :=
+      + sharedSecretHiding mlkem768KEM auxGen adv false :=
   mlkem_unlinkAdvantage_le concreteNTTRingOps mlkem768Encoding mlkem768Primitives auxGen adv
 
 /-- **Unlinkability on ML-KEM-768, fully decomposed**, with no instance
@@ -225,11 +225,11 @@ theorem mlkem768_unlinkAdvantage_le_full_decomposition
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
       (Ciphertext mlkem768 mlkem768Encoding × Aux)) :
     (mlkem768StealthScheme auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue mlkem768KEM auxGen adv
+      sharedSecretHiding mlkem768KEM auxGen adv true
       + auxKeyIndependence mlkem768KEM auxGen adv
-      + (mlkem768KEM.sprAdvTrue mlkem768UniformCiphertext (adv.cipherOf auxGen)
-         + mlkem768KEM.sprAdvFalse mlkem768UniformCiphertext (adv.cipherOf auxGen))
-      + sharedSecretHidingFalse mlkem768KEM auxGen adv :=
+      + (mlkem768KEM.sprAdv mlkem768UniformCiphertext (adv.cipherOf auxGen) true
+         + mlkem768KEM.sprAdv mlkem768UniformCiphertext (adv.cipherOf auxGen) false)
+      + sharedSecretHiding mlkem768KEM auxGen adv false :=
   mlkem_unlinkAdvantage_le_full_decomposition concreteNTTRingOps mlkem768Encoding
     mlkem768Primitives auxGen mlkem768UniformCiphertext adv
 

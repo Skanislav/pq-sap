@@ -56,21 +56,13 @@ variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
     (Ciphertext params encoding × Aux))
 
-/-- The `b = 1` shared-secret-hiding term of the ML-KEM stealth scheme is the
-KEM IND-CPA advantage of `indCpaAdvTrue` against `MLKEM.asKEMScheme`. -/
-theorem mlkem_sharedSecretHidingTrue_eq_indCpaAdvantage :
-    sharedSecretHidingTrue (mlkem ring encoding prims) auxGen adv =
+/-- Each shared-secret-hiding term of the ML-KEM stealth scheme is the KEM
+IND-CPA advantage of `indCpaAdv … b` against `MLKEM.asKEMScheme`. -/
+theorem mlkem_sharedSecretHiding_eq_indCpaAdvantage (b : Bool) :
+    sharedSecretHiding (mlkem ring encoding prims) auxGen adv b =
       KEMScheme.IND_CPA_Advantage ProbCompRuntime.probComp
-        (indCpaAdvTrue (mlkem ring encoding prims) auxGen adv) :=
-  sharedSecretHidingTrue_eq_indCpaAdvantage _ _ _
-
-/-- The `b = 0` shared-secret-hiding term of the ML-KEM stealth scheme is the
-KEM IND-CPA advantage of `indCpaAdvFalse` against `MLKEM.asKEMScheme`. -/
-theorem mlkem_sharedSecretHidingFalse_eq_indCpaAdvantage :
-    sharedSecretHidingFalse (mlkem ring encoding prims) auxGen adv =
-      KEMScheme.IND_CPA_Advantage ProbCompRuntime.probComp
-        (indCpaAdvFalse (mlkem ring encoding prims) auxGen adv) :=
-  sharedSecretHidingFalse_eq_indCpaAdvantage _ _ _
+        (indCpaAdv (mlkem ring encoding prims) auxGen adv b) :=
+  sharedSecretHiding_eq_indCpaAdvantage _ _ _ b
 
 /-- **The ML-KEM unlinkability bound in IND-CPA form.** `mlkem_unlinkAdvantage_le`
 with both hiding terms replaced by VCVio KEM IND-CPA advantages of explicit
@@ -81,11 +73,11 @@ not KEM IND-CPA questions at all. -/
 theorem mlkem_unlinkAdvantage_le_indCpa :
     (mlkemStealthScheme ring encoding prims auxGen).unlinkAdvantage adv ≤
       KEMScheme.IND_CPA_Advantage ProbCompRuntime.probComp
-        (indCpaAdvTrue (mlkem ring encoding prims) auxGen adv)
+        (indCpaAdv (mlkem ring encoding prims) auxGen adv true)
       + auxKeyIndependence (mlkem ring encoding prims) auxGen adv
       + (mlkem ring encoding prims).anonAdvantage (adv.cipherOf auxGen)
       + KEMScheme.IND_CPA_Advantage ProbCompRuntime.probComp
-        (indCpaAdvFalse (mlkem ring encoding prims) auxGen adv) :=
+        (indCpaAdv (mlkem ring encoding prims) auxGen adv false) :=
   unlinkAdvantage_ofKEMFull_le_indCpa (mlkem ring encoding prims) auxGen adv
 
 end MLKEMHiding

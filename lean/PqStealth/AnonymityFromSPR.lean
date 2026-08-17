@@ -11,7 +11,7 @@ from) key-independent, they cannot reveal which key they were made for.
 This file machine-checks that implication and leaves the lattice content as
 two named per-branch SPR quantities:
 
-  anonymity  ≤  SPR(branch 1) + SPR(branch 0)        [proved here, sorry-free]
+  anonymity  ≤  SPR(branch true) + SPR(branch false)        [proved here, sorry-free]
   SPR(ML-KEM)  ≤  2·MLWE                             [the remaining lattice step]
 
 The remaining step is the standard two-hop argument, recorded here for the
@@ -55,19 +55,13 @@ def simBranch (sim : ProbComp C) (adv : StealthScheme.UnlinkAdv PK C)
   let c ← sim
   adv a.1 a.2 c
 
-/-- SPR advantage on the `b = 1` branch: distinguishing a real encapsulation to
-key 1 from a simulated ciphertext, in the full anonymity context. For ML-KEM
-this is bounded by 2·MLWE (key hop + ciphertext hop). -/
-noncomputable def sprAdvTrue (kem : KEM PK SK C K) (sim : ProbComp C)
-    (adv : StealthScheme.UnlinkAdv PK C) : ℝ :=
-  (kem.anonSetup >>= kem.anonBranchTrue adv).boolDistAdvantage
+/-- SPR advantage on branch `b`: distinguishing a real encapsulation to key `b`
+from a simulated ciphertext, in the full anonymity context. For ML-KEM this is
+bounded by 2·MLWE (key hop + ciphertext hop). -/
+noncomputable def sprAdv (kem : KEM PK SK C K) (sim : ProbComp C)
+    (adv : StealthScheme.UnlinkAdv PK C) (b : Bool) : ℝ :=
+  (kem.anonSetup >>= kem.anonBranch adv b).boolDistAdvantage
     (kem.anonSetup >>= simBranch sim adv)
-
-/-- SPR advantage on the `b = 0` branch. -/
-noncomputable def sprAdvFalse (kem : KEM PK SK C K) (sim : ProbComp C)
-    (adv : StealthScheme.UnlinkAdv PK C) : ℝ :=
-  (kem.anonSetup >>= simBranch sim adv).boolDistAdvantage
-    (kem.anonSetup >>= kem.anonBranchFalse adv)
 
 /-- **The structured open arrow, sorry-free.** Anonymity is bounded by the two
 per-branch SPR advantages: hop through the simulated game, whose ciphertext is
@@ -76,8 +70,9 @@ the SPR-of-K-PKE step (2·MLWE per branch, the two-hop argument in the module
 docstring). -/
 theorem anonAdvantage_le_sprAdv (kem : KEM PK SK C K) (sim : ProbComp C)
     (adv : StealthScheme.UnlinkAdv PK C) :
-    kem.anonAdvantage adv ≤ kem.sprAdvTrue sim adv + kem.sprAdvFalse sim adv := by
-  rw [KEM.anonAdvantage_eq_branchDistAdvantage]
+    kem.anonAdvantage adv ≤ kem.sprAdv sim adv true + kem.sprAdv sim adv false := by
+  rw [KEM.anonAdvantage_eq_branchDistAdvantage, KEM.sprAdv, KEM.sprAdv,
+    ProbComp.boolDistAdvantage_comm (kem.anonSetup >>= kem.anonBranch adv false)]
   exact ProbComp.boolDistAdvantage_triangle _ _ _
 
 end KEM
@@ -97,22 +92,22 @@ theorem unlinkAdvantage_ofKEMFull_le_full_decomposition
     (kem : KEM PK SK C K) (auxGen : K → PK → Aux) (sim : ProbComp C)
     (adv : StealthScheme.UnlinkAdv PK (C × Aux)) :
     (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue kem auxGen adv
+      sharedSecretHiding kem auxGen adv true
       + auxKeyIndependence kem auxGen adv
-      + (kem.sprAdvTrue sim (adv.cipherOf auxGen)
-         + kem.sprAdvFalse sim (adv.cipherOf auxGen))
-      + sharedSecretHidingFalse kem auxGen adv := by
+      + (kem.sprAdv sim (adv.cipherOf auxGen) true
+         + kem.sprAdv sim (adv.cipherOf auxGen) false)
+      + sharedSecretHiding kem auxGen adv false := by
   calc (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantage adv
-      ≤ sharedSecretHidingTrue kem auxGen adv
+      ≤ sharedSecretHiding kem auxGen adv true
         + auxKeyIndependence kem auxGen adv
         + kem.anonAdvantage (adv.cipherOf auxGen)
-        + sharedSecretHidingFalse kem auxGen adv :=
+        + sharedSecretHiding kem auxGen adv false :=
         unlinkAdvantage_ofKEMFull_le kem auxGen adv
-    _ ≤ sharedSecretHidingTrue kem auxGen adv
+    _ ≤ sharedSecretHiding kem auxGen adv true
         + auxKeyIndependence kem auxGen adv
-        + (kem.sprAdvTrue sim (adv.cipherOf auxGen)
-           + kem.sprAdvFalse sim (adv.cipherOf auxGen))
-        + sharedSecretHidingFalse kem auxGen adv := by
+        + (kem.sprAdv sim (adv.cipherOf auxGen) true
+           + kem.sprAdv sim (adv.cipherOf auxGen) false)
+        + sharedSecretHiding kem auxGen adv false := by
         gcongr
         exact kem.anonAdvantage_le_sprAdv sim (adv.cipherOf auxGen)
 
@@ -144,11 +139,11 @@ theorem mlkem_unlinkAdvantage_le_full_decomposition
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
       (Ciphertext params encoding × Aux)) :
     (mlkemStealthScheme ring encoding prims auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue (mlkem ring encoding prims) auxGen adv
+      sharedSecretHiding (mlkem ring encoding prims) auxGen adv true
       + auxKeyIndependence (mlkem ring encoding prims) auxGen adv
-      + ((mlkem ring encoding prims).sprAdvTrue sim (adv.cipherOf auxGen)
-         + (mlkem ring encoding prims).sprAdvFalse sim (adv.cipherOf auxGen))
-      + sharedSecretHidingFalse (mlkem ring encoding prims) auxGen adv :=
+      + ((mlkem ring encoding prims).sprAdv sim (adv.cipherOf auxGen) true
+         + (mlkem ring encoding prims).sprAdv sim (adv.cipherOf auxGen) false)
+      + sharedSecretHiding (mlkem ring encoding prims) auxGen adv false :=
   unlinkAdvantage_ofKEMFull_le_full_decomposition (mlkem ring encoding prims) auxGen sim adv
 
 end MLKEMSPR

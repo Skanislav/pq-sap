@@ -26,6 +26,41 @@ import VCVio.CryptoFoundations.SecExp
 
 open OracleComp OracleSpec
 
+/-! ## Hidden-bit games with a bit-indexed branch
+
+VCVio states its hidden-bit decomposition for an explicit `if b then real else
+rand`. The games below are indexed by the bit instead — one definition per game
+rather than two — so this is the form of
+`ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage` they use. -/
+
+/-- Bias of a hidden-bit guessing game whose branch is selected by the bit:
+the distinguishing advantage between the two branches. -/
+theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : ProbComp α)
+    (branch : Bool → α → ProbComp Bool) :
+    (do
+      let a ← pref
+      let b ← ($ᵗ Bool)
+      let z ← branch b a
+      pure (b == z)).boolBiasAdvantage
+      = (pref >>= branch true).boolDistAdvantage (pref >>= branch false) := by
+  have h : (do let a ← pref; let b ← ($ᵗ Bool); let z ← branch b a; pure (b == z))
+      = (do
+          let a ← pref
+          let b ← ($ᵗ Bool)
+          let z ← if b then branch true a else branch false a
+          pure (b == z)) :=
+    bind_congr fun a => bind_congr fun b => by cases b <;> rfl
+  rw [h]
+  exact ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage pref
+    (branch true) (branch false)
+
+/-- Distinguishing advantage is symmetric: it is the absolute value of a
+difference. Used whenever a game hop is traversed in the opposite direction to
+the one a definition fixes. -/
+theorem ProbComp.boolDistAdvantage_comm (p q : ProbComp Bool) :
+    p.boolDistAdvantage q = q.boolDistAdvantage p :=
+  abs_sub_comm _ _
+
 namespace PqStealth
 
 /-! ## The scheme as an abstract randomized algorithm
@@ -91,14 +126,10 @@ def unlinkSetup : ProbComp (MetaPub × MetaPub) := do
 
 variable (adv : UnlinkAdv MetaPub Announcement)
 
-/-- The `b = 1` branch: the challenge announcement goes to recipient 1. -/
-def unlinkBranchTrue (a : MetaPub × MetaPub) : ProbComp Bool := do
-  let c ← S.announce a.2
-  adv a.1 a.2 c
-
-/-- The `b = 0` branch: the challenge announcement goes to recipient 0. -/
-def unlinkBranchFalse (a : MetaPub × MetaPub) : ProbComp Bool := do
-  let c ← S.announce a.1
+/-- The branch of the unlinkability game selected by the hidden bit: the
+challenge announcement goes to recipient `b`. -/
+def unlinkBranch (b : Bool) (a : MetaPub × MetaPub) : ProbComp Bool := do
+  let c ← S.announce (if b then a.2 else a.1)
   adv a.1 a.2 c
 
 /-- Unlinkability experiment: flip a hidden bit, announce to the selected
@@ -107,7 +138,7 @@ hidden-bit form so the branch-decomposition lemma applies directly. -/
 def UnlinkExp : ProbComp Bool := do
   let a ← S.unlinkSetup
   let b ← ($ᵗ Bool)
-  let z ← if b then S.unlinkBranchTrue adv a else S.unlinkBranchFalse adv a
+  let z ← S.unlinkBranch adv b a
   pure (b == z)
 
 /-- Unlinkability advantage: the bias of the hidden-bit guessing game. -/
@@ -120,10 +151,9 @@ what remains for the analysis is to bound the right-hand distinguishing
 advantage by ML-KEM anonymity (ANO-CCA, not IND-CCA). -/
 theorem unlinkAdvantage_eq_branchDistAdvantage :
     S.unlinkAdvantage adv =
-      (S.unlinkSetup >>= S.unlinkBranchTrue adv).boolDistAdvantage
-      (S.unlinkSetup >>= S.unlinkBranchFalse adv) :=
-  ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage
-    S.unlinkSetup (S.unlinkBranchTrue adv) (S.unlinkBranchFalse adv)
+      (S.unlinkSetup >>= S.unlinkBranch adv true).boolDistAdvantage
+      (S.unlinkSetup >>= S.unlinkBranch adv false) :=
+  ProbComp.boolBiasAdvantage_bind_uniformBool_branch S.unlinkSetup (S.unlinkBranch adv)
 
 end StealthScheme
 

@@ -67,10 +67,10 @@ theorem mlkem_unlinkAdvantage_le
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
       (Ciphertext params encoding × Aux)) :
     (mlkemStealthScheme ring encoding prims auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue (mlkem ring encoding prims) auxGen adv
+      sharedSecretHiding (mlkem ring encoding prims) auxGen adv true
       + auxKeyIndependence (mlkem ring encoding prims) auxGen adv
       + (mlkem ring encoding prims).anonAdvantage (adv.cipherOf auxGen)
-      + sharedSecretHidingFalse (mlkem ring encoding prims) auxGen adv :=
+      + sharedSecretHiding (mlkem ring encoding prims) auxGen adv false :=
   unlinkAdvantage_ofKEMFull_le (mlkem ring encoding prims) auxGen adv
 
 end MLKEMStealth

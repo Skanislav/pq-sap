@@ -69,7 +69,7 @@ cannot be proved here at all. Section 4 below is exactly such a statement.
   as three independent samples), which is the SHAKE/SHA-as-random-oracle step.
 * **Both games of the reduction still need a bind commutation.**
   `LearningWithErrors.distr` / `uniformDistr` fix the seed and the mask BEFORE
-  the adversary runs, whereas `randAuxBranchTrue` draws the shared secret after
+  the adversary runs, whereas `randAuxBranch … true` draws the shared secret after
   the announcement prefix. So identifying `LearningWithErrors.game0` with the real game
   (on top of `ExpandIsIdeal`) and `game1` with the ideal-blinding game both
   require commuting independent samples past one another
@@ -108,11 +108,11 @@ theorem auxKeyIndependence_eq_zero_of_pk_independent
     (h : ∀ (kk : K) (pk pk' : PK), auxGen kk pk = auxGen kk pk') :
     auxKeyIndependence kem auxGen adv = 0 := by
   have key : ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-        randAuxBranchTrue kem auxGen adv) =
-      (kem.anonSetup >>= kem.anonBranchTrue (adv.cipherOf auxGen)) := by
+        randAuxBranch kem auxGen adv true) =
+      (kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) true) := by
     simp only [StealthScheme.unlinkSetup, StealthScheme.ofKEMFull, KEM.anonSetup,
-      StealthScheme.UnlinkAdv.cipherOf, randAuxBranchTrue, KEM.anonBranchTrue,
-      bind_assoc, pure_bind]
+      StealthScheme.UnlinkAdv.cipherOf, randAuxBranch, KEM.anonBranch,
+      bind_assoc, pure_bind, if_true]
     refine bind_congr fun x => bind_congr fun y =>
       bind_congr fun c => bind_congr fun kk => ?_
     rw [h kk _ _]
@@ -248,14 +248,14 @@ theorem unlinkAdvantage_scheme_le [SampleableType K] (kem : KEM KEMpk KEMsk C K)
     (adv : StealthScheme.UnlinkAdv (MetaPub KEMpk Rho R k) (C × (Tag × Addr))) :
     (scheme expandA expandBlind power2Round pack hashAddr viewTag
         sampleRho sampleS sampleE kem).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue (metaKem expandA sampleRho sampleS sampleE kem)
-          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv
+      sharedSecretHiding (metaKem expandA sampleRho sampleS sampleE kem)
+          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv true
         + auxKeyIndependence (metaKem expandA sampleRho sampleS sampleE kem)
           (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv
         + (metaKem expandA sampleRho sampleS sampleE kem).anonAdvantage
           (adv.cipherOf (auxGen expandA expandBlind power2Round pack hashAddr viewTag))
-        + sharedSecretHidingFalse (metaKem expandA sampleRho sampleS sampleE kem)
-          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv :=
+        + sharedSecretHiding (metaKem expandA sampleRho sampleS sampleE kem)
+          (auxGen expandA expandBlind power2Round pack hashAddr viewTag) adv false :=
   unlinkAdvantage_ofKEMFull_le _ _ adv
 
 /-! ## 4. The blinding hop towards decision-MLWE
@@ -293,7 +293,7 @@ both are deterministic functions of the same `ss` (`SHA-256(ss)` and
 `ExpandS(SHAKE256(ss, 64))`), so this is false for the concrete primitives and
 true in the random-oracle model. The reduction below must draw the mask from
 the MLWE challenger and the tag separately, so its game 0 matches the real
-`randAuxBranchTrue` game exactly under this hypothesis and not otherwise. -/
+`randAuxBranch … true` game exactly under this hypothesis and not otherwise. -/
 def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
     Pr[= x | (do let kk ← ($ᵗ K)

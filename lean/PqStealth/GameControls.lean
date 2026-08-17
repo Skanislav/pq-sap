@@ -93,15 +93,15 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
     (S : StealthScheme PK SK PK) (hkg : Pr[⊥ | S.keygen] = 0)
     (hann : ∀ pk, S.announce pk = pure pk) :
     S.unlinkAdvantage leakyAdv = 1 - keyCollisionProb S.keygen := by
-  have hT : S.unlinkSetup >>= S.unlinkBranchTrue leakyAdv
+  have hT : S.unlinkSetup >>= S.unlinkBranch leakyAdv true
       = (do let (_, _) ← S.keygen; let (_, _) ← S.keygen; pure true) := by
     simp only [leakyAdv, StealthScheme.unlinkSetup, bind_pure_comp, map_pure, bind_assoc,
-      bind_map_left, StealthScheme.unlinkBranchTrue, hann, decide_true]
-  have hF : S.unlinkSetup >>= S.unlinkBranchFalse leakyAdv
+      bind_map_left, StealthScheme.unlinkBranch, hann, if_true, decide_true]
+  have hF : S.unlinkSetup >>= S.unlinkBranch leakyAdv false
       = (do let (pk0, _) ← S.keygen; let (pk1, _) ← S.keygen; pure (decide (pk0 = pk1))) := by
     simp only [leakyAdv, StealthScheme.unlinkSetup, bind_pure_comp, map_pure, bind_assoc,
-      bind_map_left, StealthScheme.unlinkBranchFalse, hann]
-  have hTrue : Pr[= true | S.unlinkSetup >>= S.unlinkBranchTrue leakyAdv] = 1 := by
+      bind_map_left, StealthScheme.unlinkBranch, hann, Bool.false_eq_true, if_false]
+  have hTrue : Pr[= true | S.unlinkSetup >>= S.unlinkBranch leakyAdv true] = 1 := by
     rw [hT, probOutput_eq_one_iff_forall]
     refine ⟨?_, ?_⟩
     · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]

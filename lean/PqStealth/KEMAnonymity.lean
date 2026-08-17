@@ -120,21 +120,16 @@ def anonSetup : ProbComp (PK × PK) := do
   let (pk1, _) ← kem.keygen
   pure (pk0, pk1)
 
-/-- `b = 1` branch: encapsulate to public key 1. -/
-def anonBranchTrue (a : PK × PK) : ProbComp Bool := do
-  let (c, _) ← kem.encaps a.2
-  adv a.1 a.2 c
-
-/-- `b = 0` branch: encapsulate to public key 0. -/
-def anonBranchFalse (a : PK × PK) : ProbComp Bool := do
-  let (c, _) ← kem.encaps a.1
+/-- The branch selected by the hidden bit: encapsulate to public key `b`. -/
+def anonBranch (b : Bool) (a : PK × PK) : ProbComp Bool := do
+  let (c, _) ← kem.encaps (if b then a.2 else a.1)
   adv a.1 a.2 c
 
 /-- Anonymity experiment in VCVio hidden-bit form. -/
 def AnonExp : ProbComp Bool := do
   let a ← kem.anonSetup
   let b ← ($ᵗ Bool)
-  let z ← if b then kem.anonBranchTrue adv a else kem.anonBranchFalse adv a
+  let z ← kem.anonBranch adv b a
   pure (b == z)
 
 /-- Anonymity advantage. -/
@@ -144,9 +139,9 @@ noncomputable def anonAdvantage : ℝ := (kem.AnonExp adv).boolBiasAdvantage
 encapsulation to key 1 from one to key 0 -- same VCVio lemma as unlinkability. -/
 theorem anonAdvantage_eq_branchDistAdvantage :
     kem.anonAdvantage adv =
-      (kem.anonSetup >>= kem.anonBranchTrue adv).boolDistAdvantage
-      (kem.anonSetup >>= kem.anonBranchFalse adv) :=
-  ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage _ _ _
+      (kem.anonSetup >>= kem.anonBranch adv true).boolDistAdvantage
+      (kem.anonSetup >>= kem.anonBranch adv false) :=
+  ProbComp.boolBiasAdvantage_bind_uniformBool_branch kem.anonSetup (kem.anonBranch adv)
 
 end KEM
 
@@ -184,9 +179,8 @@ theorem unlinkAdvantage_ofKEM_eq_anonAdvantage
   unfold StealthScheme.unlinkAdvantage KEM.anonAdvantage
   congr 1
   simp only [StealthScheme.UnlinkExp, KEM.AnonExp, StealthScheme.unlinkSetup,
-    KEM.anonSetup, StealthScheme.unlinkBranchTrue, StealthScheme.unlinkBranchFalse,
-    KEM.anonBranchTrue, KEM.anonBranchFalse, StealthScheme.ofKEM, bind_assoc,
-    pure_bind]
+    KEM.anonSetup, StealthScheme.unlinkBranch, KEM.anonBranch,
+    StealthScheme.ofKEM, bind_assoc, pure_bind]
 
 /-! ## Folding in the view tag and stealth address
 
@@ -288,28 +282,47 @@ def StealthScheme.UnlinkAdv.cipherOf
 variable (kem : KEM PK SK C K) (auxGen : K → PK → Aux)
   (adv : StealthScheme.UnlinkAdv PK (C × Aux))
 
-/-- The intermediate game on the `b = 1` branch: the challenge ciphertext still
-goes to recipient 1, and the auxiliary data is still built from recipient 1's
-own public key, but from a fresh random shared secret rather than the real one.
+/-- The intermediate game on branch `b`: the challenge ciphertext still goes to
+recipient `b`, and the auxiliary data is still built from recipient `b`'s own
+public key, but from a fresh random shared secret rather than the real one.
 This game is what separates the two distinct assumptions that a
 shared-secret-only model silently merged into one term. -/
-def randAuxBranchTrue (a : PK × PK) : ProbComp Bool := do
-  let (c, _) ← kem.encaps a.2
+def randAuxBranch (b : Bool) (a : PK × PK) : ProbComp Bool := do
+  let (c, _) ← kem.encaps (if b then a.2 else a.1)
   let k' ← ($ᵗ K)
-  adv a.1 a.2 (c, auxGen k' a.2)
+  adv a.1 a.2 (c, auxGen k' (if b then a.2 else a.1))
+
+/-- On the `b = 0` branch the intermediate game IS the anonymity game of the
+induced ciphertext adversary: `cipherOf` fixes recipient 0's key, which is the
+key that branch encapsulates to anyway. -/
+theorem randAuxBranch_false :
+    randAuxBranch kem auxGen adv false = kem.anonBranch (adv.cipherOf auxGen) false := rfl
 
 variable [DecidableEq Aux]
 
-/-- Shared-secret-hiding advantage on the `b = 1` branch: distinguishing an
+omit [SampleableType K] in
+/-- The unlinkability prefix of the full-announcement scheme is the KEM's
+anonymity prefix: both draw two keypairs and publish the public keys. -/
+theorem unlinkSetup_ofKEMFull :
+    (StealthScheme.ofKEMFull kem auxGen).unlinkSetup = kem.anonSetup := by
+  simp only [StealthScheme.unlinkSetup, KEM.anonSetup, StealthScheme.ofKEMFull,
+    bind_assoc, pure_bind]
+
+/-- Shared-secret-hiding advantage on branch `b`: distinguishing an
 announcement whose auxiliary data uses the REAL shared secret from one whose
 auxiliary data uses a fresh RANDOM key. This is a KEM IND-CPA (real-or-random)
-advantage (`sharedSecretHidingTrue_eq_indCpaAdvantage`); reducing that to
-MLWE is the paper-level step. -/
-noncomputable def sharedSecretHidingTrue : ℝ :=
+advantage (`sharedSecretHiding_eq_indCpaAdvantage`); reducing that to
+MLWE is the paper-level step.
+
+Both sides build the auxiliary data from the SAME public key -- recipient `b`'s.
+That is what makes this a clean real-or-random KEM question and nothing else;
+the separate question of whether the public key itself shows through is carried
+by `auxKeyIndependence`. -/
+noncomputable def sharedSecretHiding (b : Bool) : ℝ :=
   ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-      (StealthScheme.ofKEMFull kem auxGen).unlinkBranchTrue adv).boolDistAdvantage
+      (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv b).boolDistAdvantage
     ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-      randAuxBranchTrue kem auxGen adv)
+      randAuxBranch kem auxGen adv b)
 
 /-- **The term the shared-secret-only model was missing.** Even after the shared
 secret is replaced by a fresh random key, the auxiliary data is still computed
@@ -324,15 +337,8 @@ ignores the public key cannot see this term at all -- it is not that the term
 was small, it is that it was invisible. -/
 noncomputable def auxKeyIndependence : ℝ :=
   ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-      randAuxBranchTrue kem auxGen adv).boolDistAdvantage
-    (kem.anonSetup >>= kem.anonBranchTrue (adv.cipherOf auxGen))
-
-/-- Shared-secret-hiding advantage on the `b = 0` branch (see
-`sharedSecretHidingTrue`). -/
-noncomputable def sharedSecretHidingFalse : ℝ :=
-  (kem.anonSetup >>= kem.anonBranchFalse (adv.cipherOf auxGen)).boolDistAdvantage
-    ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-      (StealthScheme.ofKEMFull kem auxGen).unlinkBranchFalse adv)
+      randAuxBranch kem auxGen adv true).boolDistAdvantage
+    (kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) true)
 
 /-- **The faithful reduction, sorry-free.** With the view tag and stealth
 address folded in, unlinkability is bounded by the KEM's anonymity advantage
@@ -343,21 +349,29 @@ to anonymity. Proved by the triangle inequality over the intermediate games
 that replace the real shared secret with a random one. -/
 theorem unlinkAdvantage_ofKEMFull_le :
     (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantage adv ≤
-      sharedSecretHidingTrue kem auxGen adv
+      sharedSecretHiding kem auxGen adv true
       + auxKeyIndependence kem auxGen adv
       + kem.anonAdvantage (adv.cipherOf auxGen)
-      + sharedSecretHidingFalse kem auxGen adv := by
+      + sharedSecretHiding kem auxGen adv false := by
+  have hQf : kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) false =
+      (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
+        randAuxBranch kem auxGen adv false := by
+    rw [randAuxBranch_false, unlinkSetup_ofKEMFull]
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage,
     KEM.anonAdvantage_eq_branchDistAdvantage]
-  unfold sharedSecretHidingTrue auxKeyIndependence sharedSecretHidingFalse
+  unfold sharedSecretHiding auxKeyIndependence
+  rw [hQf, ProbComp.boolDistAdvantage_comm
+    ((StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
+      (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv false)]
   set Pt := (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-    (StealthScheme.ofKEMFull kem auxGen).unlinkBranchTrue adv
+    (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv true
   set Pf := (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-    (StealthScheme.ofKEMFull kem auxGen).unlinkBranchFalse adv
+    (StealthScheme.ofKEMFull kem auxGen).unlinkBranch adv false
   set Mt := (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
-    randAuxBranchTrue kem auxGen adv
-  set Qt := kem.anonSetup >>= kem.anonBranchTrue (adv.cipherOf auxGen)
-  set Qf := kem.anonSetup >>= kem.anonBranchFalse (adv.cipherOf auxGen)
+    randAuxBranch kem auxGen adv true
+  set Mf := (StealthScheme.ofKEMFull kem auxGen).unlinkSetup >>=
+    randAuxBranch kem auxGen adv false
+  set Qt := kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) true
   calc Pt.boolDistAdvantage Pf
       ≤ Pt.boolDistAdvantage Mt + Mt.boolDistAdvantage Pf :=
         ProbComp.boolDistAdvantage_triangle Pt Mt Pf
@@ -365,11 +379,11 @@ theorem unlinkAdvantage_ofKEMFull_le :
         gcongr
         exact ProbComp.boolDistAdvantage_triangle Mt Qt Pf
     _ ≤ Pt.boolDistAdvantage Mt + (Mt.boolDistAdvantage Qt
-          + (Qt.boolDistAdvantage Qf + Qf.boolDistAdvantage Pf)) := by
+          + (Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf)) := by
         gcongr
-        exact ProbComp.boolDistAdvantage_triangle Qt Qf Pf
+        exact ProbComp.boolDistAdvantage_triangle Qt Mf Pf
     _ = Pt.boolDistAdvantage Mt + Mt.boolDistAdvantage Qt
-          + Qt.boolDistAdvantage Qf + Qf.boolDistAdvantage Pf := by
+          + Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf := by
         ring
 
 end PqStealth

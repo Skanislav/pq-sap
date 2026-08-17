@@ -106,13 +106,9 @@ import PqStealth.GameControls
 
 /-! ## Shared-secret hiding as a real-or-random bias (`SharedSecretHiding`) -/
 
-/-- info: 'PqStealth.sharedSecretHidingTrue_eq_rorBias' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'PqStealth.sharedSecretHiding_eq_rorBias' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms PqStealth.sharedSecretHidingTrue_eq_rorBias
-
-/-- info: 'PqStealth.sharedSecretHidingFalse_eq_rorBias' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PqStealth.sharedSecretHidingFalse_eq_rorBias
+#print axioms PqStealth.sharedSecretHiding_eq_rorBias
 
 /-! ## Specialization to VCVio's ML-KEM (`MLKEMInstance`) -/
 
@@ -206,13 +202,9 @@ import PqStealth.GameControls
 
 /-! ## Hiding terms are VCVio's KEM IND-CPA advantage (`SharedSecretHiding`, `SharedSecretHidingMLWE`) -/
 
-/-- info: 'PqStealth.sharedSecretHidingTrue_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'PqStealth.sharedSecretHiding_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
-#print axioms PqStealth.sharedSecretHidingTrue_eq_indCpaAdvantage
-
-/-- info: 'PqStealth.sharedSecretHidingFalse_eq_indCpaAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in
-#print axioms PqStealth.sharedSecretHidingFalse_eq_indCpaAdvantage
+#print axioms PqStealth.sharedSecretHiding_eq_indCpaAdvantage
 
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le_indCpa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
