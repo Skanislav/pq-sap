@@ -1,0 +1,7 @@
+[package]
+name = "pq_stealth_ownership"
+type = "bin"
+authors = ["pq-stealth"]
+compiler_version = ">=1.0.0"
+
+[dependencies]
