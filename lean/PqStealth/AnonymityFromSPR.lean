@@ -25,8 +25,10 @@ ML-KEM's implicit-rejection FO transform (Maram-Xagawa), and FIPS 203's final
 KDF (no ciphertext hash) is what makes the modular route applicable.
 
 Capstone, also sorry-free: chaining into `unlinkAdvantage_ofKEMFull_le` bounds
-stealth unlinkability by four named terms, every one of which is either
-KEM IND-CPA (-> MLWE, VCVio) or SPR (-> 2·MLWE, the step above).
+stealth unlinkability by named terms, every one of which is either
+KEM IND-CPA (proved equal to VCVio's advantage in `SharedSecretHiding`; -> MLWE
+is paper-level, VCVio's own K-PKE lemma being a `sorry` placeholder), the
+blinding term (`ConstructionA`), or SPR (-> 2·MLWE, the step above).
 -/
 
 import PqStealth.MLKEMInstance
@@ -82,13 +84,14 @@ end KEM
 
 /-! ## Capstone: the full unlinkability decomposition -/
 
-variable {Aux : Type} [SampleableType K]
+variable {Aux : Type} [DecidableEq Aux] [SampleableType K]
 
 /-- **Full-chain unlinkability bound, sorry-free.** Stealth unlinkability with
 the complete announcement decomposes into five named advantages: two
-shared-secret-hiding terms (each a KEM IND-CPA advantage -> MLWE, VCVio), the
-auxiliary-data key-independence term (the blinding argument -> MLWE), and two
-SPR terms (each -> 2·MLWE by the two-hop argument). No unnamed slack: this is
+shared-secret-hiding terms (each a KEM IND-CPA advantage, `SharedSecretHiding`;
+-> MLWE paper-level), the auxiliary-data key-independence term (the blinding
+argument, `ConstructionA`; needs a random-oracle model of the address hash), and
+two SPR terms (each -> 2·MLWE by the two-hop argument). No unnamed slack: this is
 the complete reduction skeleton of the scheme's privacy. -/
 theorem unlinkAdvantage_ofKEMFull_le_full_decomposition
     (kem : KEM PK SK C K) (auxGen : K → PK → Aux) (sim : ProbComp C)
@@ -113,7 +116,7 @@ theorem unlinkAdvantage_ofKEMFull_le_full_decomposition
         gcongr
         exact kem.anonAdvantage_le_sprAdv sim (adv.cipherOf auxGen)
 
-/-! ## ML-KEM: the concrete simulator is uniform ciphertext bytes -/
+/-! ## ML-KEM: the simulator is an explicit key-independent ciphertext sampler -/
 
 section MLKEMSPR
 
@@ -122,29 +125,31 @@ open MLKEM
 variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
   (prims : Primitives params encoding)
   [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
-  [DecidableEq encoding.EncodedV] [SampleableType SharedSecret]
-  [SampleableType (Ciphertext params encoding)]
-  {Aux : Type}
+  [DecidableEq encoding.EncodedV]
+  {Aux : Type} [DecidableEq Aux]
   (auxGen : SharedSecret → EncapsulationKey params encoding → Aux)
 
-/-- **Unlinkability on real ML-KEM, fully decomposed.** The simulator is
-uniform sampling over the ciphertext space -- exactly the distribution the
-two-hop MLWE argument says real ciphertexts are indistinguishable from. Every
-term on the right is MLWE-reducible: the hiding terms via KEM IND-CPA (VCVio),
-the SPR terms via the key hop + ciphertext hop. -/
+/-- **Unlinkability on real ML-KEM, fully decomposed.** The simulator `sim` is
+an explicit key-independent ciphertext sampler; for the two-hop MLWE argument
+it is uniform over the encoded ciphertext space. It is a parameter rather than
+`$ᵗ (Ciphertext params encoding)` because on the concrete encodings that
+uniform sample does not exist — the encoded types are `ByteArray`, which is
+infinite, so `SampleableType` is uninhabited there
+(`isEmpty_sampleableType_mlkem768Ciphertext` in `MLKEM768`); the ML-KEM-768
+instantiation supplies the uniform-1088-byte sampler instead. The hiding terms
+are KEM IND-CPA advantages (`SharedSecretHiding`); the SPR terms are the key
+hop and the ciphertext hop of the module docstring. -/
 theorem mlkem_unlinkAdvantage_le_full_decomposition
+    (sim : ProbComp (Ciphertext params encoding))
     (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
       (Ciphertext params encoding × Aux)) :
     (mlkemStealthScheme ring encoding prims auxGen).unlinkAdvantage adv ≤
       sharedSecretHidingTrue (mlkem ring encoding prims) auxGen adv
       + auxKeyIndependence (mlkem ring encoding prims) auxGen adv
-      + ((mlkem ring encoding prims).sprAdvTrue
-           ($ᵗ (Ciphertext params encoding)) (adv.cipherOf auxGen)
-         + (mlkem ring encoding prims).sprAdvFalse
-           ($ᵗ (Ciphertext params encoding)) (adv.cipherOf auxGen))
+      + ((mlkem ring encoding prims).sprAdvTrue sim (adv.cipherOf auxGen)
+         + (mlkem ring encoding prims).sprAdvFalse sim (adv.cipherOf auxGen))
       + sharedSecretHidingFalse (mlkem ring encoding prims) auxGen adv :=
-  unlinkAdvantage_ofKEMFull_le_full_decomposition
-    (mlkem ring encoding prims) auxGen ($ᵗ (Ciphertext params encoding)) adv
+  unlinkAdvantage_ofKEMFull_le_full_decomposition (mlkem ring encoding prims) auxGen sim adv
 
 end MLKEMSPR
 

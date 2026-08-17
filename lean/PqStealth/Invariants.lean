@@ -5,8 +5,9 @@ Three machine-checked invariants extending the correctness core
   1. Widened-bound signing invariant  -- the blinded secret's norm doubles to
      2*eta, so the signer-side bound is beta' = tau*(2*eta) = 2*beta.
   2. Ownership <-> signing-key bridge  -- the MLWE relation the ZK circuit
-     proves is exactly "holds a signing key for t", and the blinded secret
-     is such a witness (from the correctness identity).
+     proves, together with the coefficient bound on the witness, is exactly
+     "holds an ML-DSA signing key for t", and the blinded secret is such a
+     signing key at the widened bound 2*eta.
   3. Encoding roundtrip                -- decode after encode is the identity,
      both for the on-chain stealth public key (via VCVio's encoding laws) and
      for the meta-address wrapper.
@@ -67,32 +68,49 @@ theorem beta_blinded_eq_two_beta (params : Params) :
 
 /-! ## 2. Ownership relation <-> signing-key possession
 
-The ZK ownership circuit proves knowledge of a short `(s, e)` with
-`A * s + e = t`. That relation is *identical* to holding an ML-DSA signing key
-for the public key `t` — so a proof of the former is a proof of the latter.
-And the blinded secret from the correctness identity is exactly such a witness.
+The ZK ownership circuit proves knowledge of a *short* `(s, e)` with
+`A * s + e = t`. Those are exactly the two halves of an ML-DSA signing key for
+the public key `t`: the linear key-generation relation, and the `eta`
+coefficient bound. The relation alone holds over any commutative ring
+(`IsOwnershipWitness`); the bound needs the centered infinity norm, so
+signing-key possession is stated at the ML-DSA ring `Rq`. The blinded secret
+satisfies both, with the bound widened to `2*eta` by section 1.
 -/
 
-/-- The MLWE ownership relation the ZK circuit proves. -/
+/-- The MLWE ownership relation the ZK circuit proves: `A *ᵥ s + e = t`.
+This is the linear half only; shortness is `IsShortPair`. -/
 def IsOwnershipWitness {R : Type*} [CommRing R] {k l : ℕ}
     (A : Matrix (Fin k) (Fin l) R) (t : Fin k → R)
     (s : Fin l → R) (e : Fin k → R) : Prop :=
   A *ᵥ s + e = t
 
-/-- Possession of a signing key for `t`: the secret `(s, e)` with `A*s + e = t`
-(the key-generation relation). -/
-def IsSigningKey {R : Type*} [CommRing R] {k l : ℕ}
-    (A : Matrix (Fin k) (Fin l) R) (t : Fin k → R)
-    (s : Fin l → R) (e : Fin k → R) : Prop :=
-  A *ᵥ s + e = t
+/-- Shortness of a candidate ML-DSA secret at bound `eta`: every coordinate
+polynomial of `s` and of `e` has centered infinity norm at most `eta`. -/
+def IsShortPair {k l : ℕ} (eta : ℕ) (s : Fin l → Rq) (e : Fin k → Rq) : Prop :=
+  (∀ i, cInfNorm (s i) ≤ eta) ∧ (∀ i, cInfNorm (e i) ≤ eta)
 
-/-- The bridge: proving the ownership relation IS proving possession of a
-signing key — they are the same relation. A ZK proof of ownership therefore
-authorizes exactly what a spend needs. -/
-theorem ownership_iff_signing {R : Type*} [CommRing R] {k l : ℕ}
-    (A : Matrix (Fin k) (Fin l) R) (t : Fin k → R)
-    (s : Fin l → R) (e : Fin k → R) :
-    IsOwnershipWitness A t s e ↔ IsSigningKey A t s e :=
+/-- Possession of an ML-DSA signing key for the public key `t` at bound `eta`:
+a *short* secret `(s, e)` satisfying `A *ᵥ s + e = t`. Both halves are needed —
+the linear relation on its own is satisfied by `(0, t)` for every `t`, which is
+neither a signing key nor hard to find. -/
+def IsSigningKey {k l : ℕ}
+    (A : Matrix (Fin k) (Fin l) Rq) (t : Fin k → Rq)
+    (s : Fin l → Rq) (e : Fin k → Rq) (eta : ℕ) : Prop :=
+  IsOwnershipWitness A t s e ∧ IsShortPair eta s e
+
+/-- The bridge: the ownership relation *together with the coefficient bound* is
+possession of an ML-DSA signing key for `t`. The proof is a definitional
+unfolding, but the two sides are genuinely different predicates: on the left the
+ZK circuit's linear statement plus its range check on the witness, on the right
+ML-DSA key generation. A ZK proof of ownership authorizes exactly what a spend
+needs precisely when the circuit enforces the bound; the relation alone would
+not. -/
+theorem ownership_iff_signing {k l : ℕ}
+    (A : Matrix (Fin k) (Fin l) Rq) (t : Fin k → Rq)
+    (s : Fin l → Rq) (e : Fin k → Rq) (eta : ℕ) :
+    (IsOwnershipWitness A t s e ∧
+        (∀ i, cInfNorm (s i) ≤ eta) ∧ (∀ i, cInfNorm (e i) ≤ eta)) ↔
+      IsSigningKey A t s e eta :=
   Iff.rfl
 
 /-- The blinded secret `(s₁+s', s₂+e')` is an ownership witness for the derived
@@ -102,6 +120,22 @@ theorem blinded_is_ownership_witness {R : Type*} [CommRing R] {k l : ℕ}
     (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R) :
     IsOwnershipWitness A (A *ᵥ s' + e' + (A *ᵥ s₁ + s₂)) (s₁ + s') (s₂ + e') :=
   (blinded_key_correctness A s₁ s' s₂ e').symm
+
+/-- The blinded secret is a genuine ML-DSA signing key for the derived stealth
+key at the widened bound `2*eta`: the relation comes from the correctness
+identity, the bound from `blinded_norm_bound`. This is the honest-spending
+guarantee — the recipient always holds a real signing key, never merely a
+solution of the linear relation. -/
+theorem blinded_is_signing_key {k l : ℕ}
+    (A : Matrix (Fin k) (Fin l) Rq) (s₁ s' : Fin l → Rq) (s₂ e' : Fin k → Rq)
+    {eta : ℕ}
+    (hs₁ : ∀ i, cInfNorm (s₁ i) ≤ eta) (hs' : ∀ i, cInfNorm (s' i) ≤ eta)
+    (hs₂ : ∀ i, cInfNorm (s₂ i) ≤ eta) (he' : ∀ i, cInfNorm (e' i) ≤ eta) :
+    IsSigningKey A (A *ᵥ s' + e' + (A *ᵥ s₁ + s₂)) (s₁ + s') (s₂ + e')
+      (2 * eta) :=
+  ⟨blinded_is_ownership_witness A s₁ s' s₂ e',
+    fun i => blinded_norm_bound (hs₁ i) (hs' i),
+    fun i => blinded_norm_bound (hs₂ i) (he' i)⟩
 
 /-! ## 3. Encoding roundtrip
 
