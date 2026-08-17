@@ -39,6 +39,8 @@ jobs:
         run: |
           python vectors/generate_vectors.py --outdir "$RUNNER_TEMP/vec"
           cmp vectors/v0/vectors.json "$RUNNER_TEMP/vec/vectors.json"
+          python vectors/generate_classical_vectors.py --outdir "$RUNNER_TEMP/cvec"
+          cmp vectors/classical/v0/vectors.json "$RUNNER_TEMP/cvec/vectors.json"
 
   # liboqs cross-check (audited ML-DSA verifier) — the Dockerfile builds
   # liboqs, so it runs the one test the plain job importorskips
@@ -105,8 +107,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm run e2e
+      # forge build first: the anvil e2e tests read contracts/out/*.json
       - run: npm run build-contracts
+      - run: npm run e2e
       - run: npm run e2e-7913
       - run: npm run e2e-7913-classical
       - run: npm run e2e:fork
