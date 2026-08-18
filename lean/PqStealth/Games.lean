@@ -58,8 +58,11 @@ namespace PqStealth
 /-- A stealth address scheme: key generation, sender-side announcing, and
 recipient-side detection, all as probabilistic computations. -/
 structure StealthScheme (MetaPub MetaPriv Announcement : Type) where
+  /-- Recipient key generation: a meta-address and its private counterpart. -/
   keygen : ProbComp (MetaPub × MetaPriv)
+  /-- Sender side: publish an announcement for a recipient's meta-address. -/
   announce : MetaPub → ProbComp Announcement
+  /-- Recipient side: decide whether an announcement is addressed to us. -/
   scan : MetaPriv → Announcement → ProbComp Bool
 
 namespace StealthScheme

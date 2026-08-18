@@ -21,7 +21,8 @@ open PqStealth
 
 /-! ## A tiny field and a generator -/
 
-instance : Fact (Nat.Prime 23) := ⟨by norm_num⟩
+/-- `23` is prime, so `ZMod 23` is a field. -/
+instance instFactPrime23 : Fact (Nat.Prime 23) := ⟨by norm_num⟩
 
 /-- Scalars and group elements both live in `ZMod 23`, viewed as a module over
 itself: `x • g` is ordinary multiplication. -/

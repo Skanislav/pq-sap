@@ -20,6 +20,9 @@ namespace PqStealth
 
 /-! ## 1. The blinded-key correctness identity -/
 
+/-- Blinding is key-preserving: the sender's published value `A *ᵥ s' + e'`
+added to the recipient's meta key `A *ᵥ s₁ + s₂` is the honest public key of
+the widened secret `(s₁ + s', s₂ + e')`, over any commutative ring. -/
 theorem blinded_key_correctness {R : Type*} [CommRing R] {k l : ℕ}
     (A : Matrix (Fin k) (Fin l) R) (s₁ s' : Fin l → R) (s₂ e' : Fin k → R) :
     A *ᵥ s' + e' + (A *ᵥ s₁ + s₂) = A *ᵥ (s₁ + s') + (s₂ + e') := by
@@ -41,6 +44,8 @@ theorem stealth_pk_eq_blinded_keypair {R : Type*} [CommRing R] {k l : ℕ}
 `Power2RoundOps.Laws.power2Round_bound` restated for the announced key, then
 instantiated at `q = 8380417`, `d = 13`, giving `2^12 = 4096`. -/
 
+/-- The rounding error dropped by `Power2Round` on an announced stealth key is
+at most `2 ^ (d - 1)`, for any parameters satisfying the `Power2RoundOps` laws. -/
 theorem stealth_pk_rounding_error {Coeff : Type*} [CommRing Coeff]
     {ring : NegacyclicRing Coeff} [AddCommGroup ring.Poly] {d : ℕ}
     (ops : Power2RoundOps ring d) (cnorm : ring.Poly → ℕ)
