@@ -7,6 +7,7 @@ import PqStealth.ConstructionA
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
+import PqStealth.SPRTwoHop
 import PqStealth.Ownership
 import PqStealth.DKSAP
 import PqStealth.Soundness
@@ -184,6 +185,35 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.isEmpty_sampleableType_mlkem768Ciphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.isEmpty_sampleableType_mlkem768Ciphertext
+
+/-! ## The two MLWE hops of SPR (`SPRTwoHop`) -/
+
+/-- info: 'LearningWithErrors.advantage_eq_boolDistAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms LearningWithErrors.advantage_eq_boolDistAdvantage
+
+/-- info: 'PqStealth.idealEncrypt_pkOf' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.idealEncrypt_pkOf
+
+/-- info: 'PqStealth.game0_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_keyHopProblem
+
+/-- info: 'PqStealth.game1_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_keyHopProblem
+
+/-- info: 'PqStealth.game0_ctHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_ctHopProblem
+
+/-- info: 'PqStealth.game1_ctHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_ctHopProblem
+
+/-- info: 'PqStealth.simulatorGap_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.simulatorGap_le
+
+/-- info: 'PqStealth.sprAdv_le_two_hop_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_two_hop_decomposition
+
+/-- info: 'PqStealth.mlkem768_sprAdv_le_two_hop_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_two_hop_decomposition
 
 /-! ## Spend forgery as matrix-SIS (`Ownership`) -/
 

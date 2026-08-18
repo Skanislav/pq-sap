@@ -239,3 +239,133 @@ Three things would shorten this file if VCVio provided them: `DecidableEq`
 instances (or a structure-eta-friendly encoding) for the concrete encoded
 types, a public `byteEncode_size`, and `MLKEM.kem_ind_cpa_security` in the
 shape given above.
+
+## What is now in Lean
+
+`PqStealth/SPRTwoHop.lean` machine-checks the *shape* of the two-hop argument
+and the two lattice hops themselves. What it does **not** do is prove
+`SPR ≤ 2·MLWE` outright: the honest headline is a **four-term** bound, of which
+two terms are decision-MLWE advantages and two are named, unbounded,
+non-lattice terms.
+
+```
+KEM.sprAdv (asKEMScheme ring encoding prims) sim adv b
+  ≤ primitiveIdealization … adv b                                -- ROM/PRF step
+  + LearningWithErrors.advantage (keyHopProblem …) (keyHopAdv … adv b)   -- MLWE
+  + LearningWithErrors.advantage (ctHopProblem …) (ctHopAdv … adv b)     -- MLWE
+  + simulatorGap … adv sim b                                     -- encoding + keys
+```
+
+`sprAdv_le_two_hop_decomposition` is the generic statement;
+`mlkem768_sprAdv_le_two_hop_decomposition` is it at `mlkem768KEM` and
+`mlkem768UniformCiphertext`, with no instance hypotheses left open — so it plugs
+straight into the SPR terms of
+`mlkem768_unlinkAdvantage_le_full_decomposition`. Neither name claims
+`SPR ≤ 2·MLWE`: the bound has four terms, two of which are not lattice terms.
+
+The `## The capstone` section above, and `docs/DECISIONS.md` D-013, still read
+as if the SPR terms were already `2·MLWE`; with this file landed they are
+`2·MLWE + 2 named non-lattice terms` per branch, and both places should be
+corrected.
+
+### The two problems
+
+Both are VCVio `LearningWithErrors.Problem`s and both are **seeded**: the
+challenge sample is `rho`, not the matrix, because the reduction must hand the
+distinguisher a genuine encapsulation key and cannot invert `SampleNTT`. This is
+the same choice `ConstructionA.blindingProblem` makes, and it differs from the
+shape `kpke_ind_cpa_security` announces upstream (`TqMatrix params.k params.k`
+as the sample), which no reduction can actually use for a key hop.
+
+* `keyHopProblem : Problem Seed32 (TqVec k) (TqVec k)` —
+  `noiseless ŝ rho = Â(rho) · ŝ`, secret and error the `PRF_η₁` distributions,
+  uniform side `$ᵗ (TqVec k)`.
+* `ctHopProblem : Problem (Seed32 × TqVec k) (TqVec k) (RqVec k × Rq)` — sample
+  `(rho, t̂)` with `t̂` already uniform, secret `ŷ`, error `(e₁, e₂)` from
+  `PRF_η₂`, `noiseless ŷ (rho, t̂) = (Âᵀŷ, t̂ᵀŷ)`. That is the MLWE instance over
+  the module-dimension-`k+1` matrix `[Âᵀ | t̂ᵀ]`; VCVio's `Problem` shape carries
+  it as a product-typed output rather than a `k+1` vector, which is the same
+  thing with the last coordinate named.
+
+Uniform sampling on `R_q` and `T_q` had to be supplied: VCVio's `MLDSA` files
+take `SampleableType (RqVec …)` as a hypothesis and never construct it.
+`instSampleableTypeRq` goes through `Vector Coeff 256` (`LatticeCrypto.Poly` is
+a plain `def`, invisible to instance search) and `instSampleableTypeTq`
+transports it along the `TransformPoly` newtype; both need
+`instNeZeroMlkemModulus`, since `MLKEM.modulus` is a `def` and hides `NeZero`
+from `FinEnum (ZMod n)`. **Fourth upstream ask:** these three instances beside
+`MLKEM.Arithmetic`.
+
+### The two reduction adversaries
+
+`keyHopAdv adv b` plants the challenge `(rho, t̂)` as recipient `b`'s
+encapsulation key, encrypts honestly to it, then generates the other recipient
+itself. `ctHopAdv adv b` plants `(rho, t̂)` as recipient `b`'s key and the noisy
+part as the challenge ciphertext, adding the message contribution `μ` it samples
+itself — legitimate, since `μ` is independent of everything the challenger
+draws.
+
+### Why the hop identities are equalities, not distribution arguments
+
+Every game in the chain draws the **challenge key first, then the ciphertext,
+then the other recipient's key**, and `idealEncrypt` draws `(ŷ, e₁, e₂, m)` in
+that order. With that layout each reduction's `game0` / `game1` is the
+corresponding game *on the nose*: `game0_keyHopProblem`, `game1_keyHopProblem`,
+`game0_ctHopProblem`, `game1_ctHopProblem` are all
+`simp only [bind_assoc, pure_bind, …]`, with no `evalDist` reordering anywhere.
+The only non-syntactic step is `idealEncrypt_pkOf`, the
+`byteDecode12Vec ∘ byteEncode12Vec` roundtrip — and that is an `Encoding`
+*field*, not a `Laws` hypothesis, so it costs nothing.
+
+The bridge from VCVio's hidden-bit `LearningWithErrors.advantage` to a game
+distance is `LearningWithErrors.advantage_eq_boolDistAdvantage`
+(`advantage problem adv = (game0 …).boolDistAdvantage (game1 …)`), proved from
+`boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage` with the empty prefix.
+Without it the MLWE terms could not enter a triangle-inequality chain at all.
+
+### Exactly where this stops
+
+**`primitiveIdealization`** — the distance between the real ML-KEM anonymity
+branch and its idealized form. Real ML-KEM is *deterministic given the seeds*:
+`keygenFromSeed` derives `(rho, sigma)` from one `d` and then `s`, `e` from that
+one `sigma`; `encapsInternal` derives the encryption coins `r` from
+`G(m ‖ H(ek))`, so the ciphertext randomness is a function of the message **and
+of the challenge key**. The idealized games draw `rho`, `ŝ`, `ê`, `ŷ`, `e₁`,
+`e₂`, `m` independently. Closing this gap is the ROM/PRF step (`G` a random
+oracle, `PRF_η` a PRF, `SampleNTT` a random oracle) — the same modelling
+`ConstructionA.ExpandIsIdeal` names for the blinding argument, and not an MLWE
+statement. It is deliberately **not** a `PRFScheme.prfAdvantage`: VCVio's PRF
+game is a keyed-oracle distinguishing game, whereas this gap bundles `G` as a
+random oracle with the CBD pushforward of `PRF_η`, which no single PRF query
+game expresses. Naming it as a game distance keeps it honest. It is also mildly
+asymmetric in `b`: on `b = false` the real
+`anonSetup` already draws the challenge recipient first, on `b = true` the term
+additionally absorbs a swap of two independent `keygen` draws, which is
+distribution-preserving but not syntactic.
+
+**`simulatorGap`** — the distance from the last idealized game to the SPR
+simulated branch. `simulatorGap_le` splits it, by one triangle inequality, into
+
+* `encodingRegularity` — `compressDU`/`compressDV` followed by `byteEncodeDUVec`
+  / `byteEncodeDV` applied to *uniform ring elements*, against `sim` (for
+  ML-KEM-768, uniform 1088 FIPS 203 bytes). This is a regularity property of the
+  concrete encoding, it is **not** in `Encoding.Laws`, and stating it needs the
+  `private` `byteEncode_size` discussed above. Compression is lossy, so this is
+  a genuine statistical claim, not a bijection argument.
+* `keyRestoration` — putting the honest key distribution back once the challenge
+  ciphertext is key-independent. Bounded by the same primitive-idealization and
+  key-hop content applied to a ciphertext-blind distinguisher; naming it
+  separately keeps the encoding claim clean.
+
+**Implicit rejection is irrelevant here.** SPR is a CPA-level notion: the
+distinguisher gets two public keys and one ciphertext and no decapsulation
+oracle, so `decapsInternal`, `jReject` and the `c = c'` re-encryption check never
+appear in any game of the chain. The implicit-rejection caveat belongs to the
+ANO-CCA lift (Maram–Xagawa), not to this file.
+
+**Not attempted:** chaining `mlkem768_sprAdv_le_two_hop_decomposition` into
+`mlkem768_unlinkAdvantage_le_full_decomposition`. It is one `calc` over
+`gcongr`, but would produce an eight-term inequality; the two statements compose
+by hand. Issue #7's acceptance also asks for the "remaining lattice step"
+paragraph of `AnonymityFromSPR.lean`'s module docstring to be rewritten to point
+here — that file belongs to another work item and is left untouched.
