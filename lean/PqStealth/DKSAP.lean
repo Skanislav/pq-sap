@@ -60,8 +60,10 @@ def dksap : StealthScheme (G × G) (F × F) (G × G) where
 addressed to them: every run of the completeness experiment returns `true`,
 because the two derivations of the shared scalar agree. -/
 theorem dksap_perfectlyComplete : (dksap g h).PerfectlyComplete := by
-  simp [StealthScheme.PerfectlyComplete, StealthScheme.CorrectExp, dksap,
-    dksap_derivation_agrees]
+  simp only [StealthScheme.PerfectlyComplete, StealthScheme.CorrectExp, dksap,
+    bind_pure_comp, Functor.map_map, bind_assoc, bind_map_left, dksap_derivation_agrees,
+    decide_true, probOutput_bind_const, probFailure_of_liftM_PMF, tsub_zero,
+    probOutput_map_const, probOutput_pure, ↓reduceIte, mul_one]
 
 end Scheme
 

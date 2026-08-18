@@ -271,7 +271,8 @@ theorem soundWithin_ofKEMFull_byteTag (n : ℕ) (kem : KEM PK SK C K)
     (StealthScheme.ofKEMFull kem (taggedAux viewTag rest)).SoundWithin
       (1 / ((2 ^ (8 * n) : ℕ) : ℝ) + decapsRoR kem (taggedAux viewTag rest)) := by
   have hcard : Fintype.card (Fin (2 ^ (8 * n))) = 2 ^ (8 * n) := Fintype.card_fin _
-  have := soundWithin_ofKEMFull_taggedAux kem viewTag rest (by simpa [hcard] using hUnif)
+  have := soundWithin_ofKEMFull_taggedAux kem viewTag rest
+    (by simpa only [hcard, Nat.cast_pow, Nat.cast_ofNat] using hUnif)
   rwa [hcard] at this
 
 /-- **The ERC's one-byte view tag.** `1/256` false positives from the tag, plus
@@ -282,7 +283,8 @@ theorem soundWithin_ofKEMFull_oneByteTag (kem : KEM PK SK C K)
     (StealthScheme.ofKEMFull kem (taggedAux viewTag rest)).SoundWithin
       (1 / 256 + decapsRoR kem (taggedAux viewTag rest)) := by
   have hcard : Fintype.card (Fin 256) = 256 := Fintype.card_fin 256
-  have h := soundWithin_ofKEMFull_taggedAux kem viewTag rest (by simpa [hcard] using hUnif)
+  have h := soundWithin_ofKEMFull_taggedAux kem viewTag rest
+    (by simpa only [hcard, Nat.cast_ofNat] using hUnif)
   rw [hcard] at h
   exact_mod_cast h
 

@@ -74,7 +74,7 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
       obtain ⟨-, -, -, -, hy⟩ := hy
       exact hy
   have hle : keyCollisionProb S.keygen ≤ 1 := by
-    simpa [keyCollisionProb] using
+    simpa only [keyCollisionProb, bind_pure_comp, ENNReal.toReal_one] using
       ENNReal.toReal_mono ENNReal.one_ne_top (probOutput_le_one (x := true))
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage, ProbComp.boolDistAdvantage,
     hTrue, hF, ENNReal.toReal_one]
@@ -140,7 +140,7 @@ theorem deadKEM_ofKEMFull_not_perfectlyComplete :
   have hmem : false ∈ support ((StealthScheme.ofKEMFull deadKEM (fun _ _ => ())).CorrectExp) := by
     simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFull, deadKEM, bind_pure_comp,
       map_pure, decide_true, Option.elim_none, support_pure, Set.mem_singleton_iff]
-  simpa using hall false hmem
+  simpa only [Bool.false_eq_true] using hall false hmem
 
 /-! ## Negative control: the scan that ignores the tag -/
 
@@ -229,7 +229,7 @@ theorem dksapBroken_key_mismatch (g : G) (hg : g ≠ 0) (s : F) :
     ((1 : F) + s) • g ≠ s • g := by
   intro hEq
   rw [add_smul, one_smul] at hEq
-  exact hg (by simpa using congrArg (· - s • g) hEq)
+  exact hg (by simpa only [add_sub_cancel_right, sub_self] using congrArg (· - s • g) hEq)
 
 variable [SampleableType F] [DecidableEq G] (g : G) (h : G → F)
 
@@ -264,7 +264,7 @@ theorem dksapBroken_not_perfectlyComplete (hg : g ≠ 0) :
     symm
     simp only [decide_eq_false_iff_not, ← add_smul]
     exact dksapBroken_key_mismatch g hg _
-  simpa using hall false hmem
+  simpa only [Bool.false_eq_true] using hall false hmem
 
 end BrokenDKSAP
 
