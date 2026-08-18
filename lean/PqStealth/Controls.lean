@@ -204,6 +204,16 @@ theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
     obtain ⟨-, -, -, -, -, -, hy⟩ := hy
     exact hy
 
+/-- The same control in the soundness vocabulary of `Soundness`: the tag-ignoring
+scan's false-positive RATE is `1`, the largest `SoundWithin` admits. -/
+theorem falsePositiveRate_ofKEMFullNoTag_eq_one (k₀ : K)
+    (hkg : Pr[⊥ | kem.keygen] = 0) (henc : ∀ pk, Pr[⊥ | kem.encaps pk] = 0)
+    (hdec : ∀ sk c, kem.decaps sk c = pure (some k₀)) :
+    (StealthScheme.ofKEMFullNoTag kem auxGen).falsePositiveRate = 1 := by
+  rw [StealthScheme.falsePositiveRate,
+    probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one kem auxGen k₀ hkg henc hdec,
+    ENNReal.toReal_one]
+
 end NoTag
 
 /-! ## Negative control: DKSAP with the spending key dropped -/

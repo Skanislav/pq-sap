@@ -38,6 +38,7 @@ was added.
 | 1 | Done — `ofKEMFull` scan recomputes the aux data (`MetaPriv = SK × PK`); correctness is VCVio's `KEMScheme.PerfectlyCorrect`; `perfectlyComplete_ofKEMFull`. |
 | 2 | Done — `MLKEM.lean`: `DecidableEq` instances, `mlkem768_unlinkAdvantage_le{,_full_decomposition,_le_indCpa}` with no instance hypotheses on ML-KEM types. Sharper than the issue text: `SampleableType (Ciphertext mlkem768 …)` is provably **uninhabited** (`ByteArray` is infinite), so the generic ML-KEM capstone now takes an explicit `sim`. Upstream asks for VCVio recorded in the module docstring. |
 | 3 | Done (model + sanity lemma + reduction adversary) — `ConstructionA.lean`; `auxKeyIndependence_eq_zero_of_pk_independent`, `stealthAddr_eq_blinded_pk`, seeded-MLWE `mlweAdvOfUnlinkAdv`, `idealAux_indep_of_t`. **Correction to the issue text:** the blinding term is not bounded by MLWE alone — `rho` sits outside the mask, so closing it needs the address hash as a random oracle (documented; new follow-up). |
+| 5 | Done — `Games.lean` `falsePositiveRate` / `SoundWithin`; `Soundness.lean`. **Correction to the issue text:** DKSAP's false-positive rate is *exactly* `1 / |F|` for **every** hash `h` (`dksap_falsePositiveRate_eq`) — it is neither `0` nor a hash-collision term; the leak is recipient 1's uniform spending scalar. For `ofKEMFull`, `falsePositiveRate_ofKEMFull_le` gives `ε + decapsRoR` with `ε` a tag-collision bound and `decapsRoR` a named real-or-random term (KEM IND-CPA again, unbounded here, exactly as `sharedSecretHiding` is); `soundWithin_ofKEMFull_oneByteTag` is the ERC's `1/256`. |
 | 6 | Done — `sharedSecretHiding_eq_indCpaAdvantage` (one theorem, `∀ b`), `unlinkAdvantage_ofKEMFull_le_indCpa`, `mlkem768_unlinkAdvantage_le_indCpa`. **Finding:** VCVio's `kpke_ind_cpa_security` / `kpke_delta_correct` / `ind_cca_security` are `sorry` at the pinned commit and concern K-PKE, so KEM-IND-CPA → MLWE stays paper-level; the missing lemma is stated in `MLKEM.lean` (elaborates as written). Stale prose claiming otherwise was scrubbed from the Lean files and README; `docs/DECISIONS.md` D-013 still says "→ MLWE [Lean bridge + VCVio]" and should be corrected. |
 | 8 | Done (a–c, d documented) — `IsShortPair`, honest `IsSigningKey`, `blinded_is_signing_key`; `[A | I | -t]` reshaping with `spendForgeryAdvantage_eq_sis_advantage` scored by exactly `SIS.matrixProblem`'s predicate; `spendForgeryAdvantageReal`; `honest_witness_relation` removed. Uniform-challenge gap (HNF absorption + MLWE pseudorandomness of `t`) documented. |
 | 11 | Done (untested by nature) — `.github/workflows/lean.yml`. |
@@ -46,7 +47,7 @@ was added.
 | 15 | Done — `Demo.lean` `#eval`s guarded; build is silent. |
 | 20 | Done — README rewritten around the 12-module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
 
-Open: #4, #5, #7, #9, #10, #14, #16, #17, #18, #19, #21, plus the two new
+Open: #4, #7, #9, #10, #14, #16, #17, #18, #19, #21, plus the two new
 follow-ups above (random-oracle model for the address hash; upstream VCVio
 `DecidableEq`/`byteEncode_size`/KEM-IND-CPA lemma).
 

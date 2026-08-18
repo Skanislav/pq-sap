@@ -8,6 +8,7 @@ import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
 import PqStealth.Ownership
 import PqStealth.DKSAP
+import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
 
@@ -198,3 +199,35 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one
+
+/-! ## Detection soundness (`Soundness`) -/
+
+/-- info: 'PqStealth.dksap_falsePositiveRate_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksap_falsePositiveRate_eq
+
+/-- info: 'PqStealth.dksap_falsePositiveRate_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksap_falsePositiveRate_le
+
+/-- info: 'PqStealth.falsePositiveRate_ofKEMFull_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.falsePositiveRate_ofKEMFull_le
+
+/-- info: 'PqStealth.decapsRoR_eq_zero_of_decaps_uniform' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.decapsRoR_eq_zero_of_decaps_uniform
+
+/-- info: 'PqStealth.falsePositiveRate_ofKEMFull_le_of_decaps_uniform' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.falsePositiveRate_ofKEMFull_le_of_decaps_uniform
+
+/-- info: 'PqStealth.auxCollisionFree_taggedAux' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.auxCollisionFree_taggedAux
+
+/-- info: 'PqStealth.soundWithin_ofKEMFull_taggedAux' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.soundWithin_ofKEMFull_taggedAux
+
+/-- info: 'PqStealth.soundWithin_ofKEMFull_oneByteTag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.soundWithin_ofKEMFull_oneByteTag
+
+/-- info: 'PqStealth.soundWithin_ofKEMFull_byteTag' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.soundWithin_ofKEMFull_byteTag
+
+/-- info: 'PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one
