@@ -83,7 +83,7 @@ def PerfectlyComplete : Prop := Pr[= true | S.CorrectExp] = 1
 /-! ## The false-positive experiment
 
 Detection soundness's counterpart to `CorrectExp`: the scanner is not the
-recipient. A quantitative bound for the real scan is separate work. -/
+recipient. Quantitative bounds for the real scans live in `Soundness`. -/
 
 /-- False-positive experiment: two independent recipients, an announcement
 addressed to the second, scanned with the first one's private state. `true` is a
@@ -93,6 +93,15 @@ def FalsePositiveExp : ProbComp Bool := do
   let (pk1, _) ← S.keygen
   let c ← S.announce pk1
   S.scan sk0 c
+
+/-- False-positive rate: how often a non-recipient's scan fires. `.toReal`
+because every advantage in the development is an `ℝ`, and this number is added
+to distinguishing advantages in `Soundness`. -/
+noncomputable def falsePositiveRate : ℝ := (Pr[= true | S.FalsePositiveExp]).toReal
+
+/-- Detection soundness within `ε`: a non-recipient false-positives with
+probability at most `ε`. The counterpart of `PerfectlyComplete`. -/
+def SoundWithin (ε : ℝ) : Prop := S.falsePositiveRate ≤ ε
 
 /-! ## Unlinkability (recipient anonymity) -/
 

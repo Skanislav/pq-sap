@@ -441,7 +441,134 @@ load-bearing, and they fail in opposite directions:
 
 `FalsePositiveExp` is detection soundness's counterpart to `CorrectExp` — two
 independent recipients, an announcement addressed to the second, scanned with
-the first one's private state; `true` is a false positive. A quantitative bound
-on this probability for the real scan is separate work (it is the view-tag
-length argument); what is used here is only that a tag-ignoring scan makes it
-`1`.
+the first one's private state; `true` is a false positive. What the control uses
+is only that a tag-ignoring scan makes it `1`
+(`falsePositiveRate_ofKEMFullNoTag_eq_one` restates that in the vocabulary of
+the next section); the quantitative bounds for the real scans are below.
+
+## Detection soundness
+
+`Games` defines two words on top of `FalsePositiveExp`:
+
+* `falsePositiveRate S := (Pr[= true | S.FalsePositiveExp]).toReal` — `.toReal`
+  because every other number in this development is an `ℝ` advantage, and the
+  bounds below add the rate to distinguishing advantages;
+* `SoundWithin S ε := S.falsePositiveRate ≤ ε`.
+
+`Soundness` proves the two instances. They are not the same kind of statement,
+and the difference is the point.
+
+### DKSAP: exactly `1 / |F|`, and the reason is not the hash
+
+`dksap_falsePositiveRate_eq`: for **every** hash `h`, and given only that
+`x ↦ x • g` is injective,
+
+```
+falsePositiveRate (dksap g h) = 1 / |F|
+```
+
+An equality, not a bound. Unfolding, the stranger's scan fires exactly when
+
+```
+m1 + h (r • V1) = m0 + h (v0 • R)
+```
+
+where `(m0, v0)` is the scanner's key pair and `(m1, v1)` recipient 1's.
+Injectivity of `x ↦ x • g` turns the group equation into this scalar one, and
+recipient 1's spending scalar `m1` is uniform and independent of the other four
+draws — so for each value of `(m0, v0, v1, r)` exactly one `m1` out of `|F|`
+triggers, whatever `h` computes. The formal proof is the same sentence: move the
+`m1` draw innermost with `probOutput_bind_bind_swap`, read it off with
+`probOutput_uniformSample`, and collapse the never-failing prefix with
+`probOutput_bind_of_const`.
+
+This corrects the issue as it was originally filed (`improvements.md` #5 asked
+for "exact `0` false positives modulo hash collisions of `h`"). There is no
+hash-collision term and the rate is not `0`: the leak is the uniform spending
+scalar, and a collision of `h` is neither necessary nor sufficient for a false
+positive. At a 254-bit scalar field `1 / |F|` is of course negligible, which is
+why nobody noticed the mechanism was misdescribed.
+
+### The KEM scheme: a tag term plus a real-or-random term
+
+For `ofKEMFull` the scan fires when
+
+```
+auxGen (sharedSecret) pk1  =  auxGen (recipient 0's decapsulation of c) pk0
+```
+
+Two things have to be true for that to be rare. First, the tag must be hard to
+hit: `AuxCollisionFree auxGen ε` says that over a **uniform** secret `k`,
+`auxGen k pk` lands on any prescribed value with probability at most `ε`.
+Second, recipient 0's decapsulated key must actually look uniform to the
+announcement — and that is a KEM question, not a tag question. It is the same
+shape as `sharedSecretHiding` in the unlinkability chain, so it gets the same
+treatment: a named real-or-random term rather than an assumption swept into the
+statement.
+
+`falsePositiveIdeal` is `FalsePositiveExp` with recipient 0's decapsulated key
+replaced by a fresh `$ᵗ K` (the announcement is untouched — only the scanner's
+secret is idealized), and
+
+```
+decapsRoR kem auxGen := boolDistAdvantage FalsePositiveExp falsePositiveIdeal
+```
+
+Then `falsePositiveRate_ofKEMFull_le`:
+
+```
+SoundWithin (ofKEMFull kem auxGen) (ε + decapsRoR kem auxGen)
+```
+
+by the triangle inequality through `falsePositiveIdeal`, whose own probability
+is bounded by `ε` because at that point the verdict IS a tag collision against a
+uniform secret. `decapsRoR` is again a KEM IND-CPA question: a distinguisher
+that told the real decapsulated key from a fresh uniform one inside this
+experiment is a real-or-random distinguisher for the shared secret of a
+ciphertext the distinguisher did not create. The `0 ≤ ε` hypothesis is not
+decoration — with `PK` empty the collision hypothesis is vacuous and a negative
+`ε` would make the statement false.
+
+`decapsRoR_eq_zero_of_decaps_uniform` closes the loop from the ideal side: if
+`kem.decaps` returns a uniform key, the real and idealized experiments are the
+same computation and `decapsRoR = 0`, hence `SoundWithin ε` outright. That
+hypothesis is deliberately global and no perfectly correct KEM with `|K| ≥ 2`
+satisfies it — the lemma is a sanity check pinning `decapsRoR` as the *only*
+gap, not a security claim.
+
+### Where `1/256` comes from
+
+`taggedAux viewTag rest k pk = (viewTag k, rest k pk)` is the deployed shape:
+the announcement leads with a short tag derived from the shared secret alone,
+followed by whatever else the auxiliary data carries (the stealth address).
+`auxCollisionFree_taggedAux` says that if `viewTag` maps a uniform secret to a
+uniform tag, then
+
+```
+AuxCollisionFree (taggedAux viewTag rest) (1 / |T|)
+```
+
+The remainder can only help, so the tag alphabet is the whole bound — which is
+exactly the ERC's tag-length rationale. Chaining with the previous bound gives
+`soundWithin_ofKEMFull_taggedAux`, and at concrete alphabets
+`soundWithin_ofKEMFull_byteTag` (`T = Fin (2 ^ (8n))`, rate `2 ^ (-8n)` plus
+`decapsRoR`) and `soundWithin_ofKEMFull_oneByteTag`:
+
+```
+SoundWithin (ofKEMFull kem (taggedAux viewTag rest))
+  (1 / 256 + decapsRoR kem (taggedAux viewTag rest))
+```
+
+The uniformity of `viewTag` on a uniform key is a hypothesis. For the concrete
+ML-KEM shared-secret type it would be "the first byte of a uniform 32-byte
+string is a uniform byte", which VCVio's `Bytes` API does not currently expose
+as a projection lemma; stating it as a hypothesis keeps the theorem honest and
+costs the caller one `simp`.
+
+### What is NOT proved
+
+Nothing bounds `decapsRoR` for ML-KEM-768 — like `sharedSecretHiding`, it is
+left as a named IND-CPA term and inherits the same missing upstream lemma
+(`docs/spr-two-hop.md`). The soundness statements are also single-announcement:
+a scanner sweeping `n` announcements false-positives at most `n` times the rate
+by a union bound, which is not formalized here.
