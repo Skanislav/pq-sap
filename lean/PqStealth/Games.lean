@@ -1,39 +1,59 @@
-/-
-Game-based security definitions for the PQ stealth address scheme, built on
-VCVio's OracleComp / ProbComp framework (the same stack the algebraic core
-uses). This is the "state the games" layer of the security analysis: it
-defines the scheme as an abstract randomized algorithm and writes the
-security experiments as probabilistic computations, exactly mirroring VCVio's
-own AsymmEncAlg / IND-CPA idiom (CryptoFoundations/AsymmEncAlg).
-
-The headline property for a stealth scheme is UNLINKABILITY (recipient
-anonymity): given an announcement you cannot tell which recipient it is for.
-That is the key-privacy sibling of IND-CPA -- the hidden bit selects the
-RECIPIENT, not the message. We state the game and prove the one structural
-fact that holds before any assumption enters: the unlinkability advantage
-equals the adversary's advantage in distinguishing an announcement to
-recipient 1 from one to recipient 0 (the first game hop). The reduction of
-that distinguishing advantage to ML-KEM anonymity (ANO-CCA, not IND-CCA) is
-the paper-level work this scaffolding is built to receive.
-
-Abstract in the scheme by design: MetaPub / MetaPriv / Announcement are
-opaque, so the definitions commit to no parameter set. Concrete
-instantiation with ML-KEM + construction A is future work.
--/
-
 import PqStealth.Blinding
 import VCVio.CryptoFoundations.SecExp
 
+/-!
+# The stealth scheme as a game
+
+Proved: `StealthScheme` as an abstract randomized algorithm over VCVio's
+`ProbComp` (mirroring its own `AsymmEncAlg` idiom); detection completeness and
+the false-positive experiment; unlinkability -- recipient anonymity -- as a
+hidden-bit game, and the first hop, `unlinkAdvantage_eq_branchDistAdvantage`:
+the advantage IS the advantage of distinguishing an announcement to recipient 1
+from one to recipient 0.
+
+Assumed: nothing. The hidden bit selects the RECIPIENT, not the message, so
+this is key privacy, not IND-CPA. See `docs/announcement-model.md`.
+-/
+
 open OracleComp OracleSpec
+
+/-! ## Hidden-bit games with a bit-indexed branch
+
+The games below are indexed by the hidden bit rather than written as an explicit
+`if b then real else rand`, so this is the form of VCVio's decomposition lemma
+they need. -/
+
+/-- Bias of a hidden-bit guessing game whose branch is selected by the bit:
+the distinguishing advantage between the two branches. -/
+theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : ProbComp α)
+    (branch : Bool → α → ProbComp Bool) :
+    (do
+      let a ← pref
+      let b ← ($ᵗ Bool)
+      let z ← branch b a
+      pure (b == z)).boolBiasAdvantage
+      = (pref >>= branch true).boolDistAdvantage (pref >>= branch false) := by
+  have h : (do let a ← pref; let b ← ($ᵗ Bool); let z ← branch b a; pure (b == z))
+      = (do
+          let a ← pref
+          let b ← ($ᵗ Bool)
+          let z ← if b then branch true a else branch false a
+          pure (b == z)) :=
+    bind_congr fun a => bind_congr fun b => by cases b <;> rfl
+  rw [h]
+  exact ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage pref
+    (branch true) (branch false)
+
+/-- Distinguishing advantage is symmetric: it is the absolute value of a
+difference. Used whenever a game hop is traversed in the opposite direction to
+the one a definition fixes. -/
+theorem ProbComp.boolDistAdvantage_comm (p q : ProbComp Bool) :
+    p.boolDistAdvantage q = q.boolDistAdvantage p :=
+  abs_sub_comm _ _
 
 namespace PqStealth
 
-/-! ## The scheme as an abstract randomized algorithm
-
-Mirrors `AsymmEncAlg` (VCVio): the algorithmic data lives in `ProbComp`, and
-security experiments are built on top. `announce` is the sender's operation
-(produce an announcement addressed to a meta-address); `scan` is the
-recipient's detection test. -/
+/-! ## The scheme as an abstract randomized algorithm -/
 
 /-- A stealth address scheme: key generation, sender-side announcing, and
 recipient-side detection, all as probabilistic computations. -/
@@ -47,10 +67,7 @@ namespace StealthScheme
 variable {MetaPub MetaPriv Announcement : Type}
   (S : StealthScheme MetaPub MetaPriv Announcement)
 
-/-! ## Detection completeness
-
-A recipient detects a payment actually addressed to them. This is the
-correctness side (cf. VCVio's `CorrectExp` / `PerfectlyCorrect`). -/
+/-! ## Detection completeness -/
 
 /-- Completeness experiment: announce to a freshly generated recipient, then
 scan with that recipient's secret; should return `true`. -/
@@ -63,63 +80,63 @@ def CorrectExp : ProbComp Bool := do
 announcement always succeeds. -/
 def PerfectlyComplete : Prop := Pr[= true | S.CorrectExp] = 1
 
-/-! ## Unlinkability (recipient anonymity)
+/-! ## The false-positive experiment
 
-The hidden bit selects which of two recipients an announcement is for; the
-adversary sees both public meta-addresses and the challenge announcement and
-must guess. This is the anonymity / key-privacy game, NOT message IND-CPA. -/
+Detection soundness's counterpart to `CorrectExp`: the scanner is not the
+recipient. A quantitative bound for the real scan is separate work. -/
 
-/-- Two-phase unlinkability adversary: given both public meta-addresses it
-prepares state, then given the challenge announcement it guesses the
-recipient. Depends only on the public types, not on the scheme. -/
-structure UnlinkAdv (MetaPub Announcement : Type) where
-  State : Type
-  setup : MetaPub → MetaPub → ProbComp State
-  distinguish : State → Announcement → ProbComp Bool
+/-- False-positive experiment: two independent recipients, an announcement
+addressed to the second, scanned with the first one's private state. `true` is a
+false positive. -/
+def FalsePositiveExp : ProbComp Bool := do
+  let (_, sk0) ← S.keygen
+  let (pk1, _) ← S.keygen
+  let c ← S.announce pk1
+  S.scan sk0 c
+
+/-! ## Unlinkability (recipient anonymity) -/
+
+/-- Unlinkability adversary: given both public meta-addresses and the challenge
+announcement, guess which recipient it is for. A function rather than a
+two-phase structure — the games are non-adaptive (`docs/announcement-model.md`). -/
+abbrev UnlinkAdv (MetaPub Announcement : Type) :=
+  MetaPub → MetaPub → Announcement → ProbComp Bool
+
+/-- Shared prefix of the unlinkability game: generate two recipients and publish
+both public meta-addresses. -/
+def unlinkSetup : ProbComp (MetaPub × MetaPub) := do
+  let (pk0, _) ← S.keygen
+  let (pk1, _) ← S.keygen
+  pure (pk0, pk1)
 
 variable (adv : UnlinkAdv MetaPub Announcement)
 
-/-- Shared prefix of the unlinkability game: generate two recipients and let
-the adversary inspect both public meta-addresses. -/
-def unlinkSetup : ProbComp (MetaPub × MetaPub × adv.State) := do
-  let (pk0, _) ← S.keygen
-  let (pk1, _) ← S.keygen
-  let st ← adv.setup pk0 pk1
-  pure (pk0, pk1, st)
-
-/-- The `b = 1` branch: the challenge announcement goes to recipient 1. -/
-def unlinkBranchTrue (a : MetaPub × MetaPub × adv.State) : ProbComp Bool := do
-  let c ← S.announce a.2.1
-  adv.distinguish a.2.2 c
-
-/-- The `b = 0` branch: the challenge announcement goes to recipient 0. -/
-def unlinkBranchFalse (a : MetaPub × MetaPub × adv.State) : ProbComp Bool := do
-  let c ← S.announce a.1
-  adv.distinguish a.2.2 c
+/-- The branch of the unlinkability game selected by the hidden bit: the
+challenge announcement goes to recipient `b`. -/
+def unlinkBranch (b : Bool) (a : MetaPub × MetaPub) : ProbComp Bool := do
+  let c ← S.announce (if b then a.2 else a.1)
+  adv a.1 a.2 c
 
 /-- Unlinkability experiment: flip a hidden bit, announce to the selected
 recipient, and return whether the adversary's guess matches. In VCVio's
 hidden-bit form so the branch-decomposition lemma applies directly. -/
 def UnlinkExp : ProbComp Bool := do
-  let a ← S.unlinkSetup adv
+  let a ← S.unlinkSetup
   let b ← ($ᵗ Bool)
-  let z ← if b then S.unlinkBranchTrue adv a else S.unlinkBranchFalse adv a
+  let z ← S.unlinkBranch adv b a
   pure (b == z)
 
 /-- Unlinkability advantage: the bias of the hidden-bit guessing game. -/
 noncomputable def unlinkAdvantage : ℝ := (S.UnlinkExp adv).boolBiasAdvantage
 
-/-- **First game hop, sorry-free.** The unlinkability advantage equals the
-adversary's advantage in distinguishing an announcement to recipient 1 from
-an announcement to recipient 0. This is the definitional heart of anonymity;
-what remains for the analysis is to bound the right-hand distinguishing
-advantage by ML-KEM's anonymity advantage. -/
+/-- **First game hop.** The unlinkability advantage equals the advantage of
+distinguishing an announcement to recipient 1 from one to recipient 0 — the
+definitional heart of anonymity. -/
 theorem unlinkAdvantage_eq_branchDistAdvantage :
     S.unlinkAdvantage adv =
-      (S.unlinkSetup adv >>= S.unlinkBranchTrue adv).boolDistAdvantage
-      (S.unlinkSetup adv >>= S.unlinkBranchFalse adv) :=
-  ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage
-    (S.unlinkSetup adv) (S.unlinkBranchTrue adv) (S.unlinkBranchFalse adv)
+      (S.unlinkSetup >>= S.unlinkBranch adv true).boolDistAdvantage
+      (S.unlinkSetup >>= S.unlinkBranch adv false) :=
+  ProbComp.boolBiasAdvantage_bind_uniformBool_branch S.unlinkSetup (S.unlinkBranch adv)
 
 end StealthScheme
 

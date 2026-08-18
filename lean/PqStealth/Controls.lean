@@ -1,49 +1,25 @@
-/-
-Controls for the game layer: leaks the advantages must catch, and detection
-tests they must reject.
-
-`Falsification.lean` pins one completeness claim (DKSAP) from below by proving a
-deliberately broken variant broken. The game layer needs the same treatment on
-both sides, because a definition can be wrong in two opposite ways: an advantage
-that no scheme can make large measures nothing, and a detection test that no
-scheme can fail asserts nothing.
-
-The positive controls answer the first: `leakyScheme` publishes the recipient's
-meta-address outright, and `unlinkAdvantage` is proved to be maximal on it --
-maximal meaning `1 - Pr[the two recipients drew the same key]`, which is the
-true ceiling, since on a key collision the two branches of the game are the same
-computation and no adversary can separate them. The same construction as a KEM
-does the same for `anonAdvantage`.
-
-The negative controls answer the second, and they are what makes the tag
-comparison in `ofKEMFull.scan` load-bearing: a KEM that always rejects gives a
-scheme that is not complete, and dropping the tag comparison gives a scheme that
-is complete but flags every announcement, including those addressed to someone
-else. The tag comparison is exactly what separates those two failures.
--/
-
 import PqStealth.KEMAnonymity
+import PqStealth.DKSAP
+
+/-!
+# Controls: the definitions have teeth
+
+Proved, all as ordinary theorems so the build keeps them honest: a scheme whose
+announcement IS the recipient's meta-address attains the maximal unlinkability
+advantage `1 − keyCollisionProb` -- the true ceiling, since on a key collision
+the two branches are the same computation -- and likewise a KEM whose ciphertext
+is the public key, for `anonAdvantage`; a KEM that always rejects gives a scheme
+that is NOT complete; the tag-ignoring scan IS complete yet false-positives with
+probability `1` on an implicit-rejection KEM; and a DKSAP variant that drops the
+recipient's spending key is not complete.
+
+Assumed: nothing. See `docs/announcement-model.md` (controls rationale) and
+`docs/dksap-asymmetry.md` (the broken variant).
+-/
 
 open OracleComp OracleSpec
 
 namespace PqStealth
-
-/-! ## The false-positive experiment
-
-Detection soundness's counterpart to `CorrectExp`: the scanner is not the
-recipient. A quantitative bound on this probability for the real scan is
-separate work (it is the view-tag length argument); what is used here is only
-that a tag-ignoring scan makes it `1`. -/
-
-/-- False-positive experiment: two independent recipients, an announcement
-addressed to the second, scanned with the first one's private state. `true` is a
-false positive. -/
-def StealthScheme.FalsePositiveExp {MetaPub MetaPriv Announcement : Type}
-    (S : StealthScheme MetaPub MetaPriv Announcement) : ProbComp Bool := do
-  let (_, sk0) ← S.keygen
-  let (pk1, _) ← S.keygen
-  let c ← S.announce pk1
-  S.scan sk0 c
 
 /-! ## Positive control: a scheme that publishes the recipient -/
 
@@ -53,21 +29,12 @@ variable {PK SK : Type} [DecidableEq PK]
 
 /-- The trivial recipient-identifying adversary: remember the second public
 meta-address, then report whether the announcement equals it. -/
-def leakyAdv : StealthScheme.UnlinkAdv PK PK where
-  State := PK
-  setup _ pk1 := pure pk1
-  distinguish pk1 c := pure (decide (c = pk1))
+def leakyAdv : StealthScheme.UnlinkAdv PK PK :=
+  fun _ pk1 c => pure (decide (c = pk1))
 
-/-- The probability that two independent runs of `keygen` produce the same
-public meta-address.
-
-This is the exact obstruction to a unlinkability advantage of `1`, not a proof
-artifact: the unlinkability game draws its two recipients independently from the
-same `keygen`, so whenever they collide its two branches are literally the same
-computation and no adversary whatsoever can distinguish them. Any unlinkability
-or anonymity advantage against a scheme with this `keygen` is therefore capped
-at `1 - keyCollisionProb`, and the one-comparison adversary below attains the
-cap. -/
+/-- The probability that two independent runs of `keygen` collide -- the exact
+obstruction to an advantage of `1`, not a proof artifact, since on a collision
+the game's two branches are literally the same computation. -/
 noncomputable def keyCollisionProb (keygen : ProbComp (PK × SK)) : ℝ :=
   (Pr[= true | do
       let (pk0, _) ← keygen
@@ -75,35 +42,29 @@ noncomputable def keyCollisionProb (keygen : ProbComp (PK × SK)) : ℝ :=
       pure (decide (pk0 = pk1))]).toReal
 
 /-- A stealth scheme whose announcement IS the recipient's public meta-address:
-the maximal leak. Detection is unconditional, which is deliberate -- this
-control is about unlinkability, and a scheme can be perfectly complete and still
-worthless. -/
+the maximal leak. Detection is unconditional on purpose -- a scheme can be
+perfectly complete and still worthless. -/
 def leakyScheme (keygen : ProbComp (PK × SK)) : StealthScheme PK SK PK where
   keygen := keygen
   announce pk := pure pk
   scan _ _ := pure true
 
-/-- **The positive control, proved.** Any scheme whose announcement is the
-recipient's public meta-address has the largest unlinkability advantage the game
-admits: `1` less the probability that the two recipients collide. So
-`unlinkAdvantage` does detect a recipient leak -- it is not a quantity that
-happens to be small for structural reasons.
-
-Stated for an arbitrary scheme with `announce pk = pure pk` rather than for
-`leakyScheme` alone, so that the KEM control below reuses it. -/
+/-- **The positive control.** A scheme announcing the recipient's meta-address
+has the largest advantage the game admits, so `unlinkAdvantage` does detect a
+leak. Stated for any `announce pk = pure pk`, so the KEM control reuses it. -/
 theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
     (S : StealthScheme PK SK PK) (hkg : Pr[⊥ | S.keygen] = 0)
     (hann : ∀ pk, S.announce pk = pure pk) :
     S.unlinkAdvantage leakyAdv = 1 - keyCollisionProb S.keygen := by
-  have hT : S.unlinkSetup leakyAdv >>= S.unlinkBranchTrue leakyAdv
+  have hT : S.unlinkSetup >>= S.unlinkBranch leakyAdv true
       = (do let (_, _) ← S.keygen; let (_, _) ← S.keygen; pure true) := by
     simp only [leakyAdv, StealthScheme.unlinkSetup, bind_pure_comp, map_pure, bind_assoc,
-      bind_map_left, StealthScheme.unlinkBranchTrue, hann, decide_true]
-  have hF : S.unlinkSetup leakyAdv >>= S.unlinkBranchFalse leakyAdv
+      bind_map_left, StealthScheme.unlinkBranch, hann, if_true, decide_true]
+  have hF : S.unlinkSetup >>= S.unlinkBranch leakyAdv false
       = (do let (pk0, _) ← S.keygen; let (pk1, _) ← S.keygen; pure (decide (pk0 = pk1))) := by
     simp only [leakyAdv, StealthScheme.unlinkSetup, bind_pure_comp, map_pure, bind_assoc,
-      bind_map_left, StealthScheme.unlinkBranchFalse, hann]
-  have hTrue : Pr[= true | S.unlinkSetup leakyAdv >>= S.unlinkBranchTrue leakyAdv] = 1 := by
+      bind_map_left, StealthScheme.unlinkBranch, hann, Bool.false_eq_true, if_false]
+  have hTrue : Pr[= true | S.unlinkSetup >>= S.unlinkBranch leakyAdv true] = 1 := by
     rw [hT, probOutput_eq_one_iff_forall]
     refine ⟨?_, ?_⟩
     · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
@@ -147,10 +108,9 @@ def leakyKEM (keygen : ProbComp (PK × SK)) (k₀ : K) : KEM PK SK PK K where
   encaps pk := pure (pk, k₀)
   decaps _ _ := pure (some k₀)
 
-/-- **`anonAdvantage` has teeth.** A KEM whose ciphertext is the public key it
-was encapsulated to has the maximal anonymity advantage, against the same
-one-comparison adversary. Via `unlinkAdvantage_ofKEM_eq_anonAdvantage`, so the
-two controls are literally the same fact seen through the reduction. -/
+/-- **`anonAdvantage` has teeth.** A KEM whose ciphertext is the public key has
+the maximal anonymity advantage -- via `unlinkAdvantage_ofKEM_eq_anonAdvantage`,
+so the two controls are the same fact seen through the reduction. -/
 theorem leakyKEM_anonAdvantage_eq (keygen : ProbComp (PK × SK)) (k₀ : K)
     (hkg : Pr[⊥ | keygen] = 0) :
     (leakyKEM keygen k₀).anonAdvantage leakyAdv = 1 - keyCollisionProb keygen := by
@@ -205,42 +165,25 @@ def StealthScheme.ofKEMFullNoTag : StealthScheme PK (SK × PK) (C × Aux) where
 /-- The tag-ignoring variant IS complete, under the same hypothesis. Half of
 the control: completeness alone does not distinguish the two scans, so it cannot
 be the property that justifies the comparison. -/
-theorem perfectlyComplete_ofKEMFullNoTag (hkem : kem.PerfectlyCorrect) :
+theorem perfectlyComplete_ofKEMFullNoTag [DecidableEq K]
+    (hkem : kem.PerfectlyCorrect ProbCompRuntime.probComp) :
     (StealthScheme.ofKEMFullNoTag kem auxGen).PerfectlyComplete := by
   have hCE : (StealthScheme.ofKEMFullNoTag kem auxGen).CorrectExp =
-      (do let ks ← kem.keygen
-          let ck ← kem.encaps ks.1
-          let k? ← kem.decaps ks.2 ck.1
-          pure k?.isSome) := by
-    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFullNoTag, bind_assoc, pure_bind]
-  have hdec : ∀ ks ∈ support kem.keygen, ∀ ck ∈ support (kem.encaps ks.1),
-      Pr[⊥ | kem.decaps ks.2 ck.1] = 0 ∧
-        support (kem.decaps ks.2 ck.1) = {some ck.2} := fun ks hks ck hck =>
-    probOutput_eq_one_iff.1 (hkem.decaps_eq_encapsulated ks.1 ks.2 (by simpa using hks)
-      ck.1 ck.2 (by simpa using hck))
-  rw [StealthScheme.PerfectlyComplete, hCE, probOutput_eq_one_iff_forall]
-  refine ⟨?_, ?_⟩
-  · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
-    exact ⟨hkem.keygen_neverFails, fun ks hks =>
-      ⟨hkem.encaps_neverFails ks.1 ks.2 (by simpa using hks), fun ck hck =>
-        (hdec ks hks ck hck).1⟩⟩
-  · intro y hy
-    simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
-    obtain ⟨ks, hks, ck, hck, k?, hk?, rfl⟩ := hy
-    rw [(hdec ks hks ck hck).2] at hk?
-    simp only [Set.mem_singleton_iff] at hk?
-    subst hk?
-    simp
+      (do let a ← kem.run; pure a.2.2.isSome) := by
+    simp only [StealthScheme.CorrectExp, StealthScheme.ofKEMFullNoTag, KEM.run,
+      bind_assoc, pure_bind]
+  rw [StealthScheme.PerfectlyComplete, hCE]
+  refine probOutput_true_eq_one_of_imp (p := fun a => decide (a.2.2 = some a.2.1.2))
+    kem.run ?_ ?_
+  · intro a _ ha
+    simp only [decide_eq_true_eq] at ha
+    simp only [ha, Option.isSome_some]
+  · rw [← kem.correctExp_eq]
+    exact hkem
 
-/-- **The soundness control, proved.** On a KEM with implicit rejection --
-`decaps` always returns `some`, which is exactly what ML-KEM does -- the
-tag-ignoring scan flags an announcement addressed to a different recipient with
-probability `1`. Detection is then not detection: every scanner "receives" every
-payment.
-
-This is what the tag comparison in `ofKEMFull.scan` buys, and it is why the
-recipient's private state has to carry its own public key. A quantitative
-false-positive bound for the real scan is the separate view-tag argument. -/
+/-- **The soundness control.** On an implicit-rejection KEM -- exactly what
+ML-KEM is -- the tag-ignoring scan flags someone else's announcement with
+probability `1`. This is what the tag comparison in `ofKEMFull.scan` buys. -/
 theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
     (hkg : Pr[⊥ | kem.keygen] = 0) (henc : ∀ pk, Pr[⊥ | kem.encaps pk] = 0)
     (hdec : ∀ sk c, kem.decaps sk c = pure (some k₀)) :
@@ -262,5 +205,57 @@ theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
     exact hy
 
 end NoTag
+
+/-! ## Negative control: DKSAP with the spending key dropped -/
+
+section BrokenDKSAP
+
+variable {F : Type} [Field F] {G : Type} [AddCommGroup G] [Module F G]
+
+/-- The algebraic reason the broken variant fails: dropping a nonzero spending
+key changes the derived public key. Stated at spending secret `1`, enough to
+refute a claim quantified over all recipients. -/
+theorem dksapBroken_key_mismatch (g : G) (hg : g ≠ 0) (s : F) :
+    ((1 : F) + s) • g ≠ s • g := by
+  intro hEq
+  rw [add_smul, one_smul] at hEq
+  exact hg (by simpa using congrArg (· - s • g) hEq)
+
+variable [SampleableType F] [DecidableEq G] (g : G) (h : G → F)
+
+/-- A deliberately incorrect DKSAP: the recipient recomputes the shared scalar
+correctly but forgets to add their own spending key, so the key they check
+against is `s • g` instead of `(m + s) • g`. Announcing is unchanged. -/
+def dksapBroken : StealthScheme (G × G) (F × F) (G × G) where
+  keygen := do
+    let m ← ($ᵗ F)
+    let v ← ($ᵗ F)
+    pure ((m • g, v • g), (m, v))
+  announce MV := do
+    let r ← ($ᵗ F)
+    pure (r • g, MV.1 + (h (r • MV.2)) • g)
+  scan mv Rp := pure (decide (Rp.2 = (h (mv.2 • Rp.1)) • g))
+
+/-- **The negative control.** The broken variant is not perfectly complete.
+Together with `dksap_perfectlyComplete` this pins completeness from both sides,
+and being a theorem rather than a failing tactic script, the build checks it. -/
+theorem dksapBroken_not_perfectlyComplete (hg : g ≠ 0) :
+    ¬ (dksapBroken g h).PerfectlyComplete := by
+  intro hComplete
+  rw [StealthScheme.PerfectlyComplete, probOutput_eq_one_iff_forall] at hComplete
+  obtain ⟨-, hall⟩ := hComplete
+  have hmem : false ∈ support ((dksapBroken g h).CorrectExp) := by
+    simp only [StealthScheme.CorrectExp, dksapBroken, support_bind, support_pure,
+      Set.mem_iUnion, Set.mem_singleton_iff]
+    refine ⟨(((1 : F) • g, (1 : F) • g), (1 : F), (1 : F)),
+      ⟨1, mem_support_uniformSample _, 1, mem_support_uniformSample _, rfl⟩,
+      ((1 : F) • g, (1 : F) • g + h ((1 : F) • ((1 : F) • g)) • g),
+      ⟨1, mem_support_uniformSample _, rfl⟩, ?_⟩
+    symm
+    simp only [decide_eq_false_iff_not, ← add_smul]
+    exact dksapBroken_key_mismatch g hg _
+  simpa using hall false hmem
+
+end BrokenDKSAP
 
 end PqStealth
