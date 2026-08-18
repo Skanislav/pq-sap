@@ -332,16 +332,26 @@ so what is missing is the **lazy-RO switching lemma**: for every
 ```
 |Pr[= true | (simulateQ (romImpl F G) oa).run' (cache.cacheQuery Z s)]
    - Pr[= true | (simulateQ (romImpl F G) oa).run' cache]|
-  ≤ Pr[oa queries Z]
+  ≤ Pr[fun z => (z.2 Z).isSome | (simulateQ (romImpl F G) oa).run cache]
 ```
 
-— an induction on `oa` through the cache monad, plus an integration step to move
-from the pointwise bound to the bound on `hashedDHRO` (the outer `tsum` over
-keys, `r` and `s`). VCVio's `StateSeparating/IdenticalUntilBad.lean` does not
-apply off the shelf: `advantage_le_queryBound_mul_slack_plus_probEvent_bad`
-compares two `QueryImpl.Stateful` HANDLERS against a shared adversary, whereas
-here the two games differ in the game body. Recasting DKSAP's announce step as a
-handler is the plausible route to reusing it.
+Which run the query event is measured in is load-bearing and easy to get wrong:
+it must be the run from the **unprogrammed** cache (the right-hand run, the one
+whose final cache is inspected), because a cache hit at `Z` returns the
+programmed `s` and changes the adversary's later behaviour, so the two runs do
+not have the same query probability. Instantiated at `cache = ∅` and
+`oa = adv a.1 a.2 c`, that right-hand side is exactly what `dksapROBad`
+computes — the ideal game's final cache, tested at the tagged DH point — which
+is why the bad event is defined on the ideal side and not on the real one.
+
+Proving it is an induction on `oa` through the cache monad, plus an integration
+step to move from the pointwise bound to the bound on `hashedDHRO` (the outer
+`tsum` over keys, `r` and `s`). VCVio's `StateSeparating/IdenticalUntilBad.lean`
+does not apply off the shelf:
+`advantage_le_queryBound_mul_slack_plus_probEvent_bad` compares two
+`QueryImpl.Stateful` HANDLERS against a shared adversary, whereas here the two
+games differ in the game body. Recasting DKSAP's announce step as a handler is
+the plausible route to reusing it.
 
 The second needs the standard guessing argument: the reduction must pick WHICH
 of the adversary's hash queries is the DH point, costing a factor `q_H` (an
