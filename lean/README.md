@@ -10,10 +10,10 @@ every headline theorem depends only on `propext`, `Classical.choice`,
 `Quot.sound` (or fewer), and that is asserted by the build rather than checked
 by hand — see [Verifying](#verifying). Full `lake build`: green.
 
-**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `KEMAnonymity` →
-`ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM` →
-`Ownership` → `Controls`. `Demo` is a runnable toy instance, so it is the
-cheapest way in.
+**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `MultiUnlink` →
+`KEMAnonymity` → `ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` →
+`MLKEM` → `Ownership` → `Soundness` → `Controls`. `Demo` is a runnable toy
+instance, so it is the cheapest way in.
 
 The design essays live in [`docs/`](docs/): `announcement-model.md` (the
 announcement, `auxGen`, the decomposition, construction A, the controls),
@@ -41,7 +41,7 @@ instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM typ
 
 ## Module map
 
-Twelve content modules plus the axiom audit and the root.
+Fourteen content modules plus the axiom audit and the root.
 
 Algebraic core (no probability, no games):
 
@@ -68,6 +68,13 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   hidden bit picks the *recipient*, not the message — key privacy, not
   IND-CPA), with `unlinkAdvantage_eq_branchDistAdvantage` as the first hop.
   The adversary is a function, and every hidden-bit game is indexed by the bit.
+- **`MultiUnlink.lean`** — the `q`-challenge game `UnlinkExpMulti` against two
+  fixed recipients and its hybrid bound `unlinkAdvantageMulti_le_sum`
+  (`≤ ∑ k ∈ range q, unlinkAdvantage (hybridAdv …)`), hence
+  `unlinkAdvantageMulti_le_mul` (`≤ q · ε`): the loss is linear in the number
+  of announcements. Each hop is an `evalDist` equality
+  (`evalDist_announceList_append_cons`) over the general telescoping lemma
+  `boolDistAdvantage_le_sum_hybrids`, not a re-derivation.
 - **`KEMAnonymity.lean`** — `KEM` *is* VCVio's `KEMScheme ProbComp`; the KEM
   anonymity game (absent from VCVio, which stops at IND-CCA); `ofKEM`
   (announcement = ciphertext, unlinkability *equals* anonymity) and `ofKEMFull`
@@ -107,6 +114,12 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   *equality* of advantages (`spendForgeryAdvantage_eq_sis_advantage`), scored
   by exactly `SIS.matrixProblem`'s predicate
   (`augmentedSISProblem_isValid_eq_matrixProblem`); the ML-DSA instance.
+- **`Soundness.lean`** — detection soundness, i.e. the false-positive rate.
+  DKSAP's is *exactly* `1 / |F|` for every hash (`dksap_falsePositiveRate_eq`)
+  — the leak is the recipient's uniform spending scalar, not a hash collision.
+  For the KEM scheme, `falsePositiveRate_ofKEMFull_le` gives `ε + decapsRoR`
+  (a tag-collision bound plus a named real-or-random term, KEM IND-CPA again),
+  and `soundWithin_ofKEMFull_oneByteTag` is the ERC's `1/256`.
 
 Classical comparison and controls:
 
@@ -123,7 +136,7 @@ Classical comparison and controls:
   that drops the spending key is not complete.
 - **`Demo.lean`** — a runnable `ZMod 23` instance of DKSAP and its attack, with
   every `#eval` wrapped in `#guard_msgs`.
-- **`Axioms.lean`** — 46 build-checked `#print axioms` assertions.
+- **`Axioms.lean`** — 67 build-checked `#print axioms` assertions.
 
 What is *not* claimed: the computational assumptions at the bottom
 (KEM IND-CPA → MLWE, the SPR two-hop, the random-oracle step for the blinding
@@ -142,6 +155,9 @@ placeholders at the pinned commit and nothing here depends on them.
   both out of scope.
 - This package also builds **standalone** against the pinned dependency:
   full `lake build` green.
+- Bumping the pin is a reviewed act, not a `lake update`: the checklist, the
+  three upstream asks, and the list of what in this tree is bump-sensitive are
+  in [`docs/vcvio-pin.md`](docs/vcvio-pin.md).
 
 ## Build
 
@@ -160,7 +176,7 @@ and linked with `elan toolchain link`.)
 `lake build` *is* the check — there is nothing to run afterwards.
 
 - **Sorry-freedom and the axiom basis** are asserted by
-  `PqStealth/Axioms.lean`, which the root module imports. It carries 46
+  `PqStealth/Axioms.lean`, which the root module imports. It carries 67
   `#guard_msgs (whitespace := lax) in #print axioms …` blocks, one per headline
   theorem, freezing that theorem's exact axiom list (mostly
   `propext, Classical.choice, Quot.sound`; the pure-algebra facts need less).

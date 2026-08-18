@@ -16,10 +16,10 @@ Line references are to the current tree; VCVio references are relative to
 `lean/.lake/packages/VCVio/`.
 
 
-## Status (2026-08-17, branches `lean-improvements` then `lean-simplify`)
+## Status (2026-08-18, branches `lean-improvements`, `lean-simplify`, `lean-round2`)
 
-Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (46
-theorems), full `lake build` green (2777 jobs, no warnings). Names below are
+Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (67
+theorems), full `lake build` green (2779 jobs, no warnings). Names below are
 the post-refactor ones.
 
 Simplification refactor landed on `lean-simplify`: 13 modules (12 content
@@ -44,13 +44,19 @@ was added.
 | 8 | Done (a–c, d documented) — `IsShortPair`, honest `IsSigningKey`, `blinded_is_signing_key`; `[A | I | -t]` reshaping with `spendForgeryAdvantage_eq_sis_advantage` scored by exactly `SIS.matrixProblem`'s predicate; `spendForgeryAdvantageReal`; `honest_witness_relation` removed. Uniform-challenge gap (HNF absorption + MLWE pseudorandomness of `t`) documented. |
 | 10 | Done (outer layout concrete; inner packers still parameters) — `Invariants.lean` §3: `Bytes n = Vector UInt8 n`, `splitBytes`/`splitBytes_append`, `metaAddressEncode`/`Decode` at `Bytes (1 + (32 + (nt + nek)))`, `meta_address_roundtrips{,_5633}`, the D-012 `meta_address_zk_roundtrips{,_1217}`, and the length theorems `metaAddress_size_mldsa65_mlkem768 = 5633` / `metaAddressZk_size_mlkem768 = 1217` (`ek` length from VCVio's `MLKEM.Params.publicKeyBytes`). **Correction to the issue text:** `pkEncode` cannot be used — it packs the rounded `t1`, and `EncodedPK`/`EncodedTHat` are abstract `Type`s whose concrete instances are `ByteArray`; `mlkem768EncodingLaws` covers only ciphertext/message. So `packT`/`packEk` stay parameters with roundtrip hypotheses; gap written up in `docs/encodings.md`. |
 | 11 | Done (untested by nature) — `.github/workflows/lean.yml`. |
-| 12 | Done — `PqStealth/Axioms.lean`, 46 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
+| 12 | Done — `PqStealth/Axioms.lean`, 67 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
 | 13 | Done — `Controls.lean`: leaky scheme advantage `= 1 − Pr[key collision]` exactly, leaky KEM, dead KEM not complete, tag-ignoring scan complete-but-not-sound. |
+| 14 | Done except the doc-gen facet (deferred with #16's license headers) — `lakefile.toml` `[leanOptions]`: `autoImplicit = false`, `relaxedAutoImplicit = false`, `linter.missingDocs = true`. No binder needed fixing (the tree never relied on auto-bound implicits; checked with a probe declaration). Batteries `#lint in PqStealth` plus the non-default `docBlameThm`: **0 errors in 244 declarations, 16 linters**, after naming three anonymous `DecidableEq` instances in `MLKEM.lean` (`defsWithUnderscore`) and adding eleven missing docstrings. **Not adopted:** VCVio's `weak.linter.mathlibStandardSet` — its `style.commandStart` linter is structurally incompatible with the 3-line `#guard_msgs … in #print axioms` form (`docs/vcvio-pin.md`). |
 | 15 | Done — `Demo.lean` `#eval`s guarded; build is silent. |
-| 20 | Done — README rewritten around the 12-module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
+| 16 | Done except the license headers (deferred until the repo goes public). Every module has a `/-! … -/` docstring after the imports, in proved/assumed/docs-pointer form, with no change-log wording; the root carries the module map. |
+| 17 | Closed by the simplification refactor — `abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C` (`KEMAnonymity.lean:30`); both bridges deleted. |
+| 18 | Done — no bare `simp` left in `PqStealth/`: `dksap_perfectlyComplete`'s terminal `simp [...]` and the seven `simpa` sites in `Demo`/`Controls`/`Soundness` are `simp only` / `simpa only` with `simp?`-generated lists (16 names for the first, 1–3 for the rest). It is a smaller job than the issue text implies: the simplification refactor had already fixed the second example it cites (`meta_address_roundtrips`, `Invariants.lean`). **No `@[simp]` projection lemmas added:** unfolding `ofKEM`/`ofKEMFull` costs one name today and would cost three as projections, so the "shorter lists in ≥2 proofs" measure is not met. |
+| 19 | Closed by the simplification refactor — zero `omit [...] in` and zero `(F := F)` in the tree. |
+| 20 | Done — README rewritten around the module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
+| 21 | Done — `docs/vcvio-pin.md`: the pin table, the bump procedure (the axiom guard *is* the build), the two upstream files to diff, the three upstream asks (`DecidableEq` beside `mlkem768Encoding`, de-privatize `byteEncode_size`, a KEM-level `kem_ind_cpa_security`), and what in this tree is bump-sensitive. |
 
-Open: #7, #9, #14, #16, #17, #18, #19, #21, plus the two new
-follow-ups above (random-oracle model for the address hash; upstream VCVio
+Open: #7, #9, #16 (headers), plus the follow-ups above (random-oracle model
+for the address hash; the `n`-recipient unlinkability game; upstream VCVio
 `DecidableEq`/`byteEncode_size`/KEM-IND-CPA lemma).
 
 ---
