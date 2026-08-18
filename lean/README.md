@@ -11,8 +11,9 @@ every headline theorem depends only on `propext`, `Classical.choice`,
 by hand — see [Verifying](#verifying). Full `lake build`: green.
 
 **Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `MultiUnlink` →
-`MultiRecipient` → `KEMAnonymity` → `ConstructionA` → `SharedSecretHiding` →
-`AnonymityFromSPR` → `MLKEM` → `Ownership` → `Soundness` → `Controls`. `Demo` is a runnable toy
+`MultiRecipient` → `KEMAnonymity` → `ConstructionA` → `BlindingROM` →
+`SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM` → `Ownership` →
+`Soundness` → `Controls`. `Demo` is a runnable toy
 instance, so it is the cheapest way in.
 
 The design essays live in [`docs/`](docs/): `announcement-model.md` (the
@@ -41,7 +42,7 @@ instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM typ
 
 ## Module map
 
-Fifteen content modules plus the axiom audit and the root.
+Sixteen content modules plus the axiom audit and the root.
 
 Algebraic core (no probability, no games):
 
@@ -98,6 +99,14 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   `blindingProblem` with its reduction adversary, and `idealAux_indep_of_t`.
   Why the blinding term is *not* closed by MLWE alone (`rho` sits outside the
   mask) is in `docs/announcement-model.md`.
+- **`BlindingROM.lean`** — the missing ingredient, modelled: `hashAddr ∘ pack`
+  as VCVio's lazily sampled `randomOracle` over `unifSpec + (Bytes →ₒ Addr)`.
+  `run_hashAddrRO_empty` (from the empty cache the announced address is uniform
+  whatever was hashed — the step the mask cannot supply),
+  `blindGameRO_eq` (the two branches are the same computation from caches
+  differing at one point) and `blindingAdvantageRO_eq_zero_of_no_query`. The
+  identical-until-bad step and the `Pr[bad]` bound are stated as targets
+  (`BoundedByBadQuery`, `BadQueryBounded`), not proved.
 - **`SharedSecretHiding.lean`** — each hiding term proved equal to a
   real-or-random guessing bias and then to VCVio's
   `KEMScheme.IND_CPA_Advantage` of the explicit reduction adversary

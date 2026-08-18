@@ -268,8 +268,8 @@ with different seeds are genuinely different distributions for a general
   (take it to be the identity, and `pack rho _ = rho`) the address reveals
   which `rho` produced it. The scheme is fine — `keccak` is not the identity —
   but the missing ingredient is `hashAddr ∘ pack` as a random oracle, not more
-  proof effort. Closing this term therefore needs a ROM extension of the model,
-  and `unlinkAdvantage_scheme_le` should be read with that in mind. (The
+  proof effort. That extension is `BlindingROM.lean`, below;
+  `unlinkAdvantage_scheme_le` should be read with it in mind. (The
   non-vanishing is an argument, NOT machine-checked; a counterexample scheme
   exhibiting it belongs with the negative controls.)
 * **The reduction's game 0 is faithful only under `ExpandIsIdeal`.** In the
@@ -288,6 +288,80 @@ with different seeds are genuinely different distributions for a general
   another (`probOutput_bind_eq_tsum` + `tsum_comm`). `idealAux_indep_of_t` is
   proved in the form the second identification consumes; the plumbing is not
   done, so **no advantage inequality is claimed**.
+
+### The random-oracle model for the address hash
+
+`BlindingROM.lean` is the ROM extension the gap above asks for. The oracle is
+`hashAddr ∘ pack` as ONE function `Bytes → Addr` — the composite the argument
+needs to be random, and the composite the spec instantiates with `keccak256` —
+so the model is `OracleComp (unifSpec + (Bytes →ₒ Addr))` with VCVio's lazily
+sampled `OracleSpec.randomOracle` (`uniformSampleImpl.withCaching`) as the
+handler and uniform sampling passed through untouched (`romImpl`, mirroring
+VCVio's own `prfIdealQueryImpl`). The adversary lives in that monad too: it may
+query the address oracle itself, which is the whole point.
+
+The game (`blindTraceRO` / `blindGameRO`) is a STANDALONE abstraction of the
+branch comparison with the mask already idealized — that hop is the MLWE step of
+`ConstructionA`. It is deliberately not `auxKeyIndependence` restated: the KEM,
+the ciphertext and the tag derivation are dropped and `tg`, `rho`, `t` are free
+parameters. It asks the same question — with a uniform mask, does the address
+still say whose `rho` and whose `t` built it? — but nothing here identifies the
+two, and that identification is the first of the three open items below.
+
+**The load-bearing new fact.**
+
+```lean
+theorem run_hashAddrRO_empty (x : Bytes) (f : Addr → ROMComp Bytes Addr α) :
+    (simulateQ romImpl (hashAddrRO x >>= f)).run ∅ =
+      (do let a ← ($ᵗ Addr)
+          (simulateQ romImpl (f a)).run ((∅ : QueryCache _).cacheQuery x a))
+```
+
+Run from the empty cache the announced address is a UNIFORM `Addr` *whatever
+byte string was hashed*. The challenger's query is the first query of the game —
+key generation and encapsulation make none — so the cache genuinely is `∅`. This
+is the step the mask cannot supply: `idealAux_indep_of_t` has to share `rho`
+between the two sides precisely because `rho` enters through `pack`, outside the
+masked argument, and an arbitrary `hashAddr` may pass it straight through. Under
+the oracle it cannot: the output is uniform regardless of the input.
+
+**What follows immediately.** `blindGameRO_eq` says the two branches are the SAME
+computation, run from caches that differ at one point — `∅` extended at recipient
+`b`'s address point by the same uniform value. That is the identical-until-bad
+setup written out. Its degenerate case is proved:
+`blindingAdvantageRO_eq_zero_of_no_query` — an adversary that never consults the
+address oracle has advantage exactly `0`, with BOTH `rho` and `t` gone, which
+is strictly more than `idealAux_indep_of_t` gives.
+
+**Where this stops, precisely.** Three things are open. The first is not even
+stated in Lean; the other two are `def … : Prop` targets, not theorems:
+
+* **The identification.** `blindingAdvantageRO` is not connected to
+  `auxKeyIndependence (metaKem P Smp kem) (auxGen P) adv`. Doing so means
+  carrying the KEM, the ciphertext and the `viewTag`/`expandBlind` derivation
+  through the ROM monad and commuting the mask draw into place — the same bind
+  commutation `ConstructionA`'s gap list already names, plus `ExpandIsIdeal`.
+  Until then the ROM results are about the shape of the blinding term, not
+  about the term itself.
+* `BoundedByBadQuery` — identical-until-bad: the advantage is at most the
+  probability that the adversary queries the OTHER branch's address point
+  (`BadQuery`, stated on the instrumented trace so it is an event on the
+  output). Discharging it means instantiating VCVio's
+  `StateSeparating/IdenticalUntilBad.lean` at `romImpl`, whose handlers are
+  `σ × Bool`-shaped with an explicit bad flag; `romImpl` is not in that shape,
+  so it needs a bad-flagged variant of the handler and a proof that the two
+  agree while the flag is down. That is the piece not done.
+* `BadQueryBounded` — `Pr[bad] ≤ mlwe + q_H · β`: the mask is uniform only after
+  the MLWE hop, and each of the adversary's `q_H` queries then guesses a point
+  of min-entropy `log₂(1/β)`. Discharging it needs a query bound on the
+  adversary (`IsTotalQueryBound`) plus the counting lemma
+  `probEvent_cache_has_value_le` of VCVio's `Unpredictability.lean`, and the
+  min-entropy of `pack rho (power2Round (u + t))` in `u`, which is a property of
+  `pack`/`power2Round` this model does not have (both are uninterpreted).
+
+`mlweAdvOfBlindAdvRO` type-checks the reduction that the first of those two
+hops consumes: simulating the address oracle inside turns a ROM blinding
+adversary into an ordinary seeded-`blindingProblem` distinguisher.
 
 ## Multi-challenge unlinkability
 
