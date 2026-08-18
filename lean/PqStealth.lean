@@ -9,6 +9,7 @@ import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
 import PqStealth.Ownership
 import PqStealth.DKSAP
+import PqStealth.DKSAPOracle
 import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
