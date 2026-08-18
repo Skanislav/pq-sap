@@ -289,6 +289,101 @@ with different seeds are genuinely different distributions for a general
   proved in the form the second identification consumes; the plumbing is not
   done, so **no advantage inequality is claimed**.
 
+## Multi-challenge unlinkability
+
+`UnlinkExp` gives the adversary one challenge announcement. plan.md's
+deliverable is *unlinkability across payments*: the observer sees the whole
+chain, so it sees many announcements at once. `MultiUnlink.lean` closes the gap
+between the two by the standard hybrid argument.
+
+The `q`-challenge game keeps the two recipients and the single hidden bit, and
+hands the adversary all `q` announcements, all of them addressed to recipient
+`b`:
+
+```lean
+abbrev StealthScheme.UnlinkAdvMulti (MetaPub Announcement : Type) :=
+  MetaPub → MetaPub → List Announcement → ProbComp Bool
+
+def unlinkBranchMulti (q : ℕ) (b : Bool) (a : MetaPub × MetaPub) : ProbComp Bool := do
+  let cs ← S.announceList (List.replicate q (if b then a.2 else a.1))
+  advM a.1 a.2 cs
+```
+
+`announceList` samples one independent announcement per public meta-address in a
+*list of recipients* — not per index of a count — because that is exactly the
+degree of freedom the hybrids need. `length_of_mem_support_announceList` records
+that the adversary really does receive `q` announcements; the `List` encoding
+does not silently drop the count.
+
+**The bound.** With `hybridAdv i j` the single-challenge adversary that
+simulates `i` announcements to recipient 1 and `j` to recipient 0 itself and
+splices the challenge between them,
+
+```lean
+theorem unlinkAdvantageMulti_le_sum (q : ℕ) :
+    S.unlinkAdvantageMulti advM q ≤
+      ∑ k ∈ Finset.range q, S.unlinkAdvantage (S.hybridAdv advM k (q - k - 1))
+
+theorem unlinkAdvantageMulti_le_mul (q : ℕ) {ε : ℝ}
+    (h : ∀ i j, S.unlinkAdvantage (S.hybridAdv advM i j) ≤ ε) :
+    S.unlinkAdvantageMulti advM q ≤ q * ε
+```
+
+The sum is the honest statement; the `q · ε` form is the corollary one quotes.
+**The loss factor is `q`, the number of announcements the observer correlates**,
+and it is linear, not quadratic: the two recipients are fixed across the whole
+game, so only the announcements are hybridised. For the parameter write-up this
+means the single-challenge target has to be `ε ≤ 2⁻ᵏ / q` for a `k`-bit
+unlinkability claim over `q` observed payments — that inequality is algebra from
+the theorem; the observation window `q` is a parameter of the threat model, and
+the write-up should state the value it picks (taking the whole chain as the
+window costs `log₂ q` bits off the single-payment advantage).
+
+The composition with `unlinkAdvantage_ofKEMFull_le` is **on paper, not in Lean**:
+`MultiUnlink.lean` does not import `KEMAnonymity` and no theorem here mentions
+`ofKEMFull`. The composition is nevertheless legitimate, because
+`unlinkAdvantage_ofKEMFull_le` holds for *every* `UnlinkAdv` and can therefore be
+instantiated at each `hybridAdv k (q − k − 1)`, multiplying every term on its
+right (two shared-secret-hiding terms, `auxKeyIndependence`, anonymity) by the
+same `q`. Discharging that instantiation in Lean is a small follow-up.
+
+**Why the derived adversary is legitimate.** It has to produce the other `q − 1`
+announcements itself. That is free: adversaries are `ProbComp` computations and
+the scheme `S` is public, so `S.announce` is available to it. It needs no secret
+and makes no oracle query the game does not already allow.
+
+**The one place probability enters.** Hybrid `k` and hybrid `k+1` differ in the
+recipient of announcement number `k`. The derived adversary receives *its*
+challenge first and then simulates the rest, whereas the hybrid samples the
+announcements in list order; the two computations are therefore not equal in the
+free monad, only equal in distribution. `evalDist_announceList_append_cons`
+pulls the marked announcement to the front by one application of VCVio's
+`evalDist_bind_bind_swap` per element of the prefix, and
+`boolDistAdvantage_congr` transports the advantage along that `evalDist`
+equality. The definitions are shaped so that this is the *only* reordering in
+the argument: hybrid `k` IS `unlinkSetup >>= unlinkBranch (hybridAdv …) b` up to
+that single swap, with `k` and `k+1` the `b = false` and `b = true` cases of one
+lemma. Indexing the hybrid by the two segment lengths `(i, j)` rather than by
+`(q, k)` keeps natural subtraction out of the core proof; it appears only in the
+final telescope, where `k < q` comes from `Finset.mem_range`.
+
+`boolDistAdvantage_le_sum_hybrids` is the general telescoping step —
+`dist (H n) (H 0) ≤ ∑ k ∈ range n, dist (H (k+1)) (H k)` for any chain
+`H : ℕ → ProbComp Bool`, by induction on `n` over the triangle inequality. It is
+stated separately because it has nothing to do with stealth addresses.
+
+**Follow-up: `n` recipients.** The remaining generalisation publishes `n`
+meta-addresses and lets the adversary choose the challenge pair `(i₀, i₁)`. The
+expected statement is `Adv_{n,q} ≤ (n·(n−1)/2)·q·ε` — guess the pair, embed the
+two-recipient challenge there, generate the other `n − 2` keypairs honestly. It
+is deliberately *not* proved here: unlike the hybrid above it is not a chain of
+triangle inequalities but a conditioning argument
+(`Pr[win] = ∑_pairs Pr[the guess was right] · Pr[win | that pair]`), which needs
+real work in VCVio rather than falling out of the machinery in this file. Note
+that the `n` factor is an artefact of the guessing reduction, not of the scheme:
+for a left-or-right notion over independently generated meta-addresses the
+usual tighter route is a second hybrid over the recipients themselves.
+
 ## Controls: why the definitions have teeth
 
 `Controls.lean` pins one completeness claim (DKSAP) from below by proving a
@@ -346,7 +441,134 @@ load-bearing, and they fail in opposite directions:
 
 `FalsePositiveExp` is detection soundness's counterpart to `CorrectExp` — two
 independent recipients, an announcement addressed to the second, scanned with
-the first one's private state; `true` is a false positive. A quantitative bound
-on this probability for the real scan is separate work (it is the view-tag
-length argument); what is used here is only that a tag-ignoring scan makes it
-`1`.
+the first one's private state; `true` is a false positive. What the control uses
+is only that a tag-ignoring scan makes it `1`
+(`falsePositiveRate_ofKEMFullNoTag_eq_one` restates that in the vocabulary of
+the next section); the quantitative bounds for the real scans are below.
+
+## Detection soundness
+
+`Games` defines two words on top of `FalsePositiveExp`:
+
+* `falsePositiveRate S := (Pr[= true | S.FalsePositiveExp]).toReal` — `.toReal`
+  because every other number in this development is an `ℝ` advantage, and the
+  bounds below add the rate to distinguishing advantages;
+* `SoundWithin S ε := S.falsePositiveRate ≤ ε`.
+
+`Soundness` proves the two instances. They are not the same kind of statement,
+and the difference is the point.
+
+### DKSAP: exactly `1 / |F|`, and the reason is not the hash
+
+`dksap_falsePositiveRate_eq`: for **every** hash `h`, and given only that
+`x ↦ x • g` is injective,
+
+```
+falsePositiveRate (dksap g h) = 1 / |F|
+```
+
+An equality, not a bound. Unfolding, the stranger's scan fires exactly when
+
+```
+m1 + h (r • V1) = m0 + h (v0 • R)
+```
+
+where `(m0, v0)` is the scanner's key pair and `(m1, v1)` recipient 1's.
+Injectivity of `x ↦ x • g` turns the group equation into this scalar one, and
+recipient 1's spending scalar `m1` is uniform and independent of the other four
+draws — so for each value of `(m0, v0, v1, r)` exactly one `m1` out of `|F|`
+triggers, whatever `h` computes. The formal proof is the same sentence: move the
+`m1` draw innermost with `probOutput_bind_bind_swap`, read it off with
+`probOutput_uniformSample`, and collapse the never-failing prefix with
+`probOutput_bind_of_const`.
+
+This corrects the issue as it was originally filed (`improvements.md` #5 asked
+for "exact `0` false positives modulo hash collisions of `h`"). There is no
+hash-collision term and the rate is not `0`: the leak is the uniform spending
+scalar, and a collision of `h` is neither necessary nor sufficient for a false
+positive. At a 254-bit scalar field `1 / |F|` is of course negligible, which is
+why nobody noticed the mechanism was misdescribed.
+
+### The KEM scheme: a tag term plus a real-or-random term
+
+For `ofKEMFull` the scan fires when
+
+```
+auxGen (sharedSecret) pk1  =  auxGen (recipient 0's decapsulation of c) pk0
+```
+
+Two things have to be true for that to be rare. First, the tag must be hard to
+hit: `AuxCollisionFree auxGen ε` says that over a **uniform** secret `k`,
+`auxGen k pk` lands on any prescribed value with probability at most `ε`.
+Second, recipient 0's decapsulated key must actually look uniform to the
+announcement — and that is a KEM question, not a tag question. It is the same
+shape as `sharedSecretHiding` in the unlinkability chain, so it gets the same
+treatment: a named real-or-random term rather than an assumption swept into the
+statement.
+
+`falsePositiveIdeal` is `FalsePositiveExp` with recipient 0's decapsulated key
+replaced by a fresh `$ᵗ K` (the announcement is untouched — only the scanner's
+secret is idealized), and
+
+```
+decapsRoR kem auxGen := boolDistAdvantage FalsePositiveExp falsePositiveIdeal
+```
+
+Then `falsePositiveRate_ofKEMFull_le`:
+
+```
+SoundWithin (ofKEMFull kem auxGen) (ε + decapsRoR kem auxGen)
+```
+
+by the triangle inequality through `falsePositiveIdeal`, whose own probability
+is bounded by `ε` because at that point the verdict IS a tag collision against a
+uniform secret. `decapsRoR` is again a KEM IND-CPA question: a distinguisher
+that told the real decapsulated key from a fresh uniform one inside this
+experiment is a real-or-random distinguisher for the shared secret of a
+ciphertext the distinguisher did not create. The `0 ≤ ε` hypothesis is not
+decoration — with `PK` empty the collision hypothesis is vacuous and a negative
+`ε` would make the statement false.
+
+`decapsRoR_eq_zero_of_decaps_uniform` closes the loop from the ideal side: if
+`kem.decaps` returns a uniform key, the real and idealized experiments are the
+same computation and `decapsRoR = 0`, hence `SoundWithin ε` outright. That
+hypothesis is deliberately global and no perfectly correct KEM with `|K| ≥ 2`
+satisfies it — the lemma is a sanity check pinning `decapsRoR` as the *only*
+gap, not a security claim.
+
+### Where `1/256` comes from
+
+`taggedAux viewTag rest k pk = (viewTag k, rest k pk)` is the deployed shape:
+the announcement leads with a short tag derived from the shared secret alone,
+followed by whatever else the auxiliary data carries (the stealth address).
+`auxCollisionFree_taggedAux` says that if `viewTag` maps a uniform secret to a
+uniform tag, then
+
+```
+AuxCollisionFree (taggedAux viewTag rest) (1 / |T|)
+```
+
+The remainder can only help, so the tag alphabet is the whole bound — which is
+exactly the ERC's tag-length rationale. Chaining with the previous bound gives
+`soundWithin_ofKEMFull_taggedAux`, and at concrete alphabets
+`soundWithin_ofKEMFull_byteTag` (`T = Fin (2 ^ (8n))`, rate `2 ^ (-8n)` plus
+`decapsRoR`) and `soundWithin_ofKEMFull_oneByteTag`:
+
+```
+SoundWithin (ofKEMFull kem (taggedAux viewTag rest))
+  (1 / 256 + decapsRoR kem (taggedAux viewTag rest))
+```
+
+The uniformity of `viewTag` on a uniform key is a hypothesis. For the concrete
+ML-KEM shared-secret type it would be "the first byte of a uniform 32-byte
+string is a uniform byte", which VCVio's `Bytes` API does not currently expose
+as a projection lemma; stating it as a hypothesis keeps the theorem honest and
+costs the caller one `simp`.
+
+### What is NOT proved
+
+Nothing bounds `decapsRoR` for ML-KEM-768 — like `sharedSecretHiding`, it is
+left as a named IND-CPA term and inherits the same missing upstream lemma
+(`docs/spr-two-hop.md`). The soundness statements are also single-announcement:
+a scanner sweeping `n` announcements false-positives at most `n` times the rate
+by a union bound, which is not formalized here.

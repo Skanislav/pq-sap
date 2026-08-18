@@ -28,7 +28,9 @@ variable {R : Type} [CommRing R] {k l : ℕ}
 /-- A stealth public key viewed as an ownership statement: the public matrix `A`
 and the target `t`. -/
 structure OwnershipKey (R : Type) [CommRing R] (k l : ℕ) where
+  /-- The public matrix of the ownership relation. -/
   A : Matrix (Fin k) (Fin l) R
+  /-- The target vector: the stealth public key proper. -/
   t : Fin k → R
 
 section Search
@@ -122,12 +124,16 @@ def augmentedShort [DecidableEq R]
       fun j => z ((Fin.natAdd l j).castAdd 1)) &&
     decide (z (Fin.natAdd (l + k) 0) = 1)
 
+/-- Reading the ownership key back off the augmented matrix `[A | I | -t]`
+recovers it exactly. -/
 @[simp] theorem readKey_augmentedMatrix (key : OwnershipKey R k l) :
     readKey (augmentedMatrix key) = key := by
   obtain ⟨A, t⟩ := key
   simp only [readKey, augmentedMatrix, Matrix.of_apply, Fin.append_left,
     Fin.append_right, Matrix.cons_val_fin_one, neg_neg]
 
+/-- The augmented shortness test agrees with the original one on augmented
+witnesses: the appended marker coordinate `1` is not scored. -/
 @[simp] theorem augmentedShort_augmentedWitness [DecidableEq R]
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (w : (Fin l → R) × (Fin k → R)) :
@@ -278,7 +284,8 @@ theorem rq_one_ne_zero : (1 : Rq) ≠ (0 : Rq) := by
   simp only [↓reduceIte] at h0
   exact absurd h0 (by decide)
 
-instance : Nontrivial Rq := ⟨1, 0, rq_one_ne_zero⟩
+/-- `Rq` is nontrivial, from `rq_one_ne_zero`. -/
+instance instNontrivialRq : Nontrivial Rq := ⟨1, 0, rq_one_ne_zero⟩
 
 /-- The ML-DSA range check on an ownership witness: every coordinate of `s` and
 of `e` is `bound`-short in the centered infinity norm. This is the Boolean form

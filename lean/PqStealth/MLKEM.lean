@@ -12,13 +12,16 @@ namespace PqStealth
 
 Transports making the `ByteArray` equality visible through the opaque `def`. -/
 
-instance : DecidableEq mlkem768Encoding.EncodedTHat :=
+/-- Decidable equality on encoded `t̂`, through the `ByteArray` representation. -/
+instance instDecidableEqMlkem768EncodedTHat : DecidableEq mlkem768Encoding.EncodedTHat :=
   inferInstanceAs (DecidableEq ByteArray)
 
-instance : DecidableEq mlkem768Encoding.EncodedU :=
+/-- Decidable equality on the encoded ciphertext component `u`. -/
+instance instDecidableEqMlkem768EncodedU : DecidableEq mlkem768Encoding.EncodedU :=
   inferInstanceAs (DecidableEq ByteArray)
 
-instance : DecidableEq mlkem768Encoding.EncodedV :=
+/-- Decidable equality on the encoded ciphertext component `v`. -/
+instance instDecidableEqMlkem768EncodedV : DecidableEq mlkem768Encoding.EncodedV :=
   inferInstanceAs (DecidableEq ByteArray)
 
 /-! ## The concrete ciphertext type is infinite

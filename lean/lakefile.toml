@@ -1,6 +1,13 @@
 name = "PqStealth"
 defaultTargets = ["PqStealth"]
 
+# Auto-bound implicits turn a mistyped binder into a fresh universe-polymorphic
+# variable; VCVio disables them package-wide and so do we (issue #14).
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+linter.missingDocs = true
+
 [[lean_lib]]
 name = "PqStealth"
 

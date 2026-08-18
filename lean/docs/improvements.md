@@ -16,10 +16,10 @@ Line references are to the current tree; VCVio references are relative to
 `lean/.lake/packages/VCVio/`.
 
 
-## Status (2026-08-17, branches `lean-improvements` then `lean-simplify`)
+## Status (2026-08-18, branches `lean-improvements`, `lean-simplify`, `lean-round2`)
 
-Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (46
-theorems), full `lake build` green (2777 jobs, no warnings). Names below are
+Landed, all sorry-free and axiom-guarded in `PqStealth/Axioms.lean` (67
+theorems), full `lake build` green (2779 jobs, no warnings). Names below are
 the post-refactor ones.
 
 Simplification refactor landed on `lean-simplify`: 13 modules (12 content
@@ -38,16 +38,25 @@ was added.
 | 1 | Done — `ofKEMFull` scan recomputes the aux data (`MetaPriv = SK × PK`); correctness is VCVio's `KEMScheme.PerfectlyCorrect`; `perfectlyComplete_ofKEMFull`. |
 | 2 | Done — `MLKEM.lean`: `DecidableEq` instances, `mlkem768_unlinkAdvantage_le{,_full_decomposition,_le_indCpa}` with no instance hypotheses on ML-KEM types. Sharper than the issue text: `SampleableType (Ciphertext mlkem768 …)` is provably **uninhabited** (`ByteArray` is infinite), so the generic ML-KEM capstone now takes an explicit `sim`. Upstream asks for VCVio recorded in the module docstring. |
 | 3 | Done (model + sanity lemma + reduction adversary) — `ConstructionA.lean`; `auxKeyIndependence_eq_zero_of_pk_independent`, `stealthAddr_eq_blinded_pk`, seeded-MLWE `mlweAdvOfUnlinkAdv`, `idealAux_indep_of_t`. **Correction to the issue text:** the blinding term is not bounded by MLWE alone — `rho` sits outside the mask, so closing it needs the address hash as a random oracle (documented; new follow-up). |
+| 4 | Done (two recipients, `q` challenges) — `MultiUnlink.lean`: `UnlinkExpMulti`, `unlinkAdvantageMulti_le_sum` (`≤ ∑ k ∈ range q, unlinkAdvantage (hybridAdv k (q-k-1))`) and `unlinkAdvantageMulti_le_mul` (`≤ q * ε`), over the general `boolDistAdvantage_le_sum_hybrids`. **Loss factor `q`, linear** — the two recipients are fixed, so only the announcements are hybridised. The `n`-recipient game (adversary picks the pair, factor `n·(n−1)/2`) is documented as a follow-up in `announcement-model.md`: it is a conditioning argument, not a chain of triangle inequalities. |
+| 5 | Done — `Games.lean` `falsePositiveRate` / `SoundWithin`; `Soundness.lean`. **Correction to the issue text:** DKSAP's false-positive rate is *exactly* `1 / |F|` for **every** hash `h` (`dksap_falsePositiveRate_eq`) — it is neither `0` nor a hash-collision term; the leak is recipient 1's uniform spending scalar. For `ofKEMFull`, `falsePositiveRate_ofKEMFull_le` gives `ε + decapsRoR` with `ε` a tag-collision bound and `decapsRoR` a named real-or-random term (KEM IND-CPA again, unbounded here, exactly as `sharedSecretHiding` is); `soundWithin_ofKEMFull_oneByteTag` is the ERC's `1/256`. |
 | 6 | Done — `sharedSecretHiding_eq_indCpaAdvantage` (one theorem, `∀ b`), `unlinkAdvantage_ofKEMFull_le_indCpa`, `mlkem768_unlinkAdvantage_le_indCpa`. **Finding:** VCVio's `kpke_ind_cpa_security` / `kpke_delta_correct` / `ind_cca_security` are `sorry` at the pinned commit and concern K-PKE, so KEM-IND-CPA → MLWE stays paper-level; the missing lemma is stated in `MLKEM.lean` (elaborates as written). Stale prose claiming otherwise was scrubbed from the Lean files and README; `docs/DECISIONS.md` D-013 still says "→ MLWE [Lean bridge + VCVio]" and should be corrected. |
 | 8 | Done (a–c, d documented) — `IsShortPair`, honest `IsSigningKey`, `blinded_is_signing_key`; `[A | I | -t]` reshaping with `spendForgeryAdvantage_eq_sis_advantage` scored by exactly `SIS.matrixProblem`'s predicate; `spendForgeryAdvantageReal`; `honest_witness_relation` removed. Uniform-challenge gap (HNF absorption + MLWE pseudorandomness of `t`) documented. |
+| 10 | Done (outer layout concrete; inner packers still parameters) — `Invariants.lean` §3: `Bytes n = Vector UInt8 n`, `splitBytes`/`splitBytes_append`, `metaAddressEncode`/`Decode` at `Bytes (1 + (32 + (nt + nek)))`, `meta_address_roundtrips{,_5633}`, the D-012 `meta_address_zk_roundtrips{,_1217}`, and the length theorems `metaAddress_size_mldsa65_mlkem768 = 5633` / `metaAddressZk_size_mlkem768 = 1217` (`ek` length from VCVio's `MLKEM.Params.publicKeyBytes`). **Correction to the issue text:** `pkEncode` cannot be used — it packs the rounded `t1`, and `EncodedPK`/`EncodedTHat` are abstract `Type`s whose concrete instances are `ByteArray`; `mlkem768EncodingLaws` covers only ciphertext/message. So `packT`/`packEk` stay parameters with roundtrip hypotheses; gap written up in `docs/encodings.md`. |
 | 11 | Done (untested by nature) — `.github/workflows/lean.yml`. |
-| 12 | Done — `PqStealth/Axioms.lean`, 46 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
+| 12 | Done — `PqStealth/Axioms.lean`, 67 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
 | 13 | Done — `Controls.lean`: leaky scheme advantage `= 1 − Pr[key collision]` exactly, leaky KEM, dead KEM not complete, tag-ignoring scan complete-but-not-sound. |
+| 14 | Done except the doc-gen facet (deferred with #16's license headers) — `lakefile.toml` `[leanOptions]`: `autoImplicit = false`, `relaxedAutoImplicit = false`, `linter.missingDocs = true`. No binder needed fixing (the tree never relied on auto-bound implicits; checked with a probe declaration). Batteries `#lint in PqStealth` plus the non-default `docBlameThm`: **0 errors in 244 declarations, 16 linters**, after naming three anonymous `DecidableEq` instances in `MLKEM.lean` (`defsWithUnderscore`) and adding eleven missing docstrings. **Not adopted:** VCVio's `weak.linter.mathlibStandardSet` — its `style.commandStart` linter is structurally incompatible with the 3-line `#guard_msgs … in #print axioms` form (`docs/vcvio-pin.md`). |
 | 15 | Done — `Demo.lean` `#eval`s guarded; build is silent. |
-| 20 | Done — README rewritten around the 12-module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
+| 16 | Done except the license headers (deferred until the repo goes public). Every module has a `/-! … -/` docstring after the imports, in proved/assumed/docs-pointer form, with no change-log wording; the root carries the module map. |
+| 17 | Closed by the simplification refactor — `abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C` (`KEMAnonymity.lean:30`); both bridges deleted. |
+| 18 | Done — no bare `simp` left in `PqStealth/`: `dksap_perfectlyComplete`'s terminal `simp [...]` and the seven `simpa` sites in `Demo`/`Controls`/`Soundness` are `simp only` / `simpa only` with `simp?`-generated lists (16 names for the first, 1–3 for the rest). It is a smaller job than the issue text implies: the simplification refactor had already fixed the second example it cites (`meta_address_roundtrips`, `Invariants.lean`). **No `@[simp]` projection lemmas added:** unfolding `ofKEM`/`ofKEMFull` costs one name today and would cost three as projections, so the "shorter lists in ≥2 proofs" measure is not met. |
+| 19 | Closed by the simplification refactor — zero `omit [...] in` and zero `(F := F)` in the tree. |
+| 20 | Done — README rewritten around the module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
+| 21 | Done — `docs/vcvio-pin.md`: the pin table, the bump procedure (the axiom guard *is* the build), the two upstream files to diff, the three upstream asks (`DecidableEq` beside `mlkem768Encoding`, de-privatize `byteEncode_size`, a KEM-level `kem_ind_cpa_security`), and what in this tree is bump-sensitive. |
 
-Open: #4, #5, #7, #9, #10, #14, #16, #17, #18, #19, #21, plus the two new
-follow-ups above (random-oracle model for the address hash; upstream VCVio
+Open: #7, #9, #16 (headers), plus the follow-ups above (random-oracle model
+for the address hash; the `n`-recipient unlinkability game; upstream VCVio
 `DecidableEq`/`byteEncode_size`/KEM-IND-CPA lemma).
 
 ---
@@ -605,7 +614,7 @@ upstream announces KEM anonymity.
    "documented" arrows into Lean ones cheaply.
 4. #3 construction-A bridge (biggest conceptual gain: the algebra finally
    feeds the games).
-5. #7, #8, #4, #5 — the remaining theorem work, in the order the security
+5. #7, #8, #5 — the remaining theorem work, in the order the security
    write-up needs them.
 6. Cleanup batch #14, #16–#20 as a single PR when convenient.
 

@@ -21,7 +21,8 @@ open PqStealth
 
 /-! ## A tiny field and a generator -/
 
-instance : Fact (Nat.Prime 23) := ⟨by norm_num⟩
+/-- `23` is prime, so `ZMod 23` is a field. -/
+instance instFactPrime23 : Fact (Nat.Prime 23) := ⟨by norm_num⟩
 
 /-- Scalars and group elements both live in `ZMod 23`, viewed as a module over
 itself: `x • g` is ordinary multiplication. -/
@@ -36,7 +37,7 @@ def hash (x : F) : F := 7 * x + 3
 
 /-- Nondegeneracy of the generator, the hypothesis key recovery needs. -/
 theorem gen_injective : Function.Injective (fun x : F => x • gen) := by
-  simpa [smul_eq_mul] using mul_left_injective₀ (b := gen) (by decide)
+  simpa only [smul_eq_mul] using mul_left_injective₀ (b := gen) (by decide)
 
 /-! ## One recipient, one payment -/
 
