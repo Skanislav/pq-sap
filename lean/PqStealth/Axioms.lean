@@ -2,6 +2,7 @@ import PqStealth.Blinding
 import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
+import PqStealth.MultiUnlink
 import PqStealth.ConstructionA
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
@@ -198,3 +199,23 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one
+
+/-! ## Multi-challenge unlinkability (`MultiUnlink`) -/
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_eq_branchDistAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_eq_branchDistAdvantage
+
+/-- info: 'ProbComp.boolDistAdvantage_le_sum_hybrids' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms ProbComp.boolDistAdvantage_le_sum_hybrids
+
+/-- info: 'PqStealth.StealthScheme.evalDist_announceList_append_cons' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_announceList_append_cons
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantage_hybridAdv_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantage_hybridAdv_eq
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_le_sum
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_le_mul
