@@ -10,10 +10,10 @@ every headline theorem depends only on `propext`, `Classical.choice`,
 `Quot.sound` (or fewer), and that is asserted by the build rather than checked
 by hand — see [Verifying](#verifying). Full `lake build`: green.
 
-**Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `MultiUnlink` →
-`MultiRecipient` → `KEMAnonymity` → `ConstructionA` → `BlindingROM` →
-`SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM` → `Ownership` →
-`Soundness` → `Controls`. `Demo` is a runnable toy
+**Reading order:** `Demo` → `DKSAP` → `DKSAPOracle` → `Blinding` → `Games` →
+`MultiUnlink` → `MultiRecipient` → `KEMAnonymity` → `ConstructionA` →
+`BlindingROM` → `SharedSecretHiding` → `AnonymityFromSPR` → `MLKEM` →
+`SPRTwoHop` → `Ownership` → `Soundness` → `Controls`. `Demo` is a runnable toy
 instance, so it is the cheapest way in.
 
 The design essays live in [`docs/`](docs/): `announcement-model.md` (the
@@ -42,7 +42,7 @@ instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM typ
 
 ## Module map
 
-Sixteen content modules plus the axiom audit and the root.
+Eighteen content modules plus the axiom audit and the root.
 
 Algebraic core (no probability, no games):
 
@@ -124,6 +124,13 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   and `mlkem768_unlinkAdvantage_le`, `…_le_full_decomposition`,
   `…_le_indCpa` with no instance hypotheses on the ML-KEM types. The exact
   missing upstream lemma (`MLKEM.kem_ind_cpa_security`) is recorded verbatim.
+- **`SPRTwoHop.lean`** — the SPR terms decomposed for ML-KEM-768: two
+  seeded decision-MLWE problems (key hop `t = A·s+e` vs uniform; ciphertext
+  hop over `[Âᵀ | t̂ᵀ]`), genuine reduction adversaries, **both hop
+  identities proved**, and `mlkem768_sprAdv_le_two_hop_decomposition`:
+  `sprAdv ≤ primitiveIdealization + MLWE + MLWE + simulatorGap`, the two
+  residual terms named and unbounded (ROM/PRF derandomisation of the coins;
+  encoding regularity). Implicit rejection provably never enters.
 - **`Ownership.lean`** — the spend side: forging an ownership witness for
   `A·s + e = t` as VCVio's `SIS.Problem`, with `honest_witness_valid`; the
   `[A | I | -t]` reshaping into VCVio's homogeneous matrix-SIS with an
@@ -144,6 +151,13 @@ Classical comparison and controls:
   (`dksap_key_recovery` — key recovery, hence universal forgery), and its
   classical unlinkability bounded by two hashed-Diffie–Hellman terms, the
   idealized middle game contributing exactly zero.
+- **`DKSAPOracle.lean`** — the attack with a real discrete-log oracle:
+  `IsTotalQueryBound … 2` for any number of announcements (and not 1), and
+  key recovery for every announcement under simulation; the random-oracle
+  model of the hash: the idealized RO game is perfectly unlinkable with the
+  adversary holding the oracle, the real game equals the ideal game against a
+  cache programmed at the DH point, the CDH reduction adversary type-checks;
+  the lazy-RO switching lemma to `Pr[bad]` is the documented gap.
 - **`Controls.lean`** — a recipient-leaking scheme has the maximal
   `unlinkAdvantage` (`1 − keyCollisionProb`, the true ceiling of the
   two-recipient game), and likewise a KEM whose ciphertext is the public key
@@ -152,7 +166,7 @@ Classical comparison and controls:
   that drops the spending key is not complete.
 - **`Demo.lean`** — a runnable `ZMod 23` instance of DKSAP and its attack, with
   every `#eval` wrapped in `#guard_msgs`.
-- **`Axioms.lean`** — 67 build-checked `#print axioms` assertions.
+- **`Axioms.lean`** — 95 build-checked `#print axioms` assertions.
 
 What is *not* claimed: the computational assumptions at the bottom
 (KEM IND-CPA → MLWE, the SPR two-hop, the random-oracle step for the blinding
@@ -192,7 +206,7 @@ and linked with `elan toolchain link`.)
 `lake build` *is* the check — there is nothing to run afterwards.
 
 - **Sorry-freedom and the axiom basis** are asserted by
-  `PqStealth/Axioms.lean`, which the root module imports. It carries 67
+  `PqStealth/Axioms.lean`, which the root module imports. It carries 95
   `#guard_msgs (whitespace := lax) in #print axioms …` blocks, one per headline
   theorem, freezing that theorem's exact axiom list (mostly
   `propext, Classical.choice, Quot.sound`; the pure-algebra facts need less).
