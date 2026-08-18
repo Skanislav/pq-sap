@@ -3,6 +3,7 @@ import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
 import PqStealth.MultiUnlink
+import PqStealth.MultiRecipient
 import PqStealth.ConstructionA
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
@@ -267,3 +268,26 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one
+
+/-! ## `n`-recipient unlinkability (`MultiRecipient`) -/
+
+/-- info: 'PqStealth.StealthScheme.evalDist_pubKeysN_update' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_pubKeysN_update
+
+/-- info: 'PqStealth.StealthScheme.evalDist_pubKeysN_embedPair' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_pubKeysN_embedPair
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_eq_branchDistAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_eq_branchDistAdvantage
+
+/-- info: 'PqStealth.StealthScheme.evalDist_unlinkBranch_pairGuessAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_unlinkBranch_pairGuessAdv
+
+/-- info: 'PqStealth.StealthScheme.sum_probOutput_unlinkBranchNAt' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.sum_probOutput_unlinkBranchNAt
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_le_sum
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_le_mul

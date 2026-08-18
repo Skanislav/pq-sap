@@ -372,17 +372,97 @@ final telescope, where `k < q` comes from `Finset.mem_range`.
 `H : ℕ → ProbComp Bool`, by induction on `n` over the triangle inequality. It is
 stated separately because it has nothing to do with stealth addresses.
 
-**Follow-up: `n` recipients.** The remaining generalisation publishes `n`
-meta-addresses and lets the adversary choose the challenge pair `(i₀, i₁)`. The
-expected statement is `Adv_{n,q} ≤ (n·(n−1)/2)·q·ε` — guess the pair, embed the
-two-recipient challenge there, generate the other `n − 2` keypairs honestly. It
-is deliberately *not* proved here: unlike the hybrid above it is not a chain of
-triangle inequalities but a conditioning argument
-(`Pr[win] = ∑_pairs Pr[the guess was right] · Pr[win | that pair]`), which needs
-real work in VCVio rather than falling out of the machinery in this file. Note
-that the `n` factor is an artefact of the guessing reduction, not of the scheme:
-for a left-or-right notion over independently generated meta-addresses the
-usual tighter route is a second hybrid over the recipients themselves.
+**`n` recipients** is the orthogonal generalisation and lives in
+`MultiRecipient.lean`; see the next section. It composes with the hybrid above
+on paper the same way `unlinkAdvantage_ofKEMFull_le` does — the two-recipient
+statement it reduces to holds for every `UnlinkAdv`, `hybridAdv` included —
+giving `Adv_{n,q} ≤ n·(n−1)·q·ε`; that composition is not in Lean.
+
+## `n`-recipient unlinkability
+
+`MultiRecipient.lean` publishes `n` independently generated meta-addresses and
+lets the adversary NAME the challenge pair after seeing all of them. The
+adversary is two functions rather than one, because naming the pair and guessing
+the bit happen at different points of the game:
+
+```lean
+abbrev UnlinkChooseN (MetaPub : Type) (n : ℕ) :=
+  (Fin n → MetaPub) → ProbComp (Fin n × Fin n)
+
+abbrev UnlinkGuessN (MetaPub Announcement : Type) (n : ℕ) :=
+  (Fin n → MetaPub) → Fin n × Fin n → Announcement → ProbComp Bool
+
+def unlinkBranchN (b : Bool) (pks : Fin n → MetaPub) : ProbComp Bool := do
+  let i ← pick pks
+  let c ← S.announce (pks (if b then i.2 else i.1))
+  guess pks i c
+```
+
+Letting the game sample the pair instead would be a strictly weaker notion with
+no loss factor at all (the reduction would simply sample the same pair), which
+is why the adversary chooses.
+
+**The bound.** `pairGuessAdv j` is the two-recipient adversary that guesses the
+pair `j`: it splices the two challenge meta-addresses into slots `j`, generates
+the other `n − 2` itself, runs `pick`, and forwards `guess`'s verdict only when
+`pick` named exactly `j`.
+
+```lean
+theorem unlinkAdvantageN_le_sum (hkg) (hann) (hpick) :
+    S.unlinkAdvantageN pick guess ≤
+      ∑ j ∈ Finset.univ.offDiag, S.unlinkAdvantage (S.pairGuessAdv pick guess j)
+
+theorem unlinkAdvantageN_le_mul (hkg) (hann) (hpick) (h : ∀ j, … ≤ ε) :
+    S.unlinkAdvantageN pick guess ≤ (n * (n - 1) : ℕ) * ε
+```
+
+**The sum, not a conditioning argument.** Summing over ordered pairs rather than
+guessing one uniformly is what makes this provable with the machinery already in
+the tree. Gating the verdict on `pick = j` makes the gated games *disjoint*, so
+their `Pr[= true]` values add up to the ungated game's
+(`sum_probOutput_unlinkBranchNAt`), and `|∑ xⱼ| ≤ ∑ |xⱼ|` finishes it. There is no
+conditional probability anywhere, and no uniform draw over pairs. The loss
+factor `n·(n−1)` — the number of ordered pairs of distinct indices,
+`Finset.univ.offDiag`, whose cardinality Mathlib gives as `n·n − n` — is an
+artefact of the guessing reduction, not of the scheme.
+
+**The one genuinely new fact: exchangeability.** The reduction has to hand the
+adversary a vector of `n` meta-addresses two of whose slots are the challenger's
+keys. `evalDist_pubKeysN_embedPair` says that is legitimate:
+
+```lean
+𝒟[do let a ← S.unlinkSetup
+     let f ← S.pubKeysN n
+     k (embedPair j f a)] = 𝒟[S.pubKeysN n >>= k]
+```
+
+It is proved from the one-slot version `evalDist_pubKeysN_update` by applying it
+twice, and that one is an induction on `n` over `Fin.cons`: at slot `0` the
+displaced draw is discarded and the fresh one takes its place (VCVio's
+`evalDist_bind_const_neverFails` and `evalDist_bind_bind_swap`), at slot `i+1`
+the induction hypothesis applies under the leading draw. Nothing about `Fin n`
+permutations is needed — `Function.update` plus `Fin.cons_update` is enough.
+
+**The three hypotheses, and why they are explicit.**
+
+* `hkg : Pr[⊥ | S.keygen] = 0` and `hann : ∀ pk, Pr[⊥ | S.announce pk] = 0`.
+  `ProbComp` is a *sub*probability monad, so a draw whose value the rest of the
+  computation ignores can only be discarded when it carries no failure mass.
+  `keygen`'s totality is what makes exchangeability true; `announce`'s is what
+  makes the challenge announcement droppable on a wrong guess. Both hold for
+  every concrete instance in this tree, but `StealthScheme` does not require
+  them, so they are hypotheses rather than silent assumptions.
+* `hpick : ∀ pks, ∀ i ∈ support (pick pks), i.1 ≠ i.2` — the adversary must name
+  two DISTINCT recipients. Without it the sum would have to run over the
+  diagonal too, where the reduction cannot embed both challenge keys (the second
+  overwrites the first), and the gated games would no longer add up. Naming the
+  same recipient twice is a degenerate challenge in any case: both branches of
+  the game are then the same computation.
+
+**What is NOT proved.** The composition with `MultiUnlink`'s `q`-challenge
+hybrid, and the composition with `unlinkAdvantage_ofKEMFull_le` — both are
+instantiations of theorems that hold for every adversary, both are legitimate on
+paper, neither is discharged in Lean.
 
 ## Controls: why the definitions have teeth
 

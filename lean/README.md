@@ -11,8 +11,8 @@ every headline theorem depends only on `propext`, `Classical.choice`,
 by hand — see [Verifying](#verifying). Full `lake build`: green.
 
 **Reading order:** `Demo` → `DKSAP` → `Blinding` → `Games` → `MultiUnlink` →
-`KEMAnonymity` → `ConstructionA` → `SharedSecretHiding` → `AnonymityFromSPR` →
-`MLKEM` → `Ownership` → `Soundness` → `Controls`. `Demo` is a runnable toy
+`MultiRecipient` → `KEMAnonymity` → `ConstructionA` → `SharedSecretHiding` →
+`AnonymityFromSPR` → `MLKEM` → `Ownership` → `Soundness` → `Controls`. `Demo` is a runnable toy
 instance, so it is the cheapest way in.
 
 The design essays live in [`docs/`](docs/): `announcement-model.md` (the
@@ -41,7 +41,7 @@ instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM typ
 
 ## Module map
 
-Fourteen content modules plus the axiom audit and the root.
+Fifteen content modules plus the axiom audit and the root.
 
 Algebraic core (no probability, no games):
 
@@ -75,6 +75,13 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   of announcements. Each hop is an `evalDist` equality
   (`evalDist_announceList_append_cons`) over the general telescoping lemma
   `boolDistAdvantage_le_sum_hybrids`, not a re-derivation.
+- **`MultiRecipient.lean`** — the `n`-recipient game `UnlinkExpN`: `n`
+  independently generated meta-addresses, the adversary NAMES the challenge
+  pair. `unlinkAdvantageN_le_sum` (`≤ ∑ over ordered pairs of distinct indices,
+  unlinkAdvantage (pairGuessAdv …)`), hence `unlinkAdvantageN_le_mul`
+  (`≤ n·(n−1)·ε`). The one new fact is exchangeability of the `n` independent
+  key generations (`evalDist_pubKeysN_embedPair`); the loss factor is a sum over
+  disjoint gated games, not a conditioning argument.
 - **`KEMAnonymity.lean`** — `KEM` *is* VCVio's `KEMScheme ProbComp`; the KEM
   anonymity game (absent from VCVio, which stops at IND-CCA); `ofKEM`
   (announcement = ciphertext, unlinkability *equals* anonymity) and `ofKEMFull`
