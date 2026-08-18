@@ -10,6 +10,7 @@ import PqStealth.MLKEM
 import PqStealth.SPRTwoHop
 import PqStealth.Ownership
 import PqStealth.DKSAP
+import PqStealth.DKSAPOracle
 import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
@@ -131,6 +132,34 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.dksap_unlinkAdvantage_le_hashedDH' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.dksap_unlinkAdvantage_le_hashedDH
+
+/-! ## DKSAP with a discrete-log oracle (`DKSAPOracle`) -/
+
+/-- info: 'PqStealth.dlogAttack_isTotalQueryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dlogAttack_isTotalQueryBound
+
+/-- info: 'PqStealth.dlogAttack_not_isTotalQueryBound_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dlogAttack_not_isTotalQueryBound_one
+
+/-- info: 'PqStealth.dksapAnnounce_mem_announce_support' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksapAnnounce_mem_announce_support
+
+/-- info: 'PqStealth.dlogAttack_key_recovery' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dlogAttack_key_recovery
+
+/-- info: 'PqStealth.dlogAttack_forall_key_recovery' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dlogAttack_forall_key_recovery
+
+/-! ## DKSAP in the random-oracle model (`DKSAPOracle`) -/
+
+/-- info: 'PqStealth.dksapROIdeal_boolDistAdvantage_eq_zero' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksapROIdeal_boolDistAdvantage_eq_zero
+
+/-- info: 'PqStealth.dksap_unlinkAdvantageRO_le_hashedDHRO' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksap_unlinkAdvantageRO_le_hashedDHRO
+
+/-- info: 'PqStealth.dksapRORun_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.dksapRORun_eq
 
 /-! ## Negative control (`Controls`) -/
 
