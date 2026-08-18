@@ -40,13 +40,14 @@ was added.
 | 3 | Done (model + sanity lemma + reduction adversary) — `ConstructionA.lean`; `auxKeyIndependence_eq_zero_of_pk_independent`, `stealthAddr_eq_blinded_pk`, seeded-MLWE `mlweAdvOfUnlinkAdv`, `idealAux_indep_of_t`. **Correction to the issue text:** the blinding term is not bounded by MLWE alone — `rho` sits outside the mask, so closing it needs the address hash as a random oracle (documented; new follow-up). |
 | 6 | Done — `sharedSecretHiding_eq_indCpaAdvantage` (one theorem, `∀ b`), `unlinkAdvantage_ofKEMFull_le_indCpa`, `mlkem768_unlinkAdvantage_le_indCpa`. **Finding:** VCVio's `kpke_ind_cpa_security` / `kpke_delta_correct` / `ind_cca_security` are `sorry` at the pinned commit and concern K-PKE, so KEM-IND-CPA → MLWE stays paper-level; the missing lemma is stated in `MLKEM.lean` (elaborates as written). Stale prose claiming otherwise was scrubbed from the Lean files and README; `docs/DECISIONS.md` D-013 still says "→ MLWE [Lean bridge + VCVio]" and should be corrected. |
 | 8 | Done (a–c, d documented) — `IsShortPair`, honest `IsSigningKey`, `blinded_is_signing_key`; `[A | I | -t]` reshaping with `spendForgeryAdvantage_eq_sis_advantage` scored by exactly `SIS.matrixProblem`'s predicate; `spendForgeryAdvantageReal`; `honest_witness_relation` removed. Uniform-challenge gap (HNF absorption + MLWE pseudorandomness of `t`) documented. |
+| 10 | Done (outer layout concrete; inner packers still parameters) — `Invariants.lean` §3: `Bytes n = Vector UInt8 n`, `splitBytes`/`splitBytes_append`, `metaAddressEncode`/`Decode` at `Bytes (1 + (32 + (nt + nek)))`, `meta_address_roundtrips{,_5633}`, the D-012 `meta_address_zk_roundtrips{,_1217}`, and the length theorems `metaAddress_size_mldsa65_mlkem768 = 5633` / `metaAddressZk_size_mlkem768 = 1217` (`ek` length from VCVio's `MLKEM.Params.publicKeyBytes`). **Correction to the issue text:** `pkEncode` cannot be used — it packs the rounded `t1`, and `EncodedPK`/`EncodedTHat` are abstract `Type`s whose concrete instances are `ByteArray`; `mlkem768EncodingLaws` covers only ciphertext/message. So `packT`/`packEk` stay parameters with roundtrip hypotheses; gap written up in `docs/encodings.md`. |
 | 11 | Done (untested by nature) — `.github/workflows/lean.yml`. |
 | 12 | Done — `PqStealth/Axioms.lean`, 46 `#guard_msgs (whitespace := lax) in #print axioms` blocks; wrong list ⇒ build error (verified). |
 | 13 | Done — `Controls.lean`: leaky scheme advantage `= 1 − Pr[key collision]` exactly, leaky KEM, dead KEM not complete, tag-ignoring scan complete-but-not-sound. |
 | 15 | Done — `Demo.lean` `#eval`s guarded; build is silent. |
 | 20 | Done — README rewritten around the 12-module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
 
-Open: #4, #5, #7, #9, #10, #14, #16, #17, #18, #19, #21, plus the two new
+Open: #4, #5, #7, #9, #14, #16, #17, #18, #19, #21, plus the two new
 follow-ups above (random-oracle model for the address hash; upstream VCVio
 `DecidableEq`/`byteEncode_size`/KEM-IND-CPA lemma).
 
