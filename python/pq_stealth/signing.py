@@ -21,9 +21,9 @@ ML-DSA verifiers).
 import hashlib
 import os
 
-from .params import ParamSet
-from .meta import MetaSecret
 from .blinding import derive_blinding
+from .meta import MetaSecret
+from .params import ParamSet
 
 POP_CTX = b"pq-stealth/pop/v0"
 

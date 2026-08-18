@@ -27,8 +27,12 @@ import pathlib
 from coincurve import PublicKey
 
 from pq_stealth.classical import (
-    gen_meta_address, send, check_announcement, derive_stealth_privkey,
-    eth_address, DEFAULT,
+    DEFAULT,
+    check_announcement,
+    derive_stealth_privkey,
+    eth_address,
+    gen_meta_address,
+    send,
 )
 
 # Fixed inputs. Distinct from the conformance-vector seeds so the two
@@ -71,7 +75,8 @@ def build() -> dict:
     sig_eth = sig_c[:64] + bytes([sig_c[64] + 27])
 
     return {
-        "profile": "secp256k1 + ML-KEM-768 (classical spend, ERC-7913 20-byte base case)",
+        "profile": "secp256k1 + ML-KEM-768 "
+                   "(classical spend, ERC-7913 20-byte base case)",
         "kem": "ML-KEM-768",
         "kem_ct": hx(ann.ephemeral_pub_key),
         "view_tag": hx(ann.view_tag),

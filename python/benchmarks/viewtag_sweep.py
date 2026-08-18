@@ -26,7 +26,7 @@ import hashlib
 import json
 import time
 
-from pq_stealth import gen_meta_address, derive_stealth_pk, DEFAULT
+from pq_stealth import DEFAULT, derive_stealth_pk, gen_meta_address
 
 
 def tag_of(ss: bytes, b: int) -> bytes:

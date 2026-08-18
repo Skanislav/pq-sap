@@ -31,7 +31,6 @@ Usage: eip8304_scan_poc.py [--blocks 256] [--logs-per-block 40] [--json out]
 import argparse
 import hashlib
 import json
-import os
 import random
 import time
 
@@ -41,7 +40,9 @@ ANN_TOPIC0 = bytes.fromhex(
     "5f0eab8057630ba7676c49b4f21a0231414e79474595be8e4c432fbf6bf0f4e7")
 ANNOUNCEMENT_BYTES = 1088 + 20 + 1  # ciphertext + stealth addr + view tag
 
-sha = lambda b: hashlib.sha256(b).digest()
+
+def sha(b):
+    return hashlib.sha256(b).digest()
 
 
 # --------------------------------------------------------------------------
@@ -165,7 +166,7 @@ def main():
     args = ap.parse_args()
     rng = random.Random(5567)
 
-    entries, ann_pos = build_table(args.blocks, args.logs_per_block,
+    entries, _ann_pos = build_table(args.blocks, args.logs_per_block,
                                    args.announcements, rng)
     hashes = [sha(e) for e in entries]
     root, tree = list_root(hashes)
@@ -205,7 +206,7 @@ def main():
           f"{matches} announcements  (root {root.hex()[:16]}...)")
     print(f"scan proof: {len(proof)} sibling hashes + {len(idxs)} entries "
           f"= {proof_bytes:,} B, verifies in {verify_ms:.2f} ms")
-    print(f"completeness: proven (sorted-range boundaries checked)")
+    print("completeness: proven (sorted-range boundaries checked)")
     print(f"receipt bandwidth: {receipts:,} B "
           f"({matches} x {ANNOUNCEMENT_BYTES} B announcements)")
     print(f"  if view tags were index rows: {receipts_tagged:,} B "

@@ -7,12 +7,11 @@ secp256k1 spending secret that is the standard viewing/spending separation.
 
 from dataclasses import dataclass
 
-from .meta import MetaPublic
-from .blinding import derive_stealth_pubkey
-from .encoding import eth_address
-
 # the announcement rail is shared with the ML-DSA scheme
 from ..sender import Announcement, compute_view_tag
+from .blinding import derive_stealth_pubkey
+from .encoding import eth_address
+from .meta import MetaPublic
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,6 @@
 from dataclasses import replace
 
-from pq_stealth import gen_meta_address, check_announcement, Announcement, DEFAULT
+from pq_stealth import DEFAULT, check_announcement, gen_meta_address
 
 
 def test_wrong_view_tag_rejected(recipient, announcement):

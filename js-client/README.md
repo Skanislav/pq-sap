@@ -34,11 +34,48 @@ npm run e2e             # spawns anvil, deploys the ERC-5564 announcer,
 npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
                         # through the vendored ZKNOX verifier + an
                         # OpenZeppelin SignerERC7913 account
+npm run e2e:fork        # Sepolia-fork rehearsals (announce/verify + spend);
+                        # replays test/state/*.rpc.json offline if present,
+                        # otherwise records it (needs a Sepolia RPC)
+npm run e2e:fork:record # force a fresh recording
 ```
 
 The conformance test asserts that the JS-derived stealth public key is
 byte-identical to the Python reference, and verifies the vectors'
 possession proof with noble's stock ML-DSA-65 verifier.
+
+## Reproducible fork state
+
+The Sepolia-fork e2e tests (`test/e2e-sepolia-fork*.test.ts`,
+`test/e2e-fork-pq-only.test.ts`) run anvil behind
+`scripts/rpc-proxy.mjs`, which supports **record/replay** at the RPC
+boundary (`test/util/anvil.ts` wires it up):
+
+- **record** (first run, or `FORK_RECORD=1`): anvil forks the upstream
+  pinned at a block (`--fork-block-number`, latest−5 at record time;
+  `SEPOLIA_FORK_BLOCK` overrides) and every upstream response is saved to
+  `test/state/<name>.rpc.json`, keyed by `(method, params)`. Upstream
+  defaults to `ethereum-sepolia-rpc.publicnode.com`
+  (`SEPOLIA_RPC_URL` overrides).
+- **replay** (cache file exists): the proxy serves *only* from the cache —
+  no network, no RPC quota, deterministic to the gas unit, ~17× faster.
+  A cache miss (test changed, anvil version changed the fetch pattern)
+  fails loudly with the missing key; re-record then.
+
+The cache files are a few hundred KB of public Sepolia contract state and
+are meant to be committed: anyone can rerun the fork rehearsals offline.
+CI (`.github/workflows/ci.yml`) does exactly that — replay mode with
+`SEPOLIA_RPC_URL` pointed at an unreachable address, so no run can
+silently fall back to a live RPC.
+
+Why record at the RPC boundary instead of anvil's native
+`anvil_dumpState`/`--load-state`? Measured on anvil 1.4.1: a fork's dump
+contains only accounts touched by local *transactions* — state reached
+only via `eth_call`/`readContract` (e.g. the factory `getAddress` and
+verifier `verify` steps here) is silently absent after `--load-state`,
+and the fork's chain id is not preserved either. The RPC cache is
+complete by construction. `--dump-state`/`--load-state`/`--state` remain
+the right tool for *non-fork* chains, where the dump is total.
 
 ## Vendored verifier (not committed)
 

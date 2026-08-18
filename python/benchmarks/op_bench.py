@@ -18,8 +18,15 @@ import json
 import statistics
 import time
 
-from pq_stealth import (gen_meta_address, derive_stealth_pk, sign_blinded,
-                        verify, send, check_announcement, DEFAULT)
+from pq_stealth import (
+    DEFAULT,
+    check_announcement,
+    derive_stealth_pk,
+    gen_meta_address,
+    send,
+    sign_blinded,
+    verify,
+)
 
 
 def timed(fn, reps: int) -> tuple[float, float]:
@@ -109,7 +116,7 @@ def rejection_rounds(meta_pub, meta_priv, reps: int) -> dict:
             n["c"] = 0
             sign_blinded(meta_priv, p.stealth_pk, p.t0, p.shared_secret, b"m")
             blinded.append(n["c"])
-        pk, sk = dsa.keygen()
+        _pk, sk = dsa.keygen()
         stock = []
         for i in range(reps):
             n["c"] = 0

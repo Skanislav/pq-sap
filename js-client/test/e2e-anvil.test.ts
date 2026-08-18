@@ -13,7 +13,6 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -25,9 +24,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { foundry } from 'viem/chains';
 
 import { decodeMetaAddress, scan, type AnnouncementData } from '../src/scheme.ts';
+import { startAnvil, type Anvil } from './util/anvil.ts';
 
 const PORT = 8547;
-const RPC = `http://127.0.0.1:${PORT}`;
 // anvil's first default funded account
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
@@ -57,21 +56,10 @@ const ANNOUNCEMENT_EVENT = {
 } as const satisfies AbiEvent;
 
 async function setup() {
-  const anvil = spawn('anvil', ['--port', String(PORT), '--silent'],
-    { stdio: 'ignore' });
-  const publicClient = createPublicClient({ chain: foundry, transport: http(RPC) });
-  for (let i = 0; ; i++) {
-    try { await publicClient.getBlockNumber(); break; }
-    catch (e) {
-      if (i > 50) {
-        anvil.kill();
-        throw new Error(`anvil did not start: ${(e as Error).message}`);
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-  }
+  const anvil: Anvil = await startAnvil(PORT);
+  const publicClient = createPublicClient({ chain: foundry, transport: http(anvil.rpc) });
   const walletClient = createWalletClient({
-    chain: foundry, transport: http(RPC),
+    chain: foundry, transport: http(anvil.rpc),
     account: privateKeyToAccount(ANVIL_KEY),
   });
 
@@ -139,6 +127,6 @@ test('announce vectors on-chain, scan as recipients A and B', async () => {
 
     assert.equal(scanAs('B').length, 0, 'B must detect nothing');
   } finally {
-    anvil.kill();
+    anvil.stop();
   }
 });

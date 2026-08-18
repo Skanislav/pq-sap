@@ -16,7 +16,7 @@ secret to compute t'.
 
 import hashlib
 
-from .params import ParamSet, D_ROUND
+from .params import D_ROUND, ParamSet
 
 BLINDING_SEED_BYTES = 64
 

@@ -9,9 +9,9 @@ is the first byte(s) of SHA-256 of the shared secret.
 import hashlib
 from dataclasses import dataclass
 
-from .meta import MetaPublic
 from .blinding import derive_stealth_pk
 from .encoding import stealth_address
+from .meta import MetaPublic
 
 
 @dataclass(frozen=True)

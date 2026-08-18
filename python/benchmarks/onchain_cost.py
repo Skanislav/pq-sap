@@ -29,8 +29,8 @@ from eth_utils import keccak
 # Gas constants (Ethereum mainnet, Prague/Pectra, mid-2026)
 # --------------------------------------------------------------------------
 G_TX = 21_000                 # base transaction cost
-G_TXDATA_ZERO = 4             # legacy per-zero-byte (= 1 token * STANDARD_TOKEN_COST)
-G_TXDATA_NONZERO = 16         # legacy per-nonzero-byte (= 4 tokens * STANDARD_TOKEN_COST)
+G_TXDATA_ZERO = 4             # legacy per-zero-byte (= 1 token)
+G_TXDATA_NONZERO = 16         # legacy per-nonzero-byte (= 4 tokens)
 # EIP-7623 (Prague): calldata floor.
 STANDARD_TOKEN_COST = 4
 TOTAL_COST_FLOOR_PER_TOKEN = 10

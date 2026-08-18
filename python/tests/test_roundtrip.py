@@ -1,5 +1,4 @@
-from pq_stealth import (gen_meta_address, send, scan, check_announcement,
-                        DEFAULT)
+from pq_stealth import DEFAULT, check_announcement, gen_meta_address, scan, send
 
 
 def test_recipient_detects_own_payment(recipient, announcement):
@@ -15,7 +14,7 @@ def test_scan_filters_mixed_announcements(recipient, announcement):
     other_pub, _ = gen_meta_address(DEFAULT, zeta=b"\x11" * 32,
                                     kem_d=b"\x12" * 32, kem_z=b"\x13" * 32)
     noise = [send(other_pub, encaps_m=bytes([i]) * 32) for i in range(3)]
-    hits = scan(meta_pub, meta_priv.kem_dk, noise + [announcement] + noise)
+    hits = scan(meta_pub, meta_priv.kem_dk, [*noise, announcement, *noise])
     assert len(hits) == 1
     assert hits[0].announcement == announcement
 

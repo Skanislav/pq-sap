@@ -1,7 +1,13 @@
 import pytest
 
-from pq_stealth import (check_announcement, sign_blinded, verify,
-                        prove_possession, verify_possession, DEFAULT)
+from pq_stealth import (
+    DEFAULT,
+    check_announcement,
+    prove_possession,
+    sign_blinded,
+    verify,
+    verify_possession,
+)
 
 
 @pytest.fixture(scope="module")

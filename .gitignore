@@ -1,5 +1,6 @@
-# third-party reference clone (not ours to version here)
+# third-party reference clones (not ours to version here)
 pq-sap/
+ETHDILITHIUM/
 
 # python venv (durable, do not commit)
 python/.venv/

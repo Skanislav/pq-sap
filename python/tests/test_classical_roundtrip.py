@@ -11,17 +11,24 @@ import pytest
 
 pytest.importorskip("coincurve")  # the classical scheme needs the bench extra
 
-from coincurve import PublicKey  # noqa: E402
+from coincurve import PublicKey
 
-from pq_stealth.classical import (  # noqa: E402
-    gen_meta_address, send, scan, check_announcement,
-    derive_stealth_privkey, eth_address, encode_meta_address,
-    decode_meta_address, DEFAULT,
+from pq_stealth.classical import (
+    DEFAULT,
+    check_announcement,
+    decode_meta_address,
+    derive_stealth_privkey,
+    encode_meta_address,
+    eth_address,
+    gen_meta_address,
+    scan,
+    send,
 )
 
 
 def _recipient():
-    return gen_meta_address(DEFAULT, spend_seed=b"\x01" * 32, kem_d=b"\x02" * 32, kem_z=b"\x03" * 32)
+    return gen_meta_address(DEFAULT, spend_seed=b"\x01" * 32,
+                            kem_d=b"\x02" * 32, kem_z=b"\x03" * 32)
 
 
 def test_recipient_detects_own_payment():
@@ -36,9 +43,10 @@ def test_recipient_detects_own_payment():
 def test_scan_filters_mixed_announcements():
     meta_pub, meta_priv = _recipient()
     ann = send(meta_pub, encaps_m=b"\x04" * 32)
-    other_pub, _ = gen_meta_address(DEFAULT, spend_seed=b"\x11" * 32, kem_d=b"\x12" * 32, kem_z=b"\x13" * 32)
+    other_pub, _ = gen_meta_address(DEFAULT, spend_seed=b"\x11" * 32,
+                                    kem_d=b"\x12" * 32, kem_z=b"\x13" * 32)
     noise = [send(other_pub, encaps_m=bytes([i]) * 32) for i in range(3)]
-    hits = scan(meta_pub, meta_priv.kem_dk, noise + [ann] + noise)
+    hits = scan(meta_pub, meta_priv.kem_dk, [*noise, ann, *noise])
     assert len(hits) == 1
     assert hits[0].announcement == ann
 

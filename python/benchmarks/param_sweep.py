@@ -20,12 +20,19 @@ Usage: param_sweep.py [--n 20000] [--reps 5] [--sign-reps 40] [--json out]
 """
 
 import argparse
+import hashlib
 import json
 import statistics
 import time
 
-from pq_stealth import (PARAM_SETS, gen_meta_address, derive_stealth_pk,
-                        send, check_announcement, sign_blinded)
+from pq_stealth import (
+    PARAM_SETS,
+    check_announcement,
+    derive_stealth_pk,
+    gen_meta_address,
+    send,
+    sign_blinded,
+)
 
 # level ordering + matching liboqs mechanism names
 LEVELS = [
@@ -34,7 +41,9 @@ LEVELS = [
     ("L5", "ML-KEM-1024+ML-DSA-87", "ML-KEM-1024", "ML-DSA-87"),
 ]
 
-VIEW_TAG = lambda ss: __import__("hashlib").sha256(ss).digest()[0]
+
+def VIEW_TAG(ss):
+    return hashlib.sha256(ss).digest()[0]
 
 
 def median_ms(fn, reps):
@@ -96,7 +105,7 @@ def rejection_rounds(params, meta_pub, meta_priv, reps):
             c["n"] = 0
             sign_blinded(meta_priv, p.stealth_pk, p.t0, p.shared_secret, b"m")
             bl.append(c["n"])
-        pk, sk = dsa.keygen()
+        _pk, sk = dsa.keygen()
         st = []
         for i in range(reps):
             c["n"] = 0

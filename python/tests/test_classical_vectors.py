@@ -12,11 +12,15 @@ import pytest
 
 pytest.importorskip("coincurve")  # the classical scheme needs the bench extra
 
-from coincurve import PublicKey  # noqa: E402
+from coincurve import PublicKey
 
-from pq_stealth.classical import (  # noqa: E402
-    check_announcement, decode_meta_address, eth_address,
-    Announcement, MetaPublic, DEFAULT,
+from pq_stealth.classical import (
+    DEFAULT,
+    Announcement,
+    MetaPublic,
+    check_announcement,
+    decode_meta_address,
+    eth_address,
 )
 
 VECTORS = (pathlib.Path(__file__).parent.parent

@@ -5,10 +5,10 @@ with an ML-DSA instance (FIPS 204, blinded spending keys) at a matching
 NIST security level. ML-KEM-768 + ML-DSA-65 is the default.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from kyber_py.ml_kem import ML_KEM_512, ML_KEM_768, ML_KEM_1024
 from dilithium_py.ml_dsa import ML_DSA_44, ML_DSA_65, ML_DSA_87
+from kyber_py.ml_kem import ML_KEM_512, ML_KEM_768, ML_KEM_1024
 
 # ML-DSA modulus, shared by every parameter set (FIPS 204)
 Q = 8380417
