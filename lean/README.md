@@ -19,7 +19,8 @@ The design essays live in [`docs/`](docs/): `announcement-model.md` (the
 announcement, `auxGen`, the decomposition, construction A, the controls),
 `spr-two-hop.md` (KEM anonymity from SPR, the ML-KEM instantiation, the missing
 upstream lemma), `msis-reshaping.md` (the spend side), `dksap-asymmetry.md`
-(the classical comparison). The Lean modules carry short docstrings and point
+(the classical comparison), `encodings.md` (the byte-level wire formats and
+what VCVio does not supply). The Lean modules carry short docstrings and point
 here.
 
 ## The proved decomposition
@@ -53,8 +54,12 @@ Algebraic core (no probability, no games):
   hence `blinded_norm_bound` and `beta_blinded_eq_two_beta` (the signer bound
   doubles); `ownership_iff_signing` — the ownership relation *plus* the
   coefficient bound is possession of an ML-DSA signing key — and
-  `blinded_is_signing_key`; the stealth-key and meta-address encoding
-  roundtrips.
+  `blinded_is_signing_key`; the stealth-key encoding roundtrip, and both
+  meta-address wire formats as concrete byte strings — `version ‖ rho ‖
+  pack23(t) ‖ ek` at 5,633 B and the D-012 ZK-spend `version ‖ commitment ‖
+  ek` at 1,217 B — with `meta_address_roundtrips{,_5633}` and
+  `meta_address_zk_roundtrips{,_1217}` proved from `splitBytes_append`
+  (`docs/encodings.md`).
 
 Security-game layer (VCVio `OracleComp`/`ProbComp`):
 

@@ -59,8 +59,23 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.stealth_pk_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.stealth_pk_roundtrips
 
-/-- info: 'PqStealth.meta_address_roundtrips' depends on axioms: [propext] -/
+/-- info: 'PqStealth.meta_address_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_roundtrips
+
+/-- info: 'PqStealth.meta_address_roundtrips_5633' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_roundtrips_5633
+
+/-- info: 'PqStealth.meta_address_zk_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_zk_roundtrips
+
+/-- info: 'PqStealth.meta_address_zk_roundtrips_1217' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_zk_roundtrips_1217
+
+/-- info: 'PqStealth.metaAddress_size_mldsa65_mlkem768' depends on axioms: [propext] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.metaAddress_size_mldsa65_mlkem768
+
+/-- info: 'PqStealth.metaAddressZk_size_mlkem768' does not depend on any axioms -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.metaAddressZk_size_mlkem768
 
 /-! ## Unlinkability game (`Games`) -/
 
