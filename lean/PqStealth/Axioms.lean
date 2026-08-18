@@ -3,7 +3,9 @@ import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
 import PqStealth.MultiUnlink
+import PqStealth.MultiRecipient
 import PqStealth.ConstructionA
+import PqStealth.BlindingROM
 import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
@@ -326,3 +328,40 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.falsePositiveRate_ofKEMFullNoTag_eq_one
+
+/-! ## `n`-recipient unlinkability (`MultiRecipient`) -/
+
+/-- info: 'PqStealth.StealthScheme.evalDist_pubKeysN_update' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_pubKeysN_update
+
+/-- info: 'PqStealth.StealthScheme.evalDist_pubKeysN_embedPair' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_pubKeysN_embedPair
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_eq_branchDistAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_eq_branchDistAdvantage
+
+/-- info: 'PqStealth.StealthScheme.evalDist_unlinkBranch_pairGuessAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.evalDist_unlinkBranch_pairGuessAdv
+
+/-- info: 'PqStealth.StealthScheme.sum_probOutput_unlinkBranchNAt' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.sum_probOutput_unlinkBranchNAt
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_le_sum
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_le_mul
+
+/-! ## The address hash as a random oracle (`BlindingROM`) -/
+
+/-- info: 'PqStealth.ConstructionA.simulateQ_romImpl_liftComp' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.simulateQ_romImpl_liftComp
+
+/-- info: 'PqStealth.ConstructionA.run_hashAddrRO_empty' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.run_hashAddrRO_empty
+
+/-- info: 'PqStealth.ConstructionA.blindGameRO_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindGameRO_eq
+
+/-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_eq_zero_of_no_query' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_eq_zero_of_no_query

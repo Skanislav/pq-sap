@@ -110,6 +110,15 @@ Ordered by how loudly it fails.
   toolchain; that is why the lakefile enables `linter.missingDocs` but not the
   mathlib standard set. If a bump turns those linters on by default, reformat
   `Axioms.lean` to one-line commands rather than suppressing the linter.
+- **Three VCVio modules that entered the cone in round 3.**
+  `OracleComp/QueryTracking/RandomOracle/Basic.lean` (`OracleSpec.randomOracle`,
+  used by `BlindingROM.lean`) and
+  `OracleComp/QueryTracking/RandomOracle/DeferredSampling.lean` (+ its import
+  `ProbeEps.lean`; `evalDist_bind_const_neverFails`, used by
+  `MultiRecipient.lean`). Neither is reached by VCVio's own root import, so a
+  bump that moves or renames them fails at *import resolution*, not at a lemma
+  name. `romImpl` also mirrors VCVio's `PRF.prfIdealQueryImpl` line for line —
+  if that handler's shape changes, copy the change across.
 - **`PqStealth/Demo.lean` — 6 `#guard_msgs` around `#eval`.** Frozen numeric
   output. Only breaks if `ZMod 23` arithmetic or `Repr` output changes.
 - **The pinned `simp only` lists (issue #18).** After the round-2 pass there is
