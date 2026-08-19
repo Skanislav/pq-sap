@@ -31,7 +31,7 @@ package options.
    and compiles from source; a cold build is hours, not minutes.
 4. `lake build` — must be green with no `warning:` or `error:` from
    `PqStealth/`.
-5. **The axiom guard re-runs itself.** There is no separate command: the 67
+5. **The axiom guard re-runs itself.** There is no separate command: the 95
    `#guard_msgs (whitespace := lax) in #print axioms …` blocks in
    `PqStealth/Axioms.lean` are part of the build, and a changed axiom list or a
    `sorry` anywhere in a headline theorem's dependency cone is a compile error.
@@ -57,6 +57,14 @@ proves one of the ML-KEM security placeholders.
 
 Things we carry locally only because VCVio does not export them. Each is a
 small upstream PR; when one lands, delete our copy at the next bump.
+
+**`vcvio-upstream.md` is the current list** (revised 2026-08-19, twelve items
+verified against the pin, five of the round-3 asks withdrawn or restated). The
+three below are the subset this checklist tracks across bumps; two of them —
+1 and 2 — survived the revision unchanged, and the third is restated there
+(the underlying gap is that `asKEMScheme` is never identified with
+`foKEMScheme`, so the FO machinery cannot reach the scheme the concrete
+instance builds).
 
 1. **Ship `DecidableEq` next to `mlkem768Encoding`.**
    `LatticeCrypto/MLKEM/Concrete/Instance.lean` sets every encoded type to
@@ -101,24 +109,31 @@ small upstream PR; when one lands, delete our copy at the next bump.
 
 Ordered by how loudly it fails.
 
-- **`PqStealth/Axioms.lean` — 67 frozen `#print axioms` messages.** Failing
-  loudly is the whole point, but note the *shape* is fragile too: the blocks use
-  a 3-line form with `#print axioms` indented onto a continuation line. That is
-  structurally incompatible with mathlib's `style.commandStart` linter — with
-  `weak.linter.mathlibStandardSet = true` the linter's own warning is captured
-  by `#guard_msgs` and turns every block into an error. Verified on this
-  toolchain; that is why the lakefile enables `linter.missingDocs` but not the
-  mathlib standard set. If a bump turns those linters on by default, reformat
-  `Axioms.lean` to one-line commands rather than suppressing the linter.
+- **`PqStealth/Axioms.lean` — 95 frozen `#print axioms` messages.** Failing
+  loudly is the whole point. **Corrected 2026-08-19:** an earlier version of
+  this bullet called the blocks "structurally incompatible" with mathlib's
+  `style.commandStart` linter. They are not. `#guard_msgs` does capture linter
+  warnings on the command it wraps (Lean 4.32.0,
+  `src/Lean/Elab/GuardMsgs.lean:191-201`), but it also takes message filters
+  for exactly this case: `#guard_msgs (drop warning, whitespace := lax) in`
+  keeps the guarded `info` — the content of the audit — and ignores formatting
+  warnings. The blocks are moreover already one-line commands
+  (`Axioms.lean:38-39`), not the 3-line continuation form that bullet
+  described. So `weak.linter.mathlibStandardSet = true` (which VCVio sets) can
+  be retried in `lakefile.toml`; see `vcvio-upstream.md` § F.
 - **Three VCVio modules that entered the cone in round 3.**
   `OracleComp/QueryTracking/RandomOracle/Basic.lean` (`OracleSpec.randomOracle`,
   used by `BlindingROM.lean`) and
   `OracleComp/QueryTracking/RandomOracle/DeferredSampling.lean` (+ its import
   `ProbeEps.lean`; `evalDist_bind_const_neverFails`, used by
-  `MultiRecipient.lean`). Neither is reached by VCVio's own root import, so a
-  bump that moves or renames them fails at *import resolution*, not at a lemma
-  name. `romImpl` also mirrors VCVio's `PRF.prfIdealQueryImpl` line for line —
-  if that handler's shape changes, copy the change across.
+  `MultiRecipient.lean`). We import both by full path, so a bump that *moves or
+  renames* them fails at import resolution rather than at a lemma name — that
+  is the real sensitivity. **Corrected 2026-08-19:** an earlier version of this
+  bullet said neither module is reached by VCVio's root import. Both are:
+  `VCVio.lean:134-139` imports `Basic`, `DeferredSampling`, `Eager`,
+  `EagerTable`, `ProbeEps` and `Simulation`, and `VCVio` is the package's
+  `@[default_target]`. `romImpl` also mirrors VCVio's `PRF.prfIdealQueryImpl`
+  line for line — if that handler's shape changes, copy the change across.
 - **`PqStealth/Demo.lean` — 6 `#guard_msgs` around `#eval`.** Frozen numeric
   output. Only breaks if `ZMod 23` arithmetic or `Repr` output changes.
 - **The pinned `simp only` lists (issue #18).** After the round-2 pass there is

@@ -68,6 +68,20 @@ hypotheses at the concrete scheme; the upstream VCVio asks (`DecidableEq`
 beside `mlkem768Encoding`, de-privatize `byteEncode_size`, `SampleableType`
 on `R_q`/`T_q`, a KEM-level IND-CPA lemma).
 
+**Revision, 2026-08-19 (`docs/vcvio-upstream.md`).** The upstream list was
+re-checked line by line against the pinned VCVio. Three corrections land on
+rows above. Row 14: `weak.linter.mathlibStandardSet` is *not* structurally
+incompatible with the axiom guard — `#guard_msgs` takes a `drop warning`
+filter, and the blocks are already one-line commands; the option should be
+retried. Row 9(b) and `BlindingROM`'s identical-until-bad step: the switching
+lemma we called missing is largely present upstream as
+`QueryImpl.withProgramming` plus
+`tvDist_simulateQ_randomOracle_withProgramming_le_probEvent_bad`, so that work
+is ours (restate the ideal games over a programming policy), not upstream's.
+Row 7's "fourth upstream ask" (`advantage_eq_boolDistAdvantage`) already
+exists upstream as `MLDSA.NMA.advantage_eq_game_boolDistAdvantage`, misfiled
+in an ML-DSA security file.
+
 ---
 
 ## P0 — model gaps (the formal statement is weaker than it reads)
