@@ -12,8 +12,8 @@ of independent draws, so each hop is an `evalDist` equality
 (`evalDist_announceList_append_cons`) rather than a re-derivation.
 
 Assumed: nothing. The `n`-recipient game (the adversary picks the challenge
-pair among `n` published meta-addresses, loss `n·(n−1)/2`) is a documented
-follow-up; see `docs/announcement-model.md`.
+pair among `n` published meta-addresses, loss `n·(n−1)`) is `MultiRecipient`;
+see `docs/announcement-model.md`.
 -/
 
 open OracleComp OracleSpec

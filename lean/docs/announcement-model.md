@@ -268,8 +268,8 @@ with different seeds are genuinely different distributions for a general
   (take it to be the identity, and `pack rho _ = rho`) the address reveals
   which `rho` produced it. The scheme is fine — `keccak` is not the identity —
   but the missing ingredient is `hashAddr ∘ pack` as a random oracle, not more
-  proof effort. Closing this term therefore needs a ROM extension of the model,
-  and `unlinkAdvantage_scheme_le` should be read with that in mind. (The
+  proof effort. That extension is `BlindingROM.lean`, below;
+  `unlinkAdvantage_scheme_le` should be read with it in mind. (The
   non-vanishing is an argument, NOT machine-checked; a counterexample scheme
   exhibiting it belongs with the negative controls.)
 * **The reduction's game 0 is faithful only under `ExpandIsIdeal`.** In the
@@ -288,6 +288,80 @@ with different seeds are genuinely different distributions for a general
   another (`probOutput_bind_eq_tsum` + `tsum_comm`). `idealAux_indep_of_t` is
   proved in the form the second identification consumes; the plumbing is not
   done, so **no advantage inequality is claimed**.
+
+### The random-oracle model for the address hash
+
+`BlindingROM.lean` is the ROM extension the gap above asks for. The oracle is
+`hashAddr ∘ pack` as ONE function `Bytes → Addr` — the composite the argument
+needs to be random, and the composite the spec instantiates with `keccak256` —
+so the model is `OracleComp (unifSpec + (Bytes →ₒ Addr))` with VCVio's lazily
+sampled `OracleSpec.randomOracle` (`uniformSampleImpl.withCaching`) as the
+handler and uniform sampling passed through untouched (`romImpl`, mirroring
+VCVio's own `prfIdealQueryImpl`). The adversary lives in that monad too: it may
+query the address oracle itself, which is the whole point.
+
+The game (`blindTraceRO` / `blindGameRO`) is a STANDALONE abstraction of the
+branch comparison with the mask already idealized — that hop is the MLWE step of
+`ConstructionA`. It is deliberately not `auxKeyIndependence` restated: the KEM,
+the ciphertext and the tag derivation are dropped and `tg`, `rho`, `t` are free
+parameters. It asks the same question — with a uniform mask, does the address
+still say whose `rho` and whose `t` built it? — but nothing here identifies the
+two, and that identification is the first of the three open items below.
+
+**The load-bearing new fact.**
+
+```lean
+theorem run_hashAddrRO_empty (x : Bytes) (f : Addr → ROMComp Bytes Addr α) :
+    (simulateQ romImpl (hashAddrRO x >>= f)).run ∅ =
+      (do let a ← ($ᵗ Addr)
+          (simulateQ romImpl (f a)).run ((∅ : QueryCache _).cacheQuery x a))
+```
+
+Run from the empty cache the announced address is a UNIFORM `Addr` *whatever
+byte string was hashed*. The challenger's query is the first query of the game —
+key generation and encapsulation make none — so the cache genuinely is `∅`. This
+is the step the mask cannot supply: `idealAux_indep_of_t` has to share `rho`
+between the two sides precisely because `rho` enters through `pack`, outside the
+masked argument, and an arbitrary `hashAddr` may pass it straight through. Under
+the oracle it cannot: the output is uniform regardless of the input.
+
+**What follows immediately.** `blindGameRO_eq` says the two branches are the SAME
+computation, run from caches that differ at one point — `∅` extended at recipient
+`b`'s address point by the same uniform value. That is the identical-until-bad
+setup written out. Its degenerate case is proved:
+`blindingAdvantageRO_eq_zero_of_no_query` — an adversary that never consults the
+address oracle has advantage exactly `0`, with BOTH `rho` and `t` gone, which
+is strictly more than `idealAux_indep_of_t` gives.
+
+**Where this stops, precisely.** Three things are open. The first is not even
+stated in Lean; the other two are `def … : Prop` targets, not theorems:
+
+* **The identification.** `blindingAdvantageRO` is not connected to
+  `auxKeyIndependence (metaKem P Smp kem) (auxGen P) adv`. Doing so means
+  carrying the KEM, the ciphertext and the `viewTag`/`expandBlind` derivation
+  through the ROM monad and commuting the mask draw into place — the same bind
+  commutation `ConstructionA`'s gap list already names, plus `ExpandIsIdeal`.
+  Until then the ROM results are about the shape of the blinding term, not
+  about the term itself.
+* `BoundedByBadQuery` — identical-until-bad: the advantage is at most the
+  probability that the adversary queries the OTHER branch's address point
+  (`BadQuery`, stated on the instrumented trace so it is an event on the
+  output). Discharging it means instantiating VCVio's
+  `StateSeparating/IdenticalUntilBad.lean` at `romImpl`, whose handlers are
+  `σ × Bool`-shaped with an explicit bad flag; `romImpl` is not in that shape,
+  so it needs a bad-flagged variant of the handler and a proof that the two
+  agree while the flag is down. That is the piece not done.
+* `BadQueryBounded` — `Pr[bad] ≤ mlwe + q_H · β`: the mask is uniform only after
+  the MLWE hop, and each of the adversary's `q_H` queries then guesses a point
+  of min-entropy `log₂(1/β)`. Discharging it needs a query bound on the
+  adversary (`IsTotalQueryBound`) plus the counting lemma
+  `probEvent_cache_has_value_le` of VCVio's `Unpredictability.lean`, and the
+  min-entropy of `pack rho (power2Round (u + t))` in `u`, which is a property of
+  `pack`/`power2Round` this model does not have (both are uninterpreted).
+
+`mlweAdvOfBlindAdvRO` type-checks the reduction that the first of those two
+hops consumes: simulating the address oracle inside turns a ROM blinding
+adversary into an ordinary seeded-`blindingProblem` distinguisher.
 
 ## Multi-challenge unlinkability
 
@@ -372,17 +446,97 @@ final telescope, where `k < q` comes from `Finset.mem_range`.
 `H : ℕ → ProbComp Bool`, by induction on `n` over the triangle inequality. It is
 stated separately because it has nothing to do with stealth addresses.
 
-**Follow-up: `n` recipients.** The remaining generalisation publishes `n`
-meta-addresses and lets the adversary choose the challenge pair `(i₀, i₁)`. The
-expected statement is `Adv_{n,q} ≤ (n·(n−1)/2)·q·ε` — guess the pair, embed the
-two-recipient challenge there, generate the other `n − 2` keypairs honestly. It
-is deliberately *not* proved here: unlike the hybrid above it is not a chain of
-triangle inequalities but a conditioning argument
-(`Pr[win] = ∑_pairs Pr[the guess was right] · Pr[win | that pair]`), which needs
-real work in VCVio rather than falling out of the machinery in this file. Note
-that the `n` factor is an artefact of the guessing reduction, not of the scheme:
-for a left-or-right notion over independently generated meta-addresses the
-usual tighter route is a second hybrid over the recipients themselves.
+**`n` recipients** is the orthogonal generalisation and lives in
+`MultiRecipient.lean`; see the next section. It composes with the hybrid above
+on paper the same way `unlinkAdvantage_ofKEMFull_le` does — the two-recipient
+statement it reduces to holds for every `UnlinkAdv`, `hybridAdv` included —
+giving `Adv_{n,q} ≤ n·(n−1)·q·ε`; that composition is not in Lean.
+
+## `n`-recipient unlinkability
+
+`MultiRecipient.lean` publishes `n` independently generated meta-addresses and
+lets the adversary NAME the challenge pair after seeing all of them. The
+adversary is two functions rather than one, because naming the pair and guessing
+the bit happen at different points of the game:
+
+```lean
+abbrev UnlinkChooseN (MetaPub : Type) (n : ℕ) :=
+  (Fin n → MetaPub) → ProbComp (Fin n × Fin n)
+
+abbrev UnlinkGuessN (MetaPub Announcement : Type) (n : ℕ) :=
+  (Fin n → MetaPub) → Fin n × Fin n → Announcement → ProbComp Bool
+
+def unlinkBranchN (b : Bool) (pks : Fin n → MetaPub) : ProbComp Bool := do
+  let i ← pick pks
+  let c ← S.announce (pks (if b then i.2 else i.1))
+  guess pks i c
+```
+
+Letting the game sample the pair instead would be a strictly weaker notion with
+no loss factor at all (the reduction would simply sample the same pair), which
+is why the adversary chooses.
+
+**The bound.** `pairGuessAdv j` is the two-recipient adversary that guesses the
+pair `j`: it splices the two challenge meta-addresses into slots `j`, generates
+the other `n − 2` itself, runs `pick`, and forwards `guess`'s verdict only when
+`pick` named exactly `j`.
+
+```lean
+theorem unlinkAdvantageN_le_sum (hkg) (hann) (hpick) :
+    S.unlinkAdvantageN pick guess ≤
+      ∑ j ∈ Finset.univ.offDiag, S.unlinkAdvantage (S.pairGuessAdv pick guess j)
+
+theorem unlinkAdvantageN_le_mul (hkg) (hann) (hpick) (h : ∀ j, … ≤ ε) :
+    S.unlinkAdvantageN pick guess ≤ (n * (n - 1) : ℕ) * ε
+```
+
+**The sum, not a conditioning argument.** Summing over ordered pairs rather than
+guessing one uniformly is what makes this provable with the machinery already in
+the tree. Gating the verdict on `pick = j` makes the gated games *disjoint*, so
+their `Pr[= true]` values add up to the ungated game's
+(`sum_probOutput_unlinkBranchNAt`), and `|∑ xⱼ| ≤ ∑ |xⱼ|` finishes it. There is no
+conditional probability anywhere, and no uniform draw over pairs. The loss
+factor `n·(n−1)` — the number of ordered pairs of distinct indices,
+`Finset.univ.offDiag`, whose cardinality Mathlib gives as `n·n − n` — is an
+artefact of the guessing reduction, not of the scheme.
+
+**The one genuinely new fact: exchangeability.** The reduction has to hand the
+adversary a vector of `n` meta-addresses two of whose slots are the challenger's
+keys. `evalDist_pubKeysN_embedPair` says that is legitimate:
+
+```lean
+𝒟[do let a ← S.unlinkSetup
+     let f ← S.pubKeysN n
+     k (embedPair j f a)] = 𝒟[S.pubKeysN n >>= k]
+```
+
+It is proved from the one-slot version `evalDist_pubKeysN_update` by applying it
+twice, and that one is an induction on `n` over `Fin.cons`: at slot `0` the
+displaced draw is discarded and the fresh one takes its place (VCVio's
+`evalDist_bind_const_neverFails` and `evalDist_bind_bind_swap`), at slot `i+1`
+the induction hypothesis applies under the leading draw. Nothing about `Fin n`
+permutations is needed — `Function.update` plus `Fin.cons_update` is enough.
+
+**The three hypotheses, and why they are explicit.**
+
+* `hkg : Pr[⊥ | S.keygen] = 0` and `hann : ∀ pk, Pr[⊥ | S.announce pk] = 0`.
+  `ProbComp` is a *sub*probability monad, so a draw whose value the rest of the
+  computation ignores can only be discarded when it carries no failure mass.
+  `keygen`'s totality is what makes exchangeability true; `announce`'s is what
+  makes the challenge announcement droppable on a wrong guess. Both hold for
+  every concrete instance in this tree, but `StealthScheme` does not require
+  them, so they are hypotheses rather than silent assumptions.
+* `hpick : ∀ pks, ∀ i ∈ support (pick pks), i.1 ≠ i.2` — the adversary must name
+  two DISTINCT recipients. Without it the sum would have to run over the
+  diagonal too, where the reduction cannot embed both challenge keys (the second
+  overwrites the first), and the gated games would no longer add up. Naming the
+  same recipient twice is a degenerate challenge in any case: both branches of
+  the game are then the same computation.
+
+**What is NOT proved.** The composition with `MultiUnlink`'s `q`-challenge
+hybrid, and the composition with `unlinkAdvantage_ofKEMFull_le` — both are
+instantiations of theorems that hold for every adversary, both are legitimate on
+paper, neither is discharged in Lean.
 
 ## Controls: why the definitions have teeth
 

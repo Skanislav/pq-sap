@@ -190,3 +190,178 @@ there, and it is also why the instance offers no security whatsoever.
 The point being demonstrated: the abstract theorem `dksap_key_recovery`,
 applied to these concrete numbers, says the recovered scalar is the recipient's
 actual spending key — and you can watch that happen.
+
+## Oracle attack: the discrete-log oracle made real, and its query bound
+
+Background for `PqStealth/DKSAPOracle.lean` §1.
+
+`DKSAP.lean` takes the oracle's answers as hypotheses (`hM : xM • g = m • g`).
+That is enough for the equational break, but it cannot express the *cost* of the
+attack, and the cost is the whole retroactivity argument. `DKSAPOracle.lean`
+restates the attack as a computation with a real oracle so the cost becomes a
+theorem.
+
+### The interface
+
+`scalarSpec F G = unifSpec + (G →ₒ F)` — VCVio's `+` on specs, so `unifSpec ⊂ₒ
+scalarSpec F G` and any `ProbComp` lifts in unchanged. One oracle, taking a
+group element to a scalar. The same interface serves the ROM section below; only
+the IMPLEMENTATION differs, which is exactly the point being made: the hash and
+the discrete log have the same signature, and the scheme's fate turns on which
+one the adversary is holding.
+
+`dlogAttack h (M, V) l` queries the oracle at `M` and at `V` — twice, before it
+has looked at `l` at all — and then maps `recover` over the announcement list.
+
+### The query bound
+
+- `dlogAttack_isTotalQueryBound : IsTotalQueryBound (dlogAttack h MV l) 2`
+- `dlogAttack_not_isTotalQueryBound_one : ¬ IsTotalQueryBound (dlogAttack h MV l) 1`
+
+Together: **exactly two queries**. Neither statement mentions `l.length`. That
+is the machine-checked form of "two queries per victim regardless of payment
+count": a capability that is bought once deanonymizes an entire history, so an
+announcement recorded today is opened by an oracle that arrives in twenty years.
+Harvest-now-decrypt-later is not a metaphor here — it is the query bound.
+
+VCVio's `IsTotalQueryBound` is the structural (`PFunctor.FreeM.IsRollBound`)
+predicate, so both facts are pathwise statements about every execution, not
+expectations. The upper bound is `⟨_, fun _ => ⟨_, fun _ => trivial⟩⟩` and the
+lower bound instantiates the continuation at `0 : F`; the pair is the honest
+rendering of "exactly `n`" at this layer. VCVio's weighted `QueryCost` layer
+(`Queries[ oa in runtime ]`) was NOT used: it is stated over direct-style
+`HasQuery.Program`, which would force the attack into typeclass-abstracted form
+for no gain here.
+
+### Correctness under simulation
+
+`dlogImpl dlog` answers group-oracle queries by an actual function
+`dlog : G → F` and uniform queries uniformly. The Shor hypothesis is now exactly
+one equation, `hdlog : ∀ y, dlog y • g = y`, supplied to the theorems rather
+than baked into the oracle.
+
+- `simulateQ_dlogAttack` — under `dlogImpl` the attack is deterministic; it
+  consumes no randomness at all.
+- `dlogAttack_key_recovery` — its output list is *exactly*
+  `l.map (fun RP => m + h (v • RP.1))`, the recipient's own spending scalars.
+  Proved from `dksap_recover_eq_honest`, so the injectivity discussion above
+  carries over unchanged.
+- `dlogAttack_forall_key_recovery` — the `List.Forall` form: for a payment
+  history given by ephemeral scalars `rs`, every recovered scalar is a valid
+  secret key for that announcement's stealth address (`dksap_key_recovery`).
+- `dksapAnnounce_mem_announce_support` — the announcements the attack is fed are
+  ones `dksap` actually emits. Without this the multi-announcement statement
+  could be about a shape no sender ever produces.
+
+## DDH/ROM bound: what is in Lean
+
+Background for `PqStealth/DKSAPOracle.lean` §2.
+
+`hashedDH` in `DKSAP.lean` is *defined*, not reduced: it names the gap between
+the real derived scalar and a uniform one. This section moves the whole game
+into the random-oracle model, where that gap becomes something one can argue
+about, and reports honestly how far the argument is machine-checked.
+
+### The model
+
+The hash `h : G → F` is replaced by the second summand of `scalarSpec F G`,
+implemented by VCVio's lazy random oracle (`OracleSpec.randomOracle` =
+`uniformSampleImpl.withCaching`, state `(G →ₒ F).QueryCache`). `romImpl F G`
+forwards uniform queries and hands hash queries to that oracle. The adversary
+`UnlinkAdvRO` is a function of the two meta-addresses and the challenge
+announcement into `OracleComp (scalarSpec F G) Bool` — it holds the same oracle
+the sender used, which is the whole content of the ROM.
+
+Probabilities are taken only after `simulateQ … |>.run' ∅` lands back in
+`ProbComp`; `IsUniformSpec` is deliberately never declared for `scalarSpec`.
+
+- `dksapRORun g adv b` — real branch: the shared scalar is the oracle at the DH
+  point `r • V_b`.
+- `dksapROIdealRun g adv b` — idealized branch: a fresh uniform scalar and *no*
+  oracle query.
+- `unlinkAdvantageRO`, `hashedDHRO g adv b` — the ROM counterparts of
+  `unlinkAdvantage` and `hashedDH`.
+
+### What is proved
+
+`dksapROIdeal_boolDistAdvantage_eq_zero`: **the idealized game is perfectly
+unlinkable in the ROM** — exactly zero, with the adversary holding the random
+oracle throughout. The reason it is cheap is structural: the ideal announcement
+never touches the oracle, so keygen and the two scalars peel out of the
+simulation as ordinary sampling (`dksapROIdealRun_eq`, over VCVio's
+`roSim.run'_liftM_bind`), and what remains is literally the shape that
+`dksapIdeal_branch_indep` already handles, with the continuation being "run the
+adversary under the random oracle". The `s ↦ d + s` substitution does the rest.
+
+`dksap_unlinkAdvantageRO_le_hashedDHRO`: the same two-hop decomposition as the
+plain model, with the idealized middle game again contributing exactly zero.
+
+`dksapRORun_eq`: the real game IS the ideal game run against a cache already
+programmed at the DH point. This holds because the sender's query is the *first*
+oracle query, so it hits an empty cache and is a fresh uniform sample that is
+then written in (`romImpl_run'_scalarQuery_bind`). Both games therefore end up
+in identical shape, with identical announcements, differing only in the starting
+cache.
+
+`dksapROBad` / `dksapROBadProb`: **the bad event.** In the idealized game
+nothing but the adversary touches the oracle, so the DH point being cached at
+the end holds exactly when the adversary queried it. `dksapROIdealBranchTagged`
+exposes that point.
+
+`cdhOfUnlinkAdvRO`: **the reduction to CDH**, type-checked against VCVio's
+`DiffieHellman.CDHAdversary F G`. It plants the CDH challenge `A` as the
+ephemeral key and `B` as the target's viewing key, runs the idealized game under
+a logging random oracle (`loggingROImpl` — cache-on-hit control flow, so a
+hand-written `QueryImpl` rather than `preInsert`/`postInsert`), and returns one
+logged query point uniformly at random. The planting closes *because the
+idealized announcement needs neither `r` nor `v_b`*: it uses a fresh scalar. In
+the real game it would not close, and that asymmetry is why the bad event is
+defined on the ideal side.
+
+### The gap, precisely
+
+Not proved: `hashedDHRO g adv b ≤ dksapROBadProb g adv b`, and hence
+`dksapROBadProb ≤ q_H · Adv_CDH(cdhOfUnlinkAdvRO adv b)`.
+
+The first is one general lemma away. With `dksapRORun_eq` and
+`dksapROIdealRun_eq` in hand, the two games differ only in the starting cache,
+so what is missing is the **lazy-RO switching lemma**: for every
+`oa : OracleComp (scalarSpec F G) Bool`, point `Z`, value `s` and cache with
+`cache Z = none`,
+
+```
+|Pr[= true | (simulateQ (romImpl F G) oa).run' (cache.cacheQuery Z s)]
+   - Pr[= true | (simulateQ (romImpl F G) oa).run' cache]|
+  ≤ Pr[fun z => (z.2 Z).isSome | (simulateQ (romImpl F G) oa).run cache]
+```
+
+Which run the query event is measured in is load-bearing and easy to get wrong:
+it must be the run from the **unprogrammed** cache (the right-hand run, the one
+whose final cache is inspected), because a cache hit at `Z` returns the
+programmed `s` and changes the adversary's later behaviour, so the two runs do
+not have the same query probability. Instantiated at `cache = ∅` and
+`oa = adv a.1 a.2 c`, that right-hand side is exactly what `dksapROBad`
+computes — the ideal game's final cache, tested at the tagged DH point — which
+is why the bad event is defined on the ideal side and not on the real one.
+
+Proving it is an induction on `oa` through the cache monad, plus an integration
+step to move from the pointwise bound to the bound on `hashedDHRO` (the outer
+`tsum` over keys, `r` and `s`). VCVio's `StateSeparating/IdenticalUntilBad.lean`
+does not apply off the shelf:
+`advantage_le_queryBound_mul_slack_plus_probEvent_bad` compares two
+`QueryImpl.Stateful` HANDLERS against a shared adversary, whereas here the two
+games differ in the game body. Recasting DKSAP's announce step as a handler is
+the plausible route to reusing it.
+
+The second needs the standard guessing argument: the reduction must pick WHICH
+of the adversary's hash queries is the DH point, costing a factor `q_H` (an
+`IsQueryBoundP … Sum.isRight q_H` bound on the adversary). `cdhOfUnlinkAdvRO` is
+written to make that argument possible — it logs the queries and samples an
+index — but the inequality itself is not proved.
+
+So the honest summary of the positive side: **"DKSAP is unlinkable under DDH in
+the ROM" is set up but not closed.** What is machine-checked is the ROM model,
+the perfect unlinkability of its idealized game, the two-hop decomposition, the
+reprogramming identity that puts real and ideal in one shape, the bad event, and
+the CDH reduction. What is missing is named above and is a general fact about
+lazy random oracles, not about DKSAP.

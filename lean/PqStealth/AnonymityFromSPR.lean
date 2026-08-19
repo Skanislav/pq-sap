@@ -9,8 +9,9 @@ carries no information about the hidden bit -- and, chaining into
 `unlinkAdvantage_ofKEMFull_le`, the full decomposition of stealth unlinkability
 into five named advantages with no unnamed slack.
 
-Assumed: `SPR(K-PKE) ≤ 2·MLWE` (key hop, then ciphertext hop) is the remaining
-lattice step, and lifting to ANO-CCA must track ML-KEM's implicit-rejection FO
+Assumed: the SPR terms are decomposed in `SPRTwoHop` into two MLWE hops (both
+identities proved) plus two named residual terms (primitive idealization,
+simulator gap); lifting to ANO-CCA must track ML-KEM's implicit-rejection FO
 transform. Neither VCVio nor FIPS 203 supplies `anonymity → MLWE`.
 See `docs/spr-two-hop.md`.
 -/
@@ -35,8 +36,8 @@ def simBranch (sim : ProbComp C) (adv : StealthScheme.UnlinkAdv PK C)
   adv a.1 a.2 c
 
 /-- SPR advantage on branch `b`: distinguishing a real encapsulation to key `b`
-from a simulated ciphertext, in the full anonymity context. For ML-KEM this is
-bounded by 2·MLWE (key hop + ciphertext hop). -/
+from a simulated ciphertext, in the full anonymity context. For ML-KEM-768 it
+is decomposed by `mlkem768_sprAdv_le_two_hop_decomposition` (`SPRTwoHop`). -/
 noncomputable def sprAdv (kem : KEM PK SK C K) (sim : ProbComp C)
     (adv : StealthScheme.UnlinkAdv PK C) (b : Bool) : ℝ :=
   (kem.anonSetup >>= kem.anonBranch adv b).boolDistAdvantage
