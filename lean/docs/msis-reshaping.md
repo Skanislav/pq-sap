@@ -50,7 +50,7 @@ left block, `t` the negated last column — and is a left inverse of
 built from an ownership forger (`augmentedAdversary`).
 
 `spendForgeryAdvantage_eq_sis_advantage` is the resulting equality;
-`spendForgeryAdvantage_le_msis` is its `≤` form for chaining;
+`spendForgeryAdvantage_le_augmentedSIS` is its `≤` form for chaining;
 `honest_augmented_witness_valid` is the non-vacuity check — a real ownership
 solution maps to a real kernel vector, so the equality is not between two
 unsatisfiable predicates.

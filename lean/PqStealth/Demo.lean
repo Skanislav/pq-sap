@@ -1,4 +1,5 @@
 import PqStealth.DKSAP
+import VCVio.OracleComp.RunIO
 import Mathlib.Algebra.Field.ZMod
 import Mathlib.Tactic.NormNum.Prime
 
@@ -113,5 +114,46 @@ example : recovered • gen = P := by decide
 example : recovered • gen = M + (hash (r • V)) • gen :=
   dksap_key_recovery hash gen gen_injective m v r (dlog M) (dlog V)
     (by decide) (by decide)
+
+/-! ## The abstract scheme, instantiated
+
+The scheme of `DKSAP.lean` is a `StealthScheme` over any field, module and hash;
+here it is built at this instance, which is the kernel-checked witness that the
+hypothesis bundle of every DKSAP theorem is jointly inhabited. -/
+
+/-- DKSAP at the toy instance. -/
+def scheme : StealthScheme (F × F) (F × F) (F × F) := dksap gen hash
+
+/-- Nondegeneracy in the form the unlinkability theorems take: on a finite
+field, injective is bijective. -/
+theorem gen_bijective : Function.Bijective (fun x : F => x • gen) :=
+  Finite.injective_iff_bijective.mp gen_injective
+
+/-- Detection completeness, from the abstract theorem. -/
+example : scheme.PerfectlyComplete := dksap_perfectlyComplete gen hash
+
+/-- Unlinkability from DDH and entropy smoothing, from the abstract theorem, for
+any adversary against this instance. -/
+example (adv : StealthScheme.UnlinkAdv (F × F) (F × F)) :
+    scheme.unlinkAdvantage adv ≤
+      (DiffieHellman.ddhDistAdvantage gen (ddhReductionDKSAP hash adv true) +
+          EntropySmoothing.advantage F gen (fun (_ : Fin 1) => hash)
+            (esReductionDKSAP gen adv true)) +
+        (DiffieHellman.ddhDistAdvantage gen (ddhReductionDKSAP hash adv false) +
+          EntropySmoothing.advantage F gen (fun (_ : Fin 1) => hash)
+            (esReductionDKSAP gen adv false)) :=
+  dksap_unlinkAdvantage_le_ddh_add_es gen hash adv gen_bijective
+
+-- The scheme's own scanner, run on the announcement above: detection fires.
+/-- info: true -/
+#guard_msgs in
+#eval OracleComp.runIO (scheme.scan (m, v) (R, P))
+
+-- The completeness experiment, actually run (keys and ephemeral scalar drawn at
+-- random): it returns `true` on every run, which is what `dksap_perfectlyComplete`
+-- says.
+/-- info: true -/
+#guard_msgs in
+#eval OracleComp.runIO scheme.CorrectExp
 
 end PqStealth.Demo

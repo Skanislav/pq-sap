@@ -34,7 +34,8 @@ unlinkability ≤ sharedSecretHiding true + auxKeyIndependence
   auxKeyIndependence = the blinding term of construction A          [Lean model]
                        (= 0 for tag-only aux; → MLWE needs the address hash
                         as a random oracle: documented, not proved)
-  sprAdv             → 2·MLWE per branch                      [two-hop, documented]
+  sprAdv             ≤ primIdeal + 2·MLWE + simGap per branch  [two-hop; MLWE terms
+                                                               named, outer terms documented]
 spend forgery        = matrix-SIS advantage on [A | I | -t]   [Lean; uniform-challenge
                                                                gap documented]
 instantiated on VCVio's ML-KEM-768 with no instance hypotheses on the ML-KEM types
@@ -104,9 +105,10 @@ Security-game layer (VCVio `OracleComp`/`ProbComp`):
   `run_hashAddrRO_empty` (from the empty cache the announced address is uniform
   whatever was hashed — the step the mask cannot supply),
   `blindGameRO_eq` (the two branches are the same computation from caches
-  differing at one point) and `blindingAdvantageRO_eq_zero_of_no_query`. The
-  identical-until-bad step and the `Pr[bad]` bound are stated as targets
-  (`BoundedByBadQuery`, `BadQueryBounded`), not proved.
+  differing at one point), `blindingAdvantageRO_eq_zero_of_no_query`, and the
+  identical-until-bad step `blindingAdvantageRO_le_blindBadProb` (the blinding
+  term is at most the two bad-query probabilities). The `Pr[bad]` bound
+  (`mlwe + q_H · β`) is the documented gap.
 - **`SharedSecretHiding.lean`** — each hiding term proved equal to a
   real-or-random guessing bias and then to VCVio's
   `KEMScheme.IND_CPA_Advantage` of the explicit reduction adversary
@@ -150,14 +152,26 @@ Classical comparison and controls:
   completeness, the discrete-log key-recovery attack
   (`dksap_key_recovery` — key recovery, hence universal forgery), and its
   classical unlinkability bounded by two hashed-Diffie–Hellman terms, the
-  idealized middle game contributing exactly zero.
+  idealized middle game contributing exactly zero, and each hashed-DH term
+  bounded by VCVio's named DDH advantage plus entropy-smoothing advantage of
+  `h`, with explicit reductions (`hashedDH_le_ddh_add_es`,
+  `dksap_unlinkAdvantage_le_ddh_add_es`).
+- **`Reorder.lean`** — `evalDist_pull₃ … ₆`: pull the `k`-th of `k`
+  independent draws to the front; the game hops that are permutations of
+  samples are a few rewrites with these.
 - **`DKSAPOracle.lean`** — the attack with a real discrete-log oracle:
   `IsTotalQueryBound … 2` for any number of announcements (and not 1), and
   key recovery for every announcement under simulation; the random-oracle
   model of the hash: the idealized RO game is perfectly unlinkable with the
   adversary holding the oracle, the real game equals the ideal game against a
-  cache programmed at the DH point, the CDH reduction adversary type-checks;
-  the lazy-RO switching lemma to `Pr[bad]` is the documented gap.
+  cache programmed at the DH point, identical-until-bad closed
+  (`unlinkAdvantageRO ≤ Pr[bad true] + Pr[bad false]`), the CDH reduction
+  adversary type-checks; `Pr[bad] ≤ q_H · Adv_CDH` is the documented gap.
+- **`ROMUpToBad.lean`** — VCVio's programming-oracle identical-until-bad
+  engine instantiated for games over `unifSpec + hashSpec` (uniform queries
+  forwarded, hash queries lazily sampled): the programmed/tracking pair, the
+  two relational projections onto the plain random oracle, and the averaged
+  bound `boolDistAdvantage_run'_cacheQuery_run'_empty_le` both ROM files use.
 - **`Controls.lean`** — a recipient-leaking scheme has the maximal
   `unlinkAdvantage` (`1 − keyCollisionProb`, the true ceiling of the
   two-recipient game), and likewise a KEM whose ciphertext is the public key
@@ -213,7 +227,9 @@ and linked with `elan toolchain link`.)
   A `sorry` introduced anywhere in a headline theorem's dependency cone adds
   `sorryAx` to its list and turns the mismatch into a compile error.
 - **The runnable DKSAP demo** is asserted the same way:
-  `PqStealth/Demo.lean` wraps each `#eval` in `#guard_msgs` (6 blocks), so the
+  `PqStealth/Demo.lean` wraps each `#eval` in `#guard_msgs` (8 blocks, two of them
+  running the instantiated scheme's own `scan` and `CorrectExp` through VCVio's
+  `OracleComp.runIO`), so the
   numbers in its docstrings are checked, and the build prints nothing.
 - **CI** (`.github/workflows/lean.yml`) runs exactly the two commands above
   on every push and pull request; the badge at the top of this file reports

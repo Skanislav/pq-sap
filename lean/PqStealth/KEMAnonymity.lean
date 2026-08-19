@@ -31,24 +31,15 @@ abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C
 
 /-! ## A `Pr[= true | …] = 1` transfer lemma -/
 
-/-- Transfer a probability-one Boolean verdict along a pointwise implication.
-Used to derive detection completeness from the strictly stronger verdict of KEM
-correctness. -/
+/-- Transfer a probability-one Boolean verdict along a pointwise implication:
+VCVio's `probEvent_mono` read through `probOutput_map`. Used to derive detection
+completeness from the strictly stronger verdict of KEM correctness. -/
 theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α → Bool}
     (h : ∀ a ∈ support oa, p a = true → q a = true)
     (hp : Pr[= true | (do let a ← oa; pure (p a))] = 1) :
     Pr[= true | (do let a ← oa; pure (q a))] = 1 := by
-  rw [probOutput_eq_one_iff_forall] at hp ⊢
-  obtain ⟨hfail, hall⟩ := hp
-  simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true,
-    and_true] at hfail ⊢
-  refine ⟨hfail, ?_⟩
-  intro y hy
-  simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
-  obtain ⟨a, ha, rfl⟩ := hy
-  refine h a ha (hall (p a) ?_)
-  simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff]
-  exact ⟨a, ha, rfl⟩
+  rw [bind_pure_comp, probOutput_map] at hp ⊢
+  exact le_antisymm probEvent_le_one (hp ▸ probEvent_mono h)
 
 namespace KEM
 

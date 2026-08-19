@@ -332,16 +332,18 @@ one `sigma`; `encapsInternal` derives the encryption coins `r` from
 `G(m ‖ H(ek))`, so the ciphertext randomness is a function of the message **and
 of the challenge key**. The idealized games draw `rho`, `ŝ`, `ê`, `ŷ`, `e₁`,
 `e₂`, `m` independently. Closing this gap is the ROM/PRF step (`G` a random
-oracle, `PRF_η` a PRF, `SampleNTT` a random oracle) — the same modelling
+oracle, `PRF_η` a PRF; `SampleNTT` stays concrete, since both MLWE problems are
+seeded on `rho`) — the same modelling
 `ConstructionA.ExpandIsIdeal` names for the blinding argument, and not an MLWE
 statement. It is deliberately **not** a `PRFScheme.prfAdvantage`: VCVio's PRF
 game is a keyed-oracle distinguishing game, whereas this gap bundles `G` as a
 random oracle with the CBD pushforward of `PRF_η`, which no single PRF query
-game expresses. Naming it as a game distance keeps it honest. It is also mildly
-asymmetric in `b`: on `b = false` the real
-`anonSetup` already draws the challenge recipient first, on `b = true` the term
-additionally absorbs a swap of two independent `keygen` draws, which is
-distribution-preserving but not syntactic.
+game expresses. Naming it as a game distance keeps it honest. It is measured from the
+*reordered* real branch `KEM.anonBranchReordered` (challenge key, its
+encapsulation, then the other key): the reorder itself is free —
+`KEM.evalDist_anonSetup_bind_anonBranch`, proved with VCVio's relational
+tactics (`by_equiv`, `rvcstep swap left`, `rvcgen`) — so the term contains
+nothing but the primitive idealization.
 
 **`simulatorGap`** — the distance from the last idealized game to the SPR
 simulated branch. `simulatorGap_le` splits it, by one triangle inequality, into

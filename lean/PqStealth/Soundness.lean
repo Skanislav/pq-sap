@@ -24,36 +24,35 @@ namespace PqStealth
 /-! ## Bookkeeping for `Pr[= true | …]` over a bind
 
 Three shapes recur below: reading off a uniform draw, bounding a bind by a
-uniform bound on its continuation, and collapsing a never-failing prefix. -/
+uniform bound on its continuation, and collapsing a prefix. Each is a one-line
+specialisation of a VCVio lemma (`probOutput_map` + `probEvent_eq_eq_probOutput`,
+`probEvent_bind_le_of_forall_le`, `probOutput_bind_of_const`) to the
+`Pr[= true | …]` spelling the games use. -/
 
 /-- Testing a draw against a fixed value returns `true` exactly as often as the
 draw hits it. -/
 theorem probOutput_true_bind_decide_eq {α : Type} [DecidableEq α] (p : ProbComp α) (t : α) :
     Pr[= true | (do let x ← p; pure (decide (x = t)))] = Pr[= t | p] := by
-  simp only [probOutput_bind_eq_tsum, probOutput_pure, eq_comm (a := true)]
-  refine (tsum_eq_single t ?_).trans ?_
-  · intro x hx
-    simp only [decide_eq_true_eq, hx, if_false, mul_zero]
-  · simp only [decide_true, if_true, mul_one]
+  rw [bind_pure_comp, probOutput_map]
+  simp only [decide_eq_true_eq]
+  exact probEvent_eq_eq_probOutput p t
 
 /-- A bind is bounded by any bound holding uniformly over its continuation. The
 workhorse for the KEM false-positive bound. -/
 theorem probOutput_true_bind_le {α : Type} (p : ProbComp α) (f : α → ProbComp Bool)
     (c : ENNReal) (h : ∀ a, Pr[= true | f a] ≤ c) :
     Pr[= true | p >>= f] ≤ c := by
-  calc Pr[= true | p >>= f]
-      = ∑' a, Pr[= a | p] * Pr[= true | f a] := probOutput_bind_eq_tsum _ _ _
-    _ ≤ ∑' a, Pr[= a | p] * c := by gcongr with a; exact h a
-    _ = (∑' a, Pr[= a | p]) * c := ENNReal.tsum_mul_right
-    _ ≤ 1 * c := by gcongr; exact tsum_probOutput_le_one
-    _ = c := one_mul c
+  rw [← probEvent_eq_eq_probOutput]
+  exact probEvent_bind_le_of_forall_le fun a _ => by
+    rw [probEvent_eq_eq_probOutput]; exact h a
 
-/-- A never-failing prefix whose continuation has a constant verdict probability
-contributes nothing. The equality counterpart of `probOutput_true_bind_le`. -/
+/-- A prefix whose continuation has a constant verdict probability contributes
+nothing (a `ProbComp` never fails). The equality counterpart of
+`probOutput_true_bind_le`. -/
 theorem probOutput_true_bind_eq {α : Type} (p : ProbComp α) (f : α → ProbComp Bool)
-    (c : ENNReal) (hp : Pr[⊥ | p] = 0) (h : ∀ a, Pr[= true | f a] = c) :
+    (c : ENNReal) (h : ∀ a, Pr[= true | f a] = c) :
     Pr[= true | p >>= f] = c := by
-  rw [probOutput_bind_of_const p (fun a _ => h a), hp, tsub_zero, one_mul]
+  rw [probOutput_bind_of_const p (fun a _ => h a), probFailure_of_liftM_PMF, tsub_zero, one_mul]
 
 /-! ## DKSAP: the exact false-positive rate
 
@@ -83,12 +82,12 @@ theorem probOutput_falsePositiveExp_dksap_eq (g : G) (h : G → F)
       = (Fintype.card F : ENNReal)⁻¹ := fun c => by
     rw [probOutput_true_bind_decide_eq, probOutput_uniformSample]
   simp only [StealthScheme.FalsePositiveExp, dksap, bind_assoc, pure_bind, key]
-  refine probOutput_true_bind_eq _ _ _ (probFailure_uniformSample F) fun m0 => ?_
-  refine probOutput_true_bind_eq _ _ _ (probFailure_uniformSample F) fun v0 => ?_
+  refine probOutput_true_bind_eq _ _ _ fun m0 => ?_
+  refine probOutput_true_bind_eq _ _ _ fun v0 => ?_
   rw [probOutput_bind_bind_swap]
-  refine probOutput_true_bind_eq _ _ _ (probFailure_uniformSample F) fun v1 => ?_
+  refine probOutput_true_bind_eq _ _ _ fun v1 => ?_
   rw [probOutput_bind_bind_swap]
-  refine probOutput_true_bind_eq _ _ _ (probFailure_uniformSample F) fun r => ?_
+  refine probOutput_true_bind_eq _ _ _ fun r => ?_
   exact base _
 
 /-- **DKSAP's false-positive rate, exactly.** Not zero and not a hash-collision

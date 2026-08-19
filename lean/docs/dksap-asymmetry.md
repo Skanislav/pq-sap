@@ -153,7 +153,26 @@ by the two per-branch hashed-DH advantages and nothing else — the idealized
 middle game contributes exactly zero, so there is no residual slack in the
 reduction.
 
-Read alongside `dksap_key_recovery`, this is the point of the whole exercise.
+`hashedDH_le_ddh_add_es` / `dksap_unlinkAdvantage_le_ddh_add_es`: **the
+hashed-DH term from named assumptions.** `hashedDH` is a game gap, so by itself
+it is a definition; on each branch it is at most VCVio's decisional
+Diffie–Hellman advantage `DiffieHellman.ddhDistAdvantage g (ddhReductionDKSAP h adv b)`
+plus the entropy-smoothing advantage of `h`,
+`EntropySmoothing.advantage F g (fun _ => h) (esReductionDKSAP g adv b)`
+(VCVio's `HardnessAssumptions/EntropySmoothing.lean`; hash key `Fin 1` since
+`h` is unkeyed). The two reductions are explicit: the DDH one plants `A` as the
+target's viewing key, `B` as the ephemeral key and hashes `T`; the ES one uses
+its sample as the shared scalar. This is exactly VCVio's own hashed-ElGamal
+argument (`Examples/ElGamal/Hash.lean`) — DKSAP's announcement is hashed
+ElGamal with the spending key as the message — and the proof is the same
+four-game hop: real = DDH-real, DDH-random = hash-of-uniform-point = ES-real,
+ES-ideal = ideal. The intermediate games are written in the sampling order of
+VCVio's experiments, so each hop is a permutation of independent draws
+(`Reorder.evalDist_pull₃ … ₆`) plus one `mul_comm`.
+
+Read alongside `dksap_key_recovery`, this is the point of the whole exercise:
+the same scheme is unlinkable under DDH + entropy smoothing of `h`, and has its
+keys recovered by two discrete-log queries.
 
 ## Negative control
 
@@ -257,10 +276,11 @@ than baked into the oracle.
 
 Background for `PqStealth/DKSAPOracle.lean` §2.
 
-`hashedDH` in `DKSAP.lean` is *defined*, not reduced: it names the gap between
-the real derived scalar and a uniform one. This section moves the whole game
-into the random-oracle model, where that gap becomes something one can argue
-about, and reports honestly how far the argument is machine-checked.
+`hashedDH` in `DKSAP.lean` names the gap between the real derived scalar and a
+uniform one; in the standard model it is bounded by DDH plus entropy smoothing
+of `h` (`hashedDH_le_ddh_add_es`). This section instead moves the whole game
+into the random-oracle model, where the same gap becomes a bad-query
+probability, and reports honestly how far that argument is machine-checked.
 
 ### The model
 
@@ -303,55 +323,43 @@ then written in (`romImpl_run'_scalarQuery_bind`). Both games therefore end up
 in identical shape, with identical announcements, differing only in the starting
 cache.
 
-`dksapROBad` / `dksapROBadProb`: **the bad event.** In the idealized game
-nothing but the adversary touches the oracle, so the DH point being cached at
-the end holds exactly when the adversary queried it. `dksapROIdealBranchTagged`
-exposes that point.
+`dksapROBad` / `dksapROBadProb`: **the bad event.** The adversary is run against
+the oracle *programmed* at the DH point (VCVio's `QueryImpl.withProgramming`,
+whose `Bool` flag is set the first time the programmed point is queried), and
+the event is that flag. `ROMUpToBad.badQueryGame` packages it: prefix, point,
+value, adversary.
+
+`hashedDHRO_le_dksapROBadProb` and `dksap_unlinkAdvantageRO_le_badProb`:
+**identical until bad, closed.** `hashedDHRO g adv b ≤ dksapROBadProb g adv b`,
+hence `unlinkAdvantageRO ≤ dksapROBadProb true + dksapROBadProb false`. The
+engine is VCVio's `tvDist_simulateQ_run_le_probEvent_output_bad`, instantiated
+in `PqStealth/ROMUpToBad.lean` for the `unifSpec + hashSpec` shape (uniform
+queries forwarded, hash queries programmed / tracked), with two relational
+projections (`relTriple_simulateQ_run'`): the programmed run from `∅` is the
+plain random oracle run from `∅` overridden at the point, and the tracking run
+is the plain random oracle run from `∅`. `boolDistAdvantage_run'_cacheQuery_run'_empty_le`
+then averages over the prefix.
 
 `cdhOfUnlinkAdvRO`: **the reduction to CDH**, type-checked against VCVio's
 `DiffieHellman.CDHAdversary F G`. It plants the CDH challenge `A` as the
 ephemeral key and `B` as the target's viewing key, runs the idealized game under
-a logging random oracle (`loggingROImpl` — cache-on-hit control flow, so a
-hand-written `QueryImpl` rather than `preInsert`/`postInsert`), and returns one
-logged query point uniformly at random. The planting closes *because the
+a logging random oracle (`loggingROImpl` — VCVio's `appendInputLog`, a
+`preInsert`, over the lazy `randomOracle`), and returns one logged query point
+uniformly at random. The planting closes *because the
 idealized announcement needs neither `r` nor `v_b`*: it uses a fresh scalar. In
 the real game it would not close, and that asymmetry is why the bad event is
 defined on the ideal side.
 
 ### The gap, precisely
 
-Not proved: `hashedDHRO g adv b ≤ dksapROBadProb g adv b`, and hence
-`dksapROBadProb ≤ q_H · Adv_CDH(cdhOfUnlinkAdvRO adv b)`.
+Not proved: `dksapROBadProb ≤ q_H · Adv_CDH(cdhOfUnlinkAdvRO adv b)`.
 
-The first is one general lemma away. With `dksapRORun_eq` and
-`dksapROIdealRun_eq` in hand, the two games differ only in the starting cache,
-so what is missing is the **lazy-RO switching lemma**: for every
-`oa : OracleComp (scalarSpec F G) Bool`, point `Z`, value `s` and cache with
-`cache Z = none`,
-
-```
-|Pr[= true | (simulateQ (romImpl F G) oa).run' (cache.cacheQuery Z s)]
-   - Pr[= true | (simulateQ (romImpl F G) oa).run' cache]|
-  ≤ Pr[fun z => (z.2 Z).isSome | (simulateQ (romImpl F G) oa).run cache]
-```
-
-Which run the query event is measured in is load-bearing and easy to get wrong:
-it must be the run from the **unprogrammed** cache (the right-hand run, the one
-whose final cache is inspected), because a cache hit at `Z` returns the
-programmed `s` and changes the adversary's later behaviour, so the two runs do
-not have the same query probability. Instantiated at `cache = ∅` and
-`oa = adv a.1 a.2 c`, that right-hand side is exactly what `dksapROBad`
-computes — the ideal game's final cache, tested at the tagged DH point — which
-is why the bad event is defined on the ideal side and not on the real one.
-
-Proving it is an induction on `oa` through the cache monad, plus an integration
-step to move from the pointwise bound to the bound on `hashedDHRO` (the outer
-`tsum` over keys, `r` and `s`). VCVio's `StateSeparating/IdenticalUntilBad.lean`
-does not apply off the shelf:
-`advantage_le_queryBound_mul_slack_plus_probEvent_bad` compares two
-`QueryImpl.Stateful` HANDLERS against a shared adversary, whereas here the two
-games differ in the game body. Recasting DKSAP's announce step as a handler is
-the plausible route to reusing it.
+Two pieces. The reduction runs the *tracking* side of the identical-until-bad
+pair (the oracle at the DH point is a fresh sample, so `r` and `v_b` are not
+needed), whereas `dksapROBadProb` measures the flag on the *programmed* side;
+that the two flag probabilities coincide is the symmetric half of the
+fundamental lemma (the runs agree until the flag fires, and the flag is
+monotone), not yet stated here.
 
 The second needs the standard guessing argument: the reduction must pick WHICH
 of the adversary's hash queries is the DH point, costing a factor `q_H` (an

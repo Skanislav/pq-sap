@@ -1,5 +1,6 @@
 import PqStealth.MLKEM
 import LatticeCrypto.HardnessAssumptions.LearningWithErrors
+import VCVio.ProgramLogic.Tactics
 
 /-!
 # SPR of K-PKE: the two MLWE hops
@@ -10,11 +11,16 @@ built from an unlinkability distinguisher; that each hop's game gap IS the
 `LearningWithErrors.advantage` of its reduction adversary; and the resulting
 four-term bound on `KEM.sprAdv` for ML-KEM-768.
 
+Also proved: the real anonymity branch may be reordered to encapsulate first
+and draw the other key afterwards (`evalDist_anonSetup_bind_anonBranch`, by
+VCVio's relational tactics), so that reorder costs nothing and is NOT folded
+into the idealization term.
+
 Assumed: the two non-lattice terms of that bound stay unbounded here -- the
-primitive-idealization term (`G`, `PRF_eta`, `SampleNTT` as independent
-samplers) and the simulator term (compress-and-encode regularity, plus the
-honest key distribution). Neither is an MLWE statement.
-See `docs/spr-two-hop.md`.
+primitive-idealization term (`G` and `PRF_eta` as independent samplers; the
+seeded shape keeps `SampleNTT` concrete) and the simulator term
+(compress-and-encode regularity, plus the honest key distribution). Neither is
+an MLWE statement. See `docs/spr-two-hop.md`.
 -/
 
 open OracleComp OracleSpec MLKEM MLKEM.Concrete
@@ -43,8 +49,9 @@ instance instSampleableTypeTq : SampleableType MLKEM.Tq :=
 /-! ## VCVio's LWE advantage as a game distance -/
 
 /-- The decision-LWE advantage is the distance between the two named games, so
-it composes with the game-hopping triangle inequalities. -/
-theorem _root_.LearningWithErrors.advantage_eq_boolDistAdvantage {Sample Secret Output : Type}
+it composes with the game-hopping triangle inequalities. (Scoped under
+`PqStealth`; upstream ask, `docs/vcvio-upstream.md` item 4.) -/
+theorem LearningWithErrors.advantage_eq_boolDistAdvantage {Sample Secret Output : Type}
     [Add Output] (problem : LearningWithErrors.Problem Sample Secret Output)
     (adv : LearningWithErrors.Adversary problem) :
     LearningWithErrors.advantage problem adv =
@@ -256,6 +263,55 @@ theorem game1_ctHopProblem (b : Bool) :
   simp only [LearningWithErrors.game1, LearningWithErrors.uniformDistr, ctHopProblem, ctHopAdv,
     idealBranch, uniformKeygen, randCt, bind_assoc, pure_bind]
 
+/-! ## The real branch, reordered
+
+The idealized games encapsulate to the challenge key first and draw the other
+key afterwards; the real anonymity branch draws both keys first. The two orders
+are the same distribution, and VCVio's relational tactics close the swap. -/
+
+section Reorder
+
+variable {K PK SK C : Type} (kem : KEM PK SK C K) (adv : StealthScheme.UnlinkAdv PK C)
+
+/-- The real anonymity branch in the idealized games' order: challenge key,
+its encapsulation, then the other key. -/
+def KEM.anonBranchReordered (b : Bool) : ProbComp Bool := do
+  let pkb ← Prod.fst <$> kem.keygen
+  let c ← Prod.fst <$> kem.encaps pkb
+  let pkOther ← Prod.fst <$> kem.keygen
+  adv (if b then pkOther else pkb) (if b then pkb else pkOther) c
+
+/-- Drawing the other key before or after the encapsulation is the same game. -/
+theorem KEM.evalDist_anonSetup_bind_anonBranch (b : Bool) :
+    𝒟[kem.anonSetup >>= kem.anonBranch adv b] = 𝒟[kem.anonBranchReordered adv b] := by
+  cases b
+  · simp only [KEM.anonSetup, KEM.anonBranch, KEM.anonBranchReordered, bind_assoc, pure_bind,
+      map_eq_bind_pure_comp, Function.comp_def, Bool.false_eq_true, if_false]
+    by_equiv
+    rvcstep
+    intro a b hab
+    cases hab
+    rvcstep swap left
+    rvcgen
+  · simp only [KEM.anonSetup, KEM.anonBranch, KEM.anonBranchReordered, bind_assoc, pure_bind,
+      map_eq_bind_pure_comp, Function.comp_def, if_true]
+    by_equiv
+    rvcstep swap left
+    rvcstep
+    intro a b hab
+    cases hab
+    rvcstep swap left
+    rvcgen
+
+/-- The reorder is free: zero distinguishing advantage. -/
+theorem KEM.boolDistAdvantage_anonBranch_anonBranchReordered (b : Bool) :
+    (kem.anonSetup >>= kem.anonBranch adv b).boolDistAdvantage
+      (kem.anonBranchReordered adv b) = 0 := by
+  rw [ProbComp.boolDistAdvantage, probOutput_congr rfl (kem.evalDist_anonSetup_bind_anonBranch adv b),
+    sub_self, abs_zero]
+
+end Reorder
+
 /-! ## The four named terms -/
 
 section Terms
@@ -263,12 +319,13 @@ section Terms
 variable [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
   [DecidableEq encoding.EncodedV] (sim : ProbComp (Ciphertext params encoding))
 
-/-- The gap between the real ML-KEM anonymity branch and its idealized form:
-`G`, `PRF_η` and `SampleNTT` behaving as independent samplers. Not a lattice
-term -- it is the ROM/PRF step. -/
+/-- The gap between the (reordered) real ML-KEM anonymity branch and its
+idealized form: `G` as a fresh-seed sampler (key seeds, and the encryption coins
+`G(m ‖ H(ek))`) and `PRF_η` as an independent sampler. `SampleNTT` stays
+concrete -- the MLWE problems below are seeded on `rho`. Not a lattice term --
+it is the ROM/PRF step. -/
 noncomputable def primitiveIdealization (b : Bool) : ℝ :=
-  (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>=
-      KEM.anonBranch (MLKEM.asKEMScheme ring encoding prims) adv b).boolDistAdvantage
+  (KEM.anonBranchReordered (MLKEM.asKEMScheme ring encoding prims) adv b).boolDistAdvantage
     (idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
       (idealEncrypt ring encoding prims) b)
 
@@ -330,25 +387,34 @@ theorem sprAdv_le_two_hop_decomposition (b : Bool) :
     rw [LearningWithErrors.advantage_eq_boolDistAdvantage, game0_ctHopProblem,
       game1_ctHopProblem]
   rw [KEM.sprAdv, hkey, hct, primitiveIdealization, simulatorGap]
-  have h₁ := ProbComp.boolDistAdvantage_triangle
-    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>=
-      KEM.anonBranch (MLKEM.asKEMScheme ring encoding prims) adv b)
-    (idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
-      (idealEncrypt ring encoding prims) b)
-    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv)
-  have h₂ := ProbComp.boolDistAdvantage_triangle
-    (idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
-      (idealEncrypt ring encoding prims) b)
-    (idealBranch ring encoding prims adv (uniformKeygen encoding)
-      (idealEncrypt ring encoding prims) b)
-    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv)
-  have h₃ := ProbComp.boolDistAdvantage_triangle
-    (idealBranch ring encoding prims adv (uniformKeygen encoding)
-      (idealEncrypt ring encoding prims) b)
-    (idealBranch ring encoding prims adv (uniformKeygen encoding)
-      (fun _ => randCt encoding) b)
-    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv)
-  linarith
+  set kem : KEM (EncapsulationKey params encoding) (DecapsulationKey params encoding)
+    (Ciphertext params encoding) SharedSecret := MLKEM.asKEMScheme ring encoding prims
+  set G₀ : ProbComp Bool := KEM.anonSetup kem >>= KEM.anonBranch kem adv b
+  set G₀' : ProbComp Bool := KEM.anonBranchReordered kem adv b
+  set G₁ : ProbComp Bool := idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
+    (idealEncrypt ring encoding prims) b
+  set G₂ : ProbComp Bool := idealBranch ring encoding prims adv (uniformKeygen encoding)
+    (idealEncrypt ring encoding prims) b
+  set G₃ : ProbComp Bool := idealBranch ring encoding prims adv (uniformKeygen encoding)
+    (fun _ => randCt encoding) b
+  set G₄ : ProbComp Bool := KEM.anonSetup kem >>= KEM.simBranch sim adv
+  calc ProbComp.boolDistAdvantage G₀ G₄
+      ≤ ProbComp.boolDistAdvantage G₀ G₀' + ProbComp.boolDistAdvantage G₀' G₄ :=
+        ProbComp.boolDistAdvantage_triangle _ _ _
+    _ = ProbComp.boolDistAdvantage G₀' G₄ := by
+        rw [KEM.boolDistAdvantage_anonBranch_anonBranchReordered kem adv b, zero_add]
+    _ ≤ ProbComp.boolDistAdvantage G₀' G₁ + ProbComp.boolDistAdvantage G₁ G₄ :=
+        ProbComp.boolDistAdvantage_triangle _ _ _
+    _ ≤ ProbComp.boolDistAdvantage G₀' G₁ +
+          (ProbComp.boolDistAdvantage G₁ G₂ + ProbComp.boolDistAdvantage G₂ G₄) := by
+        gcongr
+        exact ProbComp.boolDistAdvantage_triangle _ _ _
+    _ ≤ ProbComp.boolDistAdvantage G₀' G₁ +
+          (ProbComp.boolDistAdvantage G₁ G₂ +
+            (ProbComp.boolDistAdvantage G₂ G₃ + ProbComp.boolDistAdvantage G₃ G₄)) := by
+        gcongr
+        exact ProbComp.boolDistAdvantage_triangle _ _ _
+    _ = _ := by ring
 
 end Terms
 

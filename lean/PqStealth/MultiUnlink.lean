@@ -18,6 +18,8 @@ see `docs/announcement-model.md`.
 
 open OracleComp OracleSpec
 
+namespace PqStealth
+
 /-! ## Telescoping a chain of hybrids -/
 
 /-- Distinguishing advantage only sees the output distributions, so it can be
@@ -47,8 +49,6 @@ theorem ProbComp.boolDistAdvantage_le_sum_hybrids (H : ℕ → ProbComp Bool) (n
             by linarith [ih]
         _ = (∑ k ∈ Finset.range n, (H (k + 1)).boolDistAdvantage (H k)) +
               (H (n + 1)).boolDistAdvantage (H n) := add_comm _ _
-
-namespace PqStealth
 
 namespace StealthScheme
 

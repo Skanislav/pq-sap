@@ -1,5 +1,5 @@
 import PqStealth.ConstructionA
-import VCVio.OracleComp.QueryTracking.RandomOracle.Basic
+import PqStealth.ROMUpToBad
 
 /-!
 # The address hash as a random oracle
@@ -10,10 +10,13 @@ announced address is a UNIFORM `Addr` whatever was hashed — what kills the `rh
 dependence `idealAux_indep_of_t` could not remove); `blindGameRO_eq`; and the
 degenerate identical-until-bad case, no address query ⇒ advantage `0`.
 
-Assumed / NOT closed: THREE things — that `blindGameRO` is `auxKeyIndependence`
-after the mask hop (a standalone abstraction, NOT identified with it here),
-identical-until-bad (`BoundedByBadQuery`) and `Pr[bad]` (`BadQueryBounded`).
-See `docs/announcement-model.md`.
+Proved in addition: identical-until-bad (`blindingAdvantageRO_le_blindBadProb`),
+against VCVio's programming-oracle engine via `ROMUpToBad`.
+
+Assumed / NOT closed: TWO things — that `blindGameRO` is `auxKeyIndependence`
+after the mask hop (a standalone abstraction, NOT identified with it here), and
+the bound on `Pr[bad]` (`blindBadProb`), which needs a query bound and a
+min-entropy hypothesis. See `docs/announcement-model.md`.
 -/
 
 open OracleComp OracleSpec
@@ -42,18 +45,17 @@ def hashAddrRO (x : Bytes) : ROMComp Bytes Addr Addr :=
 
 variable [DecidableEq Bytes] [SampleableType Addr]
 
-/-- The lazily sampled address oracle, over transparent uniform sampling. -/
+/-- The lazily sampled address oracle, over transparent uniform sampling: the generic
+`roImpl` of `ROMUpToBad` at the hash spec `Bytes →ₒ Addr`. -/
 noncomputable def romImpl :
     QueryImpl (addrSpec Bytes Addr) (StateT ((Bytes →ₒ Addr).QueryCache) ProbComp) :=
-  (HasQuery.toQueryImpl (spec := unifSpec) (m := ProbComp)).liftTarget
-      (StateT ((Bytes →ₒ Addr).QueryCache) ProbComp) +
-    (Bytes →ₒ Addr).randomOracle
+  roImpl (Bytes →ₒ Addr)
 
 /-- Uniform sampling passes through the address-oracle handler untouched. -/
 theorem simulateQ_romImpl_liftComp {β : Type} (ob : ProbComp β) :
     simulateQ (romImpl (Bytes := Bytes) (Addr := Addr)) (liftComp ob (addrSpec Bytes Addr)) =
       (liftM ob : StateT ((Bytes →ₒ Addr).QueryCache) ProbComp β) := by
-  simp only [romImpl, liftComp_eq_liftM, QueryImpl.simulateQ_add_liftM_left,
+  simp only [romImpl, roImpl, unifFwdImpl, liftComp_eq_liftM, QueryImpl.simulateQ_add_liftM_left,
     simulateQ_liftTarget, QueryImpl.simulateQ_toQueryImpl]
 
 /-- **Fresh-query uniformity at the challenger's query.** Run from the empty
@@ -63,7 +65,7 @@ theorem run_hashAddrRO_empty {α : Type} (x : Bytes) (f : Addr → ROMComp Bytes
     (simulateQ romImpl (hashAddrRO x >>= f)).run ∅ =
       (do let a ← ($ᵗ Addr)
           (simulateQ romImpl (f a)).run ((∅ : (Bytes →ₒ Addr).QueryCache).cacheQuery x a)) := by
-  simp only [romImpl, hashAddrRO, add_apply_inr, simulateQ_bind, simulateQ_query,
+  simp only [romImpl, roImpl, hashAddrRO, add_apply_inr, simulateQ_bind, simulateQ_query,
     OracleQuery.input_query, OracleQuery.cont_query, QueryImpl.add_apply_inr,
     QueryImpl.withCaching_apply, uniformSampleImpl, QueryCache.cacheQuery, map_bind, id_map,
     bind_assoc, StateT.run_bind, StateT.run_get, pure_bind, QueryCache.empty_apply,
@@ -141,36 +143,91 @@ theorem blindingAdvantageRO_eq_zero_of_no_query
       pure_bind, bind_pure]
   rw [blindingAdvantageRO, key true, key false, ProbComp.boolDistAdvantage, sub_self, abs_zero]
 
-/-! ## 3. Where the argument stops
+/-! ## 3. Identical until bad, and where the argument stops
 
 The two branches differ only at one point of the oracle: the packed rounded
-stealth key of the branch the adversary was NOT given. Both statements below are
-targets, not theorems. -/
+stealth key of the branch the adversary was NOT given. VCVio's programming-oracle
+engine, instantiated for uniform forwarding in `ROMUpToBad`, bounds each branch's
+distance from the oracle-free game by the probability that the adversary queries
+its point. -/
 
-/-- The bad event on a trace: the adversary queried the address oracle at the
-OTHER branch's packed rounded stealth key. -/
-def BadQuery (P : Prims R Rho Bytes T1 Tag Addr K k l) (rho : Bool → Rho)
-    (t : Bool → (Fin k → R)) (b : Bool)
-    (w : (Fin k → R) × Bool × (Bytes →ₒ Addr).QueryCache) : Prop :=
-  w.2.2 (P.pack (rho !b) (P.power2Round (w.1 + t !b))) ≠ none
+/-- The shared prefix of both branches: the mask and the (uniform) announced address. -/
+noncomputable def blindPrefix : ProbComp ((Fin k → R) × Addr) := do
+  let u ← ($ᵗ (Fin k → R))
+  let a ← ($ᵗ Addr)
+  pure (u, a)
 
-/-- **Target 1 (identical until bad).** The two ROM branches agree unless the
-adversary queries the other branch's address point, so the blinding term is at
-most that probability. Not proved: it needs the state-separating machinery of
-VCVio's `StateSeparating/IdenticalUntilBad.lean` at this handler. -/
-def BoundedByBadQuery (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
-    (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) : Prop :=
-  blindingAdvantageRO P tg rho t adv ≤
-    (Pr[BadQuery P rho t true | blindTraceRO P tg rho t adv true]).toReal
+/-- The address point branch `b` programs: recipient `b`'s packed rounded stealth key. -/
+def blindPoint (P : Prims R Rho Bytes T1 Tag Addr K k l) (rho : Bool → Rho)
+    (t : Bool → (Fin k → R)) (b : Bool) (x : (Fin k → R) × Addr) : Bytes :=
+  P.pack (rho b) (P.power2Round (x.1 + t b))
 
-/-- **Target 2 (the bad event is a guessing event).** After the MLWE hop that
-makes the mask uniform, hitting the point costs one guess per oracle query:
-`Pr[bad] ≤ mlwe + q_H · β` with `β` the min-entropy bound of `pack ∘ power2Round`
-on a uniform argument. Not proved: it needs a query bound on `adv`. -/
-def BadQueryBounded (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
-    (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes)
-    (mlwe : ℝ) (qH : ℕ) (β : ℝ) : Prop :=
-  (Pr[BadQuery P rho t true | blindTraceRO P tg rho t adv true]).toReal ≤ mlwe + qH * β
+/-- **The bad event on branch `b`**: the adversary, run against the oracle programmed at
+recipient `b`'s address point, queries that point. -/
+noncomputable def blindBadQuery (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
+    (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) (b : Bool) :
+    ProbComp Bool :=
+  badQueryGame (blindPrefix (R := R) (k := k) (Addr := Addr)) (fun x => adv (tg, x.2))
+    (blindPoint P rho t b) (fun x => x.2)
+
+/-- The probability of the bad event on branch `b`, as an `ℝ`. -/
+noncomputable def blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
+    (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) (b : Bool) :
+    ℝ :=
+  (Pr[= true | blindBadQuery P tg rho t adv b]).toReal
+
+/-- The oracle-free middle game: the adversary sees a uniform address and an empty oracle. -/
+noncomputable def blindGameROFree (tg : Tag) (adv : BlindAdvRO Tag Addr Bytes) :
+    ProbComp Bool :=
+  blindPrefix (R := R) (k := k) >>= fun x => (simulateQ romImpl (adv (tg, x.2))).run' ∅
+
+/-- Each branch is within its bad-query probability of the oracle-free game. -/
+theorem boolDistAdvantage_blindGameRO_blindGameROFree_le
+    (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
+    (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) (b : Bool) :
+    ProbComp.boolDistAdvantage (blindGameRO P tg rho t adv b)
+      (blindGameROFree (R := R) (k := k) tg adv) ≤ blindBadProb P tg rho t adv b := by
+  have h := boolDistAdvantage_run'_cacheQuery_run'_empty_le
+    (blindPrefix (R := R) (k := k) (Addr := Addr)) (fun x => adv (tg, x.2))
+    (blindPoint P rho t b) (fun x => x.2)
+  have hgame : blindGameRO P tg rho t adv b =
+      blindPrefix >>= fun x => (simulateQ (roImpl (Bytes →ₒ Addr)) (adv (tg, x.2))).run'
+        ((∅ : (Bytes →ₒ Addr).QueryCache).cacheQuery (blindPoint P rho t b x) x.2) := by
+    rw [blindGameRO_eq]
+    simp only [blindPrefix, blindPoint, romImpl, bind_assoc, pure_bind]
+  unfold blindBadProb blindBadQuery blindGameROFree
+  rw [hgame]
+  exact h
+
+/-- **Identical until bad, closed.** The blinding term is at most the sum of the two
+bad-query probabilities: the adversary must query one of the two address points to
+tell the branches apart. -/
+theorem blindingAdvantageRO_le_blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K k l)
+    (tg : Tag) (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) :
+    blindingAdvantageRO P tg rho t adv ≤
+      blindBadProb P tg rho t adv true + blindBadProb P tg rho t adv false := by
+  unfold blindingAdvantageRO
+  calc ProbComp.boolDistAdvantage (blindGameRO P tg rho t adv true)
+        (blindGameRO P tg rho t adv false)
+      ≤ ProbComp.boolDistAdvantage (blindGameRO P tg rho t adv true)
+          (blindGameROFree (R := R) (k := k) tg adv) +
+        ProbComp.boolDistAdvantage (blindGameROFree (R := R) (k := k) tg adv)
+          (blindGameRO P tg rho t adv false) :=
+        ProbComp.boolDistAdvantage_triangle _ _ _
+    _ ≤ blindBadProb P tg rho t adv true + blindBadProb P tg rho t adv false := by
+        gcongr
+        · exact boolDistAdvantage_blindGameRO_blindGameROFree_le P tg rho t adv true
+        · rw [ProbComp.boolDistAdvantage_comm]
+          exact boolDistAdvantage_blindGameRO_blindGameROFree_le P tg rho t adv false
+
+/-! ### Where the argument stops
+
+Bounding `blindBadProb` is the remaining target — `Pr[bad] ≤ mlwe + q_H · β`: after
+the MLWE hop that makes the mask uniform, hitting the point costs one guess per
+oracle query, with `β` the min-entropy bound of `pack ∘ power2Round` on a uniform
+argument. It needs a query bound on `adv` (`IsTotalQueryBound`) and an
+unpredictability hypothesis on the point (`HasUnpredictableSample`); neither is
+stated here yet. The reduction it would consume is type-checked below. -/
 
 /-- **The ROM reduction, type-checked.** Simulating the address oracle inside,
 a ROM blinding adversary is an ordinary seeded-MLWE distinguisher: the challenge
