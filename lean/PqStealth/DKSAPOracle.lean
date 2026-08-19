@@ -1,5 +1,7 @@
 import PqStealth.DKSAP
+import PqStealth.ROMUpToBad
 import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.LoggingOracle
 import VCVio.OracleComp.QueryTracking.RandomOracle.Simulation
 import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
 
@@ -11,13 +13,16 @@ EXACTLY two oracle queries whatever the number of announcements it is handed
 (`≤ 2` and not `≤ 1`), and its correctness when the oracle is simulated by a
 genuine discrete-log function; and, on the positive side, DKSAP restated over
 the same interface with the hash as a LAZY RANDOM ORACLE, the idealized RO game
-proved perfectly unlinkable, and the RO unlinkability advantage bounded by two
-hashed-DH terms.
+proved perfectly unlinkable, and the RO unlinkability advantage bounded by the
+two bad-query probabilities — identical-until-bad closed against VCVio's
+programming-oracle engine (`ROMUpToBad`).
 
-Assumed: the lazy-RO switching lemma that would turn `hashedDHRO` into
-`dksapROBadProb` is NOT proved; the CDH reduction from that bad event is
-defined but its advantage inequality is likewise open. See the "Oracle attack"
-and "DDH/ROM bound" sections of `docs/dksap-asymmetry.md`.
+Assumed: the CDH reduction from the bad event is defined (`cdhOfUnlinkAdvRO`,
+logging through VCVio's `appendInputLog`) but its advantage inequality
+`dksapROBadProb ≤ q_H · Adv_CDH` is open: it needs a query bound on the
+adversary and the fact that the flag fires with the same probability in the
+programmed and in the tracking run. See the "Oracle attack" and "DDH/ROM bound"
+sections of `docs/dksap-asymmetry.md`.
 -/
 
 open OracleComp OracleSpec
@@ -28,7 +33,7 @@ namespace PqStealth
 
 One interface serves both halves: uniform randomness plus a single oracle
 sending a group element to a scalar. Only the IMPLEMENTATION differs — a
-discrete-log function below, a lazy random oracle in §2. -/
+discrete-log function below, a lazy random oracle in the ROM section. -/
 
 section Spec
 
@@ -44,7 +49,7 @@ def scalarQuery (y : G) : OracleComp (scalarSpec F G) F :=
 
 end Spec
 
-/-! ## §1 The discrete-log attack, with a real oracle and a query bound
+/-! ## The discrete-log attack, with a real oracle and a query bound
 
 The oracle answers `y` with a scalar `x`; under `dlogImpl` that scalar really is
 the discrete log. The point of this section is the COST: two queries per
@@ -85,7 +90,9 @@ noncomputable def dlogImpl (dlog : G → F) : QueryImpl (scalarSpec F G) ProbCom
 theorem simulateQ_dlogAttack (dlog : G → F) (h : G → F) (MV : G × G) (l : List (G × G)) :
     simulateQ (dlogImpl dlog) (dlogAttack h MV l)
       = pure (l.map fun RP => recover h (dlog MV.1) (dlog MV.2) RP.1) := by
-  simp [dlogAttack, scalarQuery, dlogImpl]
+  simp only [dlogAttack, scalarQuery, add_apply_inr, bind_pure_comp, simulateQ_bind,
+    simulateQ_query, OracleQuery.input_query, OracleQuery.cont_query, dlogImpl, map_pure, id_eq,
+    simulateQ_map]
 
 /-- An honest DKSAP announcement, written as a function of the ephemeral scalar
 so a payment history can be indexed by a list of them. -/
@@ -131,7 +138,7 @@ theorem dlogAttack_forall_key_recovery (g : G)
 
 end Attack
 
-/-! ## §2 DKSAP in the random-oracle model
+/-! ## DKSAP in the random-oracle model
 
 The same interface, implemented by VCVio's lazy random oracle
 (`OracleSpec.randomOracle`, uniform sampling with a cache). The scheme, the
@@ -147,6 +154,9 @@ lazily sampled and cached. -/
 noncomputable def romImpl (F G : Type) [SampleableType F] [DecidableEq G] :
     QueryImpl (scalarSpec F G) (StateT ((G →ₒ F).QueryCache) ProbComp) :=
   unifFwdImpl (G →ₒ F) + OracleSpec.randomOracle (spec := (G →ₒ F))
+
+/-- `romImpl` is the generic `roImpl` of `ROMUpToBad` at the hash spec `G →ₒ F`. -/
+theorem romImpl_eq_roImpl : romImpl F G = roImpl (G →ₒ F) := rfl
 
 /-- Lifted `ProbComp` prefixes leave the cache alone, so they can be peeled out
 of a simulated computation. VCVio's `roSim.run'_liftM_bind`, at `romImpl`. -/
@@ -167,11 +177,12 @@ theorem romImpl_run'_scalarQuery_bind (Z : G)
   have hstep : (simulateQ (romImpl F G) (scalarQuery (F := F) Z) :
       StateT ((G →ₒ F).QueryCache) ProbComp F)
       = OracleSpec.randomOracle (spec := (G →ₒ F)) Z := by
-    simp [romImpl, scalarQuery]
+    simp only [romImpl, scalarQuery, add_apply_inr, simulateQ_query, OracleQuery.input_query,
+      OracleQuery.cont_query, QueryImpl.add_apply_inr, QueryImpl.withCaching_apply, map_bind, id_map]
   rw [hstep]
   simp only [StateT.run'_eq]
   rw [StateT.run_bind, QueryImpl.withCaching_run_none (m := ProbComp) uniformSampleImpl hc]
-  simp [map_eq_bind_pure_comp, uniformSampleImpl]
+  simp only [uniformSampleImpl, map_eq_bind_pure_comp, bind_assoc, Function.comp_apply, pure_bind]
 
 end ROSim
 
@@ -291,7 +302,9 @@ theorem dksap_unlinkAdvantageRO_le_hashedDHRO (g : G) (adv : UnlinkAdvRO F G)
 
 `dksapRORun_eq` puts the real game in the same shape as the ideal one, with the
 cache PROGRAMMED at the DH point. The two then differ only on runs where the
-adversary queries that point — the bad event below. -/
+adversary queries that point — the bad event below — and VCVio's identical-until-bad
+engine, instantiated for uniform forwarding in `ROMUpToBad`, bounds the distance
+by its probability. -/
 
 /-- The real game is the ideal game run against a cache already programmed at
 the DH point: the announce query is the first one, so it hits an empty cache. -/
@@ -308,58 +321,90 @@ theorem dksapRORun_eq (g : G) (adv : UnlinkAdvRO F G) (b : Bool) :
   refine bind_congr fun r => ?_
   exact romImpl_run'_scalarQuery_bind _ _ ∅ rfl
 
-/-- The ideal branch, instrumented to expose the DH point the real game would
-have hashed. -/
-def dksapROIdealBranchTagged (g : G) (adv : UnlinkAdvRO F G) (b : Bool)
-    (a : (G × G) × (G × G)) : OracleComp (scalarSpec F G) (G × Bool) := do
-  let r ← liftM ($ᵗ F)
-  let s ← liftM ($ᵗ F)
-  let z ← adv a.1 a.2 (r • g, (if b then a.2 else a.1).1 + s • g)
-  pure (r • (if b then a.2 else a.1).2, z)
+/-- The prefix both games share: the two key pairs, the ephemeral scalar, the shared scalar. -/
+def dksapROPrefix (g : G) : ProbComp (((G × G) × (G × G)) × F × F) :=
+  dksapROKeys F g >>= fun a => ($ᵗ F) >>= fun r => ($ᵗ F) >>= fun s => pure (a, r, s)
 
-/-- **The bad event.** In the idealized game nothing else touches the oracle, so
-the DH point is cached at the end exactly when the ADVERSARY queried it. -/
-noncomputable def dksapROBad (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ProbComp Bool := do
-  let z ← (simulateQ (romImpl F G)
-    (dksapROSetup g >>= dksapROIdealBranchTagged g adv b)).run ∅
-  pure (z.2 z.1.1).isSome
+/-- The adversary's computation on branch `b`, as a function of the prefix. -/
+def dksapROAdvRun (g : G) (adv : UnlinkAdvRO F G) (b : Bool)
+    (x : ((G × G) × (G × G)) × F × F) : OracleComp (scalarSpec F G) Bool :=
+  adv x.1.1 x.1.2 (x.2.1 • g, (if b then x.1.2 else x.1.1).1 + x.2.2 • g)
+
+/-- The DH point on branch `b`, as a function of the prefix. -/
+def dksapRODHPoint (b : Bool) (x : ((G × G) × (G × G)) × F × F) : G :=
+  x.2.1 • (if b then x.1.2 else x.1.1).2
+
+/-- **The bad event.** The adversary, run against the oracle programmed at the DH point (the
+real game), queries that point — the programming flag of `programmedROImpl` fires. -/
+noncomputable def dksapROBad (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ProbComp Bool :=
+  badQueryGame (dksapROPrefix g) (dksapROAdvRun g adv b) (dksapRODHPoint b) (fun x => x.2.2)
 
 /-- The probability of the bad event, as an `ℝ` like every other advantage
 here. -/
 noncomputable def dksapROBadProb (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ℝ :=
   (Pr[= true | dksapROBad g adv b]).toReal
 
+/-- **Identical until bad, closed.** The hashed-DH term on branch `b` is at most the
+probability that the adversary queries the DH point. -/
+theorem hashedDHRO_le_dksapROBadProb (g : G) (adv : UnlinkAdvRO F G) (b : Bool) :
+    hashedDHRO g adv b ≤ dksapROBadProb g adv b := by
+  have h := boolDistAdvantage_run'_cacheQuery_run'_empty_le (dksapROPrefix g)
+    (dksapROAdvRun g adv b) (dksapRODHPoint b) (fun x => x.2.2)
+  have hreal : dksapRORun g adv b =
+      dksapROPrefix g >>= fun x => (simulateQ (roImpl (G →ₒ F)) (dksapROAdvRun g adv b x)).run'
+        ((∅ : (G →ₒ F).QueryCache).cacheQuery (dksapRODHPoint b x) x.2.2) := by
+    rw [dksapRORun_eq]
+    simp only [dksapROPrefix, dksapROAdvRun, dksapRODHPoint, advRunAt, romImpl_eq_roImpl,
+      bind_assoc, pure_bind]
+  have hideal : dksapROIdealRun g adv b =
+      dksapROPrefix g >>= fun x =>
+        (simulateQ (roImpl (G →ₒ F)) (dksapROAdvRun g adv b x)).run' ∅ := by
+    rw [dksapROIdealRun_eq]
+    simp only [dksapROPrefix, dksapROAdvRun, advRunAt, romImpl_eq_roImpl, bind_assoc, pure_bind]
+  unfold hashedDHRO dksapROBadProb dksapROBad
+  rw [hreal, hideal]
+  exact h
+
+/-- **DKSAP's RO unlinkability is bounded by the two bad-query probabilities**: the
+real/ideal gap on each branch is identical-until-bad, and the ideal game is
+perfectly unlinkable. -/
+theorem dksap_unlinkAdvantageRO_le_badProb (g : G) (adv : UnlinkAdvRO F G)
+    (hbij : Function.Bijective (fun x : F => x • g)) :
+    unlinkAdvantageRO g adv ≤ dksapROBadProb g adv true + dksapROBadProb g adv false :=
+  (dksap_unlinkAdvantageRO_le_hashedDHRO g adv hbij).trans
+    (add_le_add (hashedDHRO_le_dksapROBadProb g adv true)
+      (hashedDHRO_le_dksapROBadProb g adv false))
+
 /-! ### The reduction to CDH
 
 Planting the CDH challenge as `(R, V_b)` is possible precisely because the
-IDEALIZED announcement needs neither `r` nor `v_b`: it uses a fresh scalar. -/
+IDEALIZED announcement needs neither `r` nor `v_b`: it uses a fresh scalar. The
+reduction therefore runs the tracking side of the identical-until-bad pair; that
+its bad event has the probability `dksapROBadProb` measures on the programmed
+side is the (unproved here) symmetric half of the fundamental lemma. -/
 
 /-- A random oracle that also logs the queried points, so the reduction can
-return one of them. Cache-on-hit control flow, hence a hand-written handler. -/
+return one of them: VCVio's `appendInputLog` (a `preInsert`) over the lazy
+random oracle, with uniform queries forwarded. -/
 noncomputable def loggingROImpl (F G : Type) [SampleableType F] [DecidableEq G] :
-    QueryImpl (scalarSpec F G) (StateT ((G →ₒ F).QueryCache × List G) ProbComp)
-  | Sum.inl n => liftM ($[0..n])
-  | Sum.inr y => do
-      let st ← get
-      match st.1 y with
-      | some u => do set (st.1, y :: st.2); pure u
-      | none =>
-          let u ← (liftM ($ᵗ F) : StateT ((G →ₒ F).QueryCache × List G) ProbComp F)
-          set (st.1.cacheQuery y u, y :: st.2)
-          pure u
+    QueryImpl (scalarSpec F G)
+      (StateT (List G) (StateT ((G →ₒ F).QueryCache) ProbComp)) :=
+  (HasQuery.toQueryImpl (spec := unifSpec) (m := ProbComp)).liftTarget
+      (StateT (List G) (StateT ((G →ₒ F).QueryCache) ProbComp)) +
+    QueryImpl.appendInputLog (OracleSpec.randomOracle (spec := (G →ₒ F)))
 
 /-- The CDH solver built from an RO adversary: plant `A` as the ephemeral key
 and `B` as the target's viewing key, run the idealized game, and return one
-logged query point uniformly at random. -/
+logged query point uniformly at random (`0` if nothing was queried). -/
 noncomputable def cdhOfUnlinkAdvRO (adv : UnlinkAdvRO F G) (b : Bool) :
     DiffieHellman.CDHAdversary F G := fun g A B => do
   let mT ← ($ᵗ F); let mO ← ($ᵗ F); let vO ← ($ᵗ F); let s ← ($ᵗ F)
   let pkT : G × G := (mT • g, B)
   let pkO : G × G := (mO • g, vO • g)
-  let z ← (simulateQ (loggingROImpl F G)
-    (adv (if b then pkO else pkT) (if b then pkT else pkO) (A, mT • g + s • g))).run (∅, [])
-  let i ← ($[0..z.2.2.length])
-  pure (z.2.2.getD i.val 0)
+  let z ← ((simulateQ (loggingROImpl F G)
+    (adv (if b then pkO else pkT) (if b then pkT else pkO) (A, mT • g + s • g))).run []).run' ∅
+  let i ← ($[0..z.2.length - 1])
+  pure (z.2.getD i.val 0)
 
 end Game
 

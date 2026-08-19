@@ -333,8 +333,16 @@ setup written out. Its degenerate case is proved:
 address oracle has advantage exactly `0`, with BOTH `rho` and `t` gone, which
 is strictly more than `idealAux_indep_of_t` gives.
 
-**Where this stops, precisely.** Three things are open. The first is not even
-stated in Lean; the other two are `def … : Prop` targets, not theorems:
+**Identical until bad, closed.** `blindingAdvantageRO_le_blindBadProb`: the
+blinding term is at most `blindBadProb true + blindBadProb false`, where
+`blindBadProb b` is the probability that the adversary, run against the oracle
+programmed at recipient `b`'s address point, queries that point (VCVio's
+`withProgramming` flag; `ROMUpToBad.badQueryGame`). The proof goes through the
+oracle-free middle game `blindGameROFree` and VCVio's programming-oracle engine
+instantiated for uniform forwarding in `PqStealth/ROMUpToBad.lean`.
+
+**Where this stops, precisely.** Two things are open. The first is not even
+stated in Lean:
 
 * **The identification.** `blindingAdvantageRO` is not connected to
   `auxKeyIndependence (metaKem P Smp kem) (auxGen P) adv`. Doing so means
@@ -343,15 +351,7 @@ stated in Lean; the other two are `def … : Prop` targets, not theorems:
   commutation `ConstructionA`'s gap list already names, plus `ExpandIsIdeal`.
   Until then the ROM results are about the shape of the blinding term, not
   about the term itself.
-* `BoundedByBadQuery` — identical-until-bad: the advantage is at most the
-  probability that the adversary queries the OTHER branch's address point
-  (`BadQuery`, stated on the instrumented trace so it is an event on the
-  output). Discharging it means instantiating VCVio's
-  `StateSeparating/IdenticalUntilBad.lean` at `romImpl`, whose handlers are
-  `σ × Bool`-shaped with an explicit bad flag; `romImpl` is not in that shape,
-  so it needs a bad-flagged variant of the handler and a proof that the two
-  agree while the flag is down. That is the piece not done.
-* `BadQueryBounded` — `Pr[bad] ≤ mlwe + q_H · β`: the mask is uniform only after
+* `blindBadProb ≤ mlwe + q_H · β`: the mask is uniform only after
   the MLWE hop, and each of the adversary's `q_H` queries then guesses a point
   of min-entropy `log₂(1/β)`. Discharging it needs a query bound on the
   adversary (`IsTotalQueryBound`) plus the counting lemma
@@ -359,8 +359,8 @@ stated in Lean; the other two are `def … : Prop` targets, not theorems:
   min-entropy of `pack rho (power2Round (u + t))` in `u`, which is a property of
   `pack`/`power2Round` this model does not have (both are uninterpreted).
 
-`mlweAdvOfBlindAdvRO` type-checks the reduction that the first of those two
-hops consumes: simulating the address oracle inside turns a ROM blinding
+`mlweAdvOfBlindAdvRO` type-checks the reduction that the MLWE hop of that bound
+consumes: simulating the address oracle inside turns a ROM blinding
 adversary into an ordinary seeded-`blindingProblem` distinguisher.
 
 ## Multi-challenge unlinkability
@@ -457,19 +457,21 @@ giving `Adv_{n,q} ≤ n·(n−1)·q·ε`; that composition is not in Lean.
 `MultiRecipient.lean` publishes `n` independently generated meta-addresses and
 lets the adversary NAME the challenge pair after seeing all of them. The
 adversary is two functions rather than one, because naming the pair and guessing
-the bit happen at different points of the game:
+the bit happen at different points of the game, and the first hands a state to
+the second (as VCVio's two-phase `IND_CPA_Adversary` does; a stateless adversary
+takes `St := Unit`):
 
 ```lean
-abbrev UnlinkChooseN (MetaPub : Type) (n : ℕ) :=
-  (Fin n → MetaPub) → ProbComp (Fin n × Fin n)
+abbrev UnlinkChooseN (MetaPub : Type) (n : ℕ) (St : Type) :=
+  (Fin n → MetaPub) → ProbComp ((Fin n × Fin n) × St)
 
-abbrev UnlinkGuessN (MetaPub Announcement : Type) (n : ℕ) :=
-  (Fin n → MetaPub) → Fin n × Fin n → Announcement → ProbComp Bool
+abbrev UnlinkGuessN (MetaPub Announcement : Type) (n : ℕ) (St : Type) :=
+  St → (Fin n → MetaPub) → Fin n × Fin n → Announcement → ProbComp Bool
 
 def unlinkBranchN (b : Bool) (pks : Fin n → MetaPub) : ProbComp Bool := do
-  let i ← pick pks
-  let c ← S.announce (pks (if b then i.2 else i.1))
-  guess pks i c
+  let i ← pick pks                                -- ((i₁, i₂), state)
+  let c ← S.announce (pks (if b then i.1.2 else i.1.1))
+  guess i.2 pks i.1 c
 ```
 
 Letting the game sample the pair instead would be a strictly weaker notion with
@@ -482,11 +484,11 @@ the other `n − 2` itself, runs `pick`, and forwards `guess`'s verdict only whe
 `pick` named exactly `j`.
 
 ```lean
-theorem unlinkAdvantageN_le_sum (hkg) (hann) (hpick) :
+theorem unlinkAdvantageN_le_sum (hpick) :
     S.unlinkAdvantageN pick guess ≤
       ∑ j ∈ Finset.univ.offDiag, S.unlinkAdvantage (S.pairGuessAdv pick guess j)
 
-theorem unlinkAdvantageN_le_mul (hkg) (hann) (hpick) (h : ∀ j, … ≤ ε) :
+theorem unlinkAdvantageN_le_mul (hpick) (h : ∀ j, … ≤ ε) :
     S.unlinkAdvantageN pick guess ≤ (n * (n - 1) : ℕ) * ε
 ```
 
@@ -517,15 +519,12 @@ displaced draw is discarded and the fresh one takes its place (VCVio's
 the induction hypothesis applies under the leading draw. Nothing about `Fin n`
 permutations is needed — `Function.update` plus `Fin.cons_update` is enough.
 
-**The three hypotheses, and why they are explicit.**
-
-* `hkg : Pr[⊥ | S.keygen] = 0` and `hann : ∀ pk, Pr[⊥ | S.announce pk] = 0`.
-  `ProbComp` is a *sub*probability monad, so a draw whose value the rest of the
-  computation ignores can only be discarded when it carries no failure mass.
-  `keygen`'s totality is what makes exchangeability true; `announce`'s is what
-  makes the challenge announcement droppable on a wrong guess. Both hold for
-  every concrete instance in this tree, but `StealthScheme` does not require
-  them, so they are hypotheses rather than silent assumptions.
+**The hypothesis, and why it is explicit.** (An earlier version also carried
+`hkg : Pr[⊥ | S.keygen] = 0` and `hann : ∀ pk, Pr[⊥ | S.announce pk] = 0`, on
+the grounds that a discarded draw must carry no failure mass. For
+`ProbComp = OracleComp unifSpec` that is a theorem — VCVio's
+`probFailure_of_liftM_PMF` — so the two were vacuous and were dropped; the
+exchangeability and wrong-guess steps discharge it inline.)
 * `hpick : ∀ pks, ∀ i ∈ support (pick pks), i.1 ≠ i.2` — the adversary must name
   two DISTINCT recipients. Without it the sum would have to run over the
   diagonal too, where the reduction cannot embed both challenge keys (the second

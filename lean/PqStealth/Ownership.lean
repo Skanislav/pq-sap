@@ -216,10 +216,11 @@ theorem spendForgeryAdvantage_eq_sis_advantage [DecidableEq R] [Nontrivial R]
     bind_assoc, pure_bind, readKey_augmentedMatrix,
     augmented_isValid_eq_ownershipValid]
 
-/-- The `≤` form, for chaining. NOT yet "spend forgery is bounded by the MSIS
-assumption": the challenge is the scheme's distribution, and only the scoring
-function is VCVio's. See `docs/msis-reshaping.md`. -/
-theorem spendForgeryAdvantage_le_msis [DecidableEq R] [Nontrivial R]
+/-- The `≤` form, for chaining: spend forgery is bounded by the SIS advantage
+on the AUGMENTED problem. NOT yet "bounded by the MSIS assumption": the
+challenge is the scheme's key distribution, and only the scoring function is
+VCVio's. See `docs/msis-reshaping.md`. -/
+theorem spendForgeryAdvantage_le_augmentedSIS [DecidableEq R] [Nontrivial R]
     (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) :

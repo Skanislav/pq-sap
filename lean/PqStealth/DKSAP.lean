@@ -1,4 +1,7 @@
 import PqStealth.Games
+import PqStealth.Reorder
+import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
+import VCVio.CryptoFoundations.HardnessAssumptions.EntropySmoothing
 
 /-!
 # DKSAP: the deployed scheme, its break, and its classical soundness
@@ -193,9 +196,11 @@ noncomputable def hashedDH (b : Bool) : ℝ :=
 
 /-! ## The classical security statement -/
 
-/-- **DKSAP's unlinkability rests entirely on hashed Diffie-Hellman**, with no
-residual slack. Read alongside `dksap_key_recovery`: the same scheme is sound
-classically and totally broken given a discrete-log oracle. -/
+/-- **DKSAP's unlinkability is two hashed-DH gaps**, the idealized middle game
+contributing exactly zero. `hashedDH` is itself a game distance; it is bounded
+by VCVio's named DDH and entropy-smoothing advantages below
+(`hashedDH_le_ddh_add_es`). Read alongside `dksap_key_recovery`: the same scheme
+is sound classically and totally broken given a discrete-log oracle. -/
 theorem dksap_unlinkAdvantage_le_hashedDH
     (hbij : Function.Bijective (fun x : F => x • g)) :
     (dksap g h).unlinkAdvantage adv ≤ hashedDH g h adv true + hashedDH g h adv false := by
@@ -222,5 +227,137 @@ theorem dksap_unlinkAdvantage_le_hashedDH
         rw [hzero, zero_add]
 
 end Classical
+
+/-! ## The hashed-DH term from named assumptions
+
+`hashedDH` is a game gap. It is bounded by VCVio's decisional Diffie–Hellman
+advantage plus the entropy-smoothing advantage of `h`, each of an explicit
+reduction — exactly as VCVio's hashed ElGamal (`Examples/ElGamal/Hash.lean`),
+whose ciphertext `(y • g, hash (y • pk) + m)` is DKSAP's announcement with the
+spending key in place of the message. The intermediate games are written in
+the sampling order of `ddhExpRand` / `EntropySmoothing.realExp`, so that each
+hop is a permutation of independent draws (`Reorder`) and one `mul_comm`. -/
+
+section NamedAssumptions
+
+variable [SampleableType F] (g : G) (h : G → F) (adv : StealthScheme.UnlinkAdv (G × G) (G × G))
+
+/-- The DDH reduction on branch `b`: the challenge `A` is the target's viewing
+key, `B` the ephemeral key, `T` the point to hash; the remaining keys are drawn
+in the order `mT, mO, vO`. -/
+def ddhReductionDKSAP (b : Bool) : DiffieHellman.DDHAdversary F G := fun g A B T => do
+  let mT ← ($ᵗ F); let mO ← ($ᵗ F); let vO ← ($ᵗ F)
+  let pkT : G × G := (mT • g, A)
+  let pkO : G × G := (mO • g, vO • g)
+  adv (if b then pkO else pkT) (if b then pkT else pkO) (B, mT • g + h T • g)
+
+/-- The middle game: the hashed point is a uniform group element. In the
+sampling order of `ddhExpRand`, so the DDH-random branch is this game on the
+nose. -/
+def dksapDHGame (b : Bool) : ProbComp Bool := do
+  let vT ← ($ᵗ F); let r ← ($ᵗ F); let c ← ($ᵗ F)
+  let mT ← ($ᵗ F); let mO ← ($ᵗ F); let vO ← ($ᵗ F)
+  let pkT : G × G := (mT • g, vT • g)
+  let pkO : G × G := (mO • g, vO • g)
+  adv (if b then pkO else pkT) (if b then pkT else pkO) (r • g, mT • g + h (c • g) • g)
+
+/-- The entropy-smoothing reduction on branch `b`: the sample (the hash of a
+uniform point, or uniform) is the shared scalar. The hash key is `Fin 1`, `h`
+being unkeyed. -/
+def esReductionDKSAP (b : Bool) : Fin 1 × F → ProbComp Bool := fun x => do
+  let vT ← ($ᵗ F); let r ← ($ᵗ F)
+  let mT ← ($ᵗ F); let mO ← ($ᵗ F); let vO ← ($ᵗ F)
+  let pkT : G × G := (mT • g, vT • g)
+  let pkO : G × G := (mO • g, vO • g)
+  adv (if b then pkO else pkT) (if b then pkT else pkO) (r • g, mT • g + x.2 • g)
+
+/-- The real branch is the DDH-real experiment of the reduction. -/
+theorem evalDist_unlinkBranch_dksap_eq_ddhExpReal [DecidableEq G] (b : Bool) :
+    𝒟[(dksap g h).unlinkSetup >>= (dksap g h).unlinkBranch adv b] =
+      𝒟[DiffieHellman.ddhExpReal g (ddhReductionDKSAP h adv b)] := by
+  cases b
+  · simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranch, dksap, ddhReductionDKSAP,
+      DiffieHellman.ddhExpReal, bind_assoc, pure_bind, Bool.false_eq_true, if_false, smul_smul]
+    rw [evalDist_bind_bind_swap]
+    refine evalDist_bind_congr' _ fun v0 => ?_
+    rw [evalDist_pull₄]
+    refine evalDist_bind_congr' _ fun r => evalDist_bind_congr' _ fun m0 =>
+      evalDist_bind_congr' _ fun m1 => evalDist_bind_congr' _ fun v1 => ?_
+    rw [mul_comm r v0]
+  · simp only [StealthScheme.unlinkSetup, StealthScheme.unlinkBranch, dksap, ddhReductionDKSAP,
+      DiffieHellman.ddhExpReal, bind_assoc, pure_bind, if_true, smul_smul]
+    rw [evalDist_pull₄]
+    refine evalDist_bind_congr' _ fun v1 => ?_
+    rw [evalDist_pull₄]
+    refine evalDist_bind_congr' _ fun r => ?_
+    rw [evalDist_pull₃]
+    refine evalDist_bind_congr' _ fun m1 => evalDist_bind_congr' _ fun m0 =>
+      evalDist_bind_congr' _ fun v0 => ?_
+    rw [mul_comm r v1]
+
+/-- The DDH-random experiment of the reduction is the middle game. -/
+theorem evalDist_ddhExpRand_eq_dksapDHGame (b : Bool) :
+    𝒟[DiffieHellman.ddhExpRand g (ddhReductionDKSAP h adv b)] = 𝒟[dksapDHGame g h adv b] := by
+  simp only [DiffieHellman.ddhExpRand, ddhReductionDKSAP, dksapDHGame]
+
+/-- The middle game is the real entropy-smoothing experiment of the reduction. -/
+theorem evalDist_dksapDHGame_eq_esReal (b : Bool) :
+    𝒟[dksapDHGame g h adv b] =
+      𝒟[EntropySmoothing.realExp F g (fun (_ : Fin 1) => h) (esReductionDKSAP g adv b)] := by
+  simp only [EntropySmoothing.realExp, esReductionDKSAP, dksapDHGame]
+  rw [evalDist_uniformSample_bind_const, evalDist_pull₃]
+
+/-- The ideal entropy-smoothing experiment of the reduction is the idealized branch. -/
+theorem evalDist_esIdeal_eq_unlinkBranch_dksapIdeal (b : Bool) :
+    𝒟[EntropySmoothing.idealExp (HK := Fin 1) (M := F) (esReductionDKSAP g adv b)] =
+      𝒟[(dksapIdeal F g).unlinkSetup >>= (dksapIdeal F g).unlinkBranch adv b] := by
+  simp only [EntropySmoothing.idealExp, esReductionDKSAP, StealthScheme.unlinkSetup,
+    StealthScheme.unlinkBranch, dksapIdeal, bind_assoc, pure_bind]
+  rw [evalDist_uniformSample_bind_const]
+  symm
+  cases b
+  · simp only [Bool.false_eq_true, if_false]
+    rw [evalDist_pull₆]
+    refine evalDist_bind_congr' _ fun s => ?_
+    rw [evalDist_bind_bind_swap]
+    refine evalDist_bind_congr' _ fun v0 => ?_
+    rw [evalDist_pull₄]
+  · simp only [if_true]
+    rw [evalDist_pull₆]
+    refine evalDist_bind_congr' _ fun s => ?_
+    rw [evalDist_pull₄]
+    refine evalDist_bind_congr' _ fun v1 => ?_
+    rw [evalDist_pull₄]
+    refine evalDist_bind_congr' _ fun r => ?_
+    rw [evalDist_pull₃]
+
+/-- **The hashed-DH term from named assumptions.** On each branch it is at most
+the DDH advantage of `ddhReductionDKSAP` plus the entropy-smoothing advantage of
+`h` against `esReductionDKSAP`. -/
+theorem hashedDH_le_ddh_add_es [DecidableEq G] (b : Bool) :
+    hashedDH g h adv b ≤
+      DiffieHellman.ddhDistAdvantage g (ddhReductionDKSAP h adv b) +
+        EntropySmoothing.advantage F g (fun (_ : Fin 1) => h) (esReductionDKSAP g adv b) := by
+  unfold hashedDH DiffieHellman.ddhDistAdvantage EntropySmoothing.advantage
+    ProbComp.boolDistAdvantage
+  rw [probOutput_congr rfl (evalDist_unlinkBranch_dksap_eq_ddhExpReal g h adv b),
+    ← probOutput_congr rfl (evalDist_esIdeal_eq_unlinkBranch_dksapIdeal g adv b),
+    probOutput_congr rfl (evalDist_ddhExpRand_eq_dksapDHGame g h adv b),
+    probOutput_congr rfl (evalDist_dksapDHGame_eq_esReal g h adv b)]
+  exact abs_sub_le _ _ _
+
+/-- **DKSAP's classical unlinkability from DDH and entropy smoothing**: the
+sum over both branches of the two named advantages of the explicit reductions. -/
+theorem dksap_unlinkAdvantage_le_ddh_add_es [DecidableEq G]
+    (hbij : Function.Bijective (fun x : F => x • g)) :
+    (dksap g h).unlinkAdvantage adv ≤
+      (DiffieHellman.ddhDistAdvantage g (ddhReductionDKSAP h adv true) +
+          EntropySmoothing.advantage F g (fun (_ : Fin 1) => h) (esReductionDKSAP g adv true)) +
+        (DiffieHellman.ddhDistAdvantage g (ddhReductionDKSAP h adv false) +
+          EntropySmoothing.advantage F g (fun (_ : Fin 1) => h) (esReductionDKSAP g adv false)) :=
+  (dksap_unlinkAdvantage_le_hashedDH g h adv hbij).trans
+    (add_le_add (hashedDH_le_ddh_add_es g h adv true) (hashedDH_le_ddh_add_es g h adv false))
+
+end NamedAssumptions
 
 end PqStealth

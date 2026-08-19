@@ -43,8 +43,17 @@ Grouped by what the change would cost on VCVio's side.
 4. **`LearningWithErrors.advantage_eq_boolDistAdvantage`.**
    The bridge `advantage = (game0).boolDistAdvantage (game1)` is what lets a
    decision-MLWE term enter a `boolDistAdvantage_triangle` chain at all.
-   We declared it in VCVio's namespace from our tree (`SPRTwoHop.lean`);
-   it belongs in `LatticeCrypto/HardnessAssumptions/LearningWithErrors.lean`.
+   We carry it as `PqStealth.LearningWithErrors.advantage_eq_boolDistAdvantage`
+   (`SPRTwoHop.lean`); it belongs in
+   `LatticeCrypto/HardnessAssumptions/LearningWithErrors.lean`.
+
+4b. **Four small `boolDistAdvantage` lemmas** (`CryptoFoundations/SecExp.lean`
+   has only `boolDistAdvantage_triangle`): `boolDistAdvantage_comm`,
+   `boolDistAdvantage_congr` (transport along `𝒟[p] = 𝒟[p']`),
+   `boolDistAdvantage_le_sum_hybrids` (telescoping over `ℕ`-indexed hybrids)
+   and `boolBiasAdvantage_bind_uniformBool_branch` (the bit-indexed-branch
+   form of `boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage`). All
+   carried under `PqStealth.ProbComp.*` (`Games.lean`, `MultiUnlink.lean`).
 
 ## B. Medium — real proving, but well-specified
 
@@ -92,22 +101,32 @@ Grouped by what the change would cost on VCVio's side.
 
 ## C. Framework-level — the ones that blocked round 3
 
-8. **A game-body identical-until-bad / lazy-RO switching lemma.**
-   `StateSeparating/IdenticalUntilBad.lean` compares two
-   `QueryImpl.Stateful` *handlers* against a shared adversary with an
-   explicit `σ × Bool` bad flag. Two of our proofs need the other shape:
-   two *game bodies* that coincide unless the adversary queries a random
-   oracle at one specific point, run under the plain lazily-sampled
-   `OracleSpec.randomOracle`:
-   - `PqStealth/DKSAPOracle.lean`: `hashedDHRO ≤ dksapROBadProb` (the real
-     game is already proved equal to the ideal game against a cache
-     programmed at the DH point — `dksapRORun_eq`; only the switching
-     lemma is missing);
-   - `PqStealth/BlindingROM.lean`: the bound on the blinding term
-     (`blindGameRO_eq` shows the two branches are one computation from
-     caches differing at a single point).
-   One general lemma closes both. This is the highest-value upstream
-   contribution on this list.
+8. **RETRACTED (2026-08-19): the lazy-RO switching lemma exists.**
+   We had recorded that only `StateSeparating/IdenticalUntilBad.lean`
+   (two `QueryImpl.Stateful` handlers, explicit `σ × Bool` flag) was
+   available. At the pin VCVio also has
+   `ProgramLogic/Relational/ProgrammingOracle.lean`:
+   `tvDist_simulateQ_randomOracle_withProgramming_le_probEvent_bad`,
+   `programming_collision_bound[_qP_qH_β]`, built on the generic engine
+   `tvDist_simulateQ_run_le_probEvent_output_bad`
+   (`ProgramLogic/Relational/SimulateQ.lean`) and
+   `QueryImpl.withProgramming` / `withCachingTrackingPolicy`
+   (`OracleComp/QueryTracking/ProgrammingOracle.lean`). What it does *not*
+   cover is our spec shape `unifSpec + hashSpec` with uniform forwarding
+   (`unifFwdImpl + randomOracle`, the same shape as `Examples/BR93.lean`,
+   whose up-to-bad step is `sorry` at the pin). We instantiated the engine
+   for that shape in `PqStealth/ROMUpToBad.lean` (`programmedROImpl`,
+   `trackingROImpl`, the two `relTriple_simulateQ_run'` projections, and
+   the averaged `boolDistAdvantage_run'_cacheQuery_run'_empty_le`); both
+   `DKSAPOracle` and `BlindingROM` now close their identical-until-bad
+   steps with it.
+   Remaining upstream asks from this: (a) the per-step agreement lemma
+   `probOutput_withProgramming_eq_withCachingTrackingPolicy_of_not_bad_output'`
+   is `private` — we had to re-prove it; (b) a `unifSpec + hashSpec`
+   (`unifFwdImpl + so`) variant of the bridge, or a general lemma that a
+   uniform-forwarding component can be peeled off, would make ours
+   unnecessary; (c) the symmetric half of the fundamental lemma
+   (`Pr[flag | programmed run] = Pr[flag | tracking run]`) is not stated.
 
 9. **Reachability of the random-oracle modules.**
    `OracleComp/QueryTracking/RandomOracle/Basic.lean`
@@ -138,7 +157,7 @@ Grouped by what the change would cost on VCVio's side.
 
 ## Suggested filing order
 
-1, 2, 3, 4 and 8 as issues (each with the failing snippet) — clear, small
-asks with a concrete proposed change. 5, 6, 7 as one discussion thread —
+1, 2, 3, 4, 4b and the three residual asks under 8 as issues (each with
+the failing snippet) — clear, small asks with a concrete proposed change. 5, 6, 7 as one discussion thread —
 they are roadmap items for VCVio's ML-KEM security story and our seeded-hop
 finding is useful input to it. 9, 10, 11 as low-priority issues.

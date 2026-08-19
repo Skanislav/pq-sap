@@ -17,6 +17,8 @@ this is key privacy, not IND-CPA. See `docs/announcement-model.md`.
 
 open OracleComp OracleSpec
 
+namespace PqStealth
+
 /-! ## Hidden-bit games with a bit-indexed branch
 
 The games below are indexed by the hidden bit rather than written as an explicit
@@ -24,7 +26,9 @@ The games below are indexed by the hidden bit rather than written as an explicit
 they need. -/
 
 /-- Bias of a hidden-bit guessing game whose branch is selected by the bit:
-the distinguishing advantage between the two branches. -/
+the distinguishing advantage between the two branches. (Scoped under `PqStealth`
+so a future upstream lemma of the same name cannot clash; upstream candidate,
+see `docs/vcvio-upstream.md`.) -/
 theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : ProbComp α)
     (branch : Bool → α → ProbComp Bool) :
     (do
@@ -50,8 +54,6 @@ the one a definition fixes. -/
 theorem ProbComp.boolDistAdvantage_comm (p q : ProbComp Bool) :
     p.boolDistAdvantage q = q.boolDistAdvantage p :=
   abs_sub_comm _ _
-
-namespace PqStealth
 
 /-! ## The scheme as an abstract randomized algorithm -/
 

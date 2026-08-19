@@ -53,8 +53,7 @@ def leakyScheme (keygen : ProbComp (PK × SK)) : StealthScheme PK SK PK where
 has the largest advantage the game admits, so `unlinkAdvantage` does detect a
 leak. Stated for any `announce pk = pure pk`, so the KEM control reuses it. -/
 theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
-    (S : StealthScheme PK SK PK) (hkg : Pr[⊥ | S.keygen] = 0)
-    (hann : ∀ pk, S.announce pk = pure pk) :
+    (S : StealthScheme PK SK PK) (hann : ∀ pk, S.announce pk = pure pk) :
     S.unlinkAdvantage leakyAdv = 1 - keyCollisionProb S.keygen := by
   have hT : S.unlinkSetup >>= S.unlinkBranch leakyAdv true
       = (do let (_, _) ← S.keygen; let (_, _) ← S.keygen; pure true) := by
@@ -67,8 +66,7 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
   have hTrue : Pr[= true | S.unlinkSetup >>= S.unlinkBranch leakyAdv true] = 1 := by
     rw [hT, probOutput_eq_one_iff_forall]
     refine ⟨?_, ?_⟩
-    · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
-      exact ⟨hkg, fun _ _ => hkg⟩
+    · exact probFailure_of_liftM_PMF _
     · intro y hy
       simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
       obtain ⟨-, -, -, -, hy⟩ := hy
@@ -84,17 +82,16 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
 /-- The leak is visible: a scheme that publishes the recipient has a strictly
 positive unlinkability advantage whenever key generation is not degenerate. -/
 theorem unlinkAdvantage_leakyAdv_pos (S : StealthScheme PK SK PK)
-    (hkg : Pr[⊥ | S.keygen] = 0) (hann : ∀ pk, S.announce pk = pure pk)
+    (hann : ∀ pk, S.announce pk = pure pk)
     (hcoll : keyCollisionProb S.keygen < 1) :
     0 < S.unlinkAdvantage leakyAdv := by
-  rw [unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb S hkg hann]
+  rw [unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb S hann]
   linarith
 
 /-- The leaky scheme, specialized. -/
-theorem leakyScheme_unlinkAdvantage_eq (keygen : ProbComp (PK × SK))
-    (hkg : Pr[⊥ | keygen] = 0) :
+theorem leakyScheme_unlinkAdvantage_eq (keygen : ProbComp (PK × SK)) :
     (leakyScheme keygen).unlinkAdvantage leakyAdv = 1 - keyCollisionProb keygen :=
-  unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb _ hkg (fun _ => rfl)
+  unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb _ (fun _ => rfl)
 
 /-! ## Positive control: a KEM whose ciphertext is the public key -/
 
@@ -111,11 +108,10 @@ def leakyKEM (keygen : ProbComp (PK × SK)) (k₀ : K) : KEM PK SK PK K where
 /-- **`anonAdvantage` has teeth.** A KEM whose ciphertext is the public key has
 the maximal anonymity advantage -- via `unlinkAdvantage_ofKEM_eq_anonAdvantage`,
 so the two controls are the same fact seen through the reduction. -/
-theorem leakyKEM_anonAdvantage_eq (keygen : ProbComp (PK × SK)) (k₀ : K)
-    (hkg : Pr[⊥ | keygen] = 0) :
+theorem leakyKEM_anonAdvantage_eq (keygen : ProbComp (PK × SK)) (k₀ : K) :
     (leakyKEM keygen k₀).anonAdvantage leakyAdv = 1 - keyCollisionProb keygen := by
   rw [← unlinkAdvantage_ofKEM_eq_anonAdvantage]
-  exact unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb _ hkg
+  exact unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb _
     (fun _ => by simp only [StealthScheme.ofKEM, leakyKEM, bind_pure_comp, map_pure])
 
 end Leaky
@@ -185,7 +181,6 @@ theorem perfectlyComplete_ofKEMFullNoTag [DecidableEq K]
 ML-KEM is -- the tag-ignoring scan flags someone else's announcement with
 probability `1`. This is what the tag comparison in `ofKEMFull.scan` buys. -/
 theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
-    (hkg : Pr[⊥ | kem.keygen] = 0) (henc : ∀ pk, Pr[⊥ | kem.encaps pk] = 0)
     (hdec : ∀ sk c, kem.decaps sk c = pure (some k₀)) :
     Pr[= true | (StealthScheme.ofKEMFullNoTag kem auxGen).FalsePositiveExp] = 1 := by
   have hFP : (StealthScheme.ofKEMFullNoTag kem auxGen).FalsePositiveExp =
@@ -197,8 +192,7 @@ theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
       bind_assoc, pure_bind, Option.isSome_some]
   rw [hFP, probOutput_eq_one_iff_forall]
   refine ⟨?_, ?_⟩
-  · simp only [probFailure_bind_eq_zero_iff, probFailure_pure, implies_true, and_true]
-    exact ⟨hkg, fun _ _ => ⟨hkg, fun x _ => henc x.1⟩⟩
+  · exact probFailure_of_liftM_PMF _
   · intro y hy
     simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff] at hy
     obtain ⟨-, -, -, -, -, -, hy⟩ := hy
@@ -207,11 +201,10 @@ theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
 /-- The same control in the soundness vocabulary of `Soundness`: the tag-ignoring
 scan's false-positive RATE is `1`, the largest `SoundWithin` admits. -/
 theorem falsePositiveRate_ofKEMFullNoTag_eq_one (k₀ : K)
-    (hkg : Pr[⊥ | kem.keygen] = 0) (henc : ∀ pk, Pr[⊥ | kem.encaps pk] = 0)
     (hdec : ∀ sk c, kem.decaps sk c = pure (some k₀)) :
     (StealthScheme.ofKEMFullNoTag kem auxGen).falsePositiveRate = 1 := by
   rw [StealthScheme.falsePositiveRate,
-    probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one kem auxGen k₀ hkg henc hdec,
+    probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one kem auxGen k₀ hdec,
     ENNReal.toReal_one]
 
 end NoTag

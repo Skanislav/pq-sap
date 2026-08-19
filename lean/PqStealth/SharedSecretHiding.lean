@@ -1,4 +1,5 @@
 import PqStealth.KEMAnonymity
+import PqStealth.Reorder
 import VCVio.CryptoFoundations.KeyEncapMech
 
 /-!
@@ -45,13 +46,8 @@ neither is definitional, both vanish under `evalDist`. -/
 
 section Bridges
 
-/-- An unused uniform draw does not change a computation's output distribution. -/
-theorem evalDist_uniformSample_bind_const {α γ : Type} [SampleableType α] (p : ProbComp γ) :
-    𝒟[(($ᵗ α) >>= fun _ => p)] = 𝒟[p] := by
-  refine evalDist_ext fun x => ?_
-  simp only [probOutput_bind_const, probFailure_of_liftM_PMF, tsub_zero, one_mul]
-
-/-- An independent draw may be pulled to the front of a two-step prefix. -/
+/-- An independent draw may be pulled to the front of a two-step prefix (the
+dependent-prefix form of `Reorder.evalDist_pull₃`). -/
 theorem evalDist_bind_pull_front {α β δ ζ : Type}
     (oa : ProbComp α) (ob : α → ProbComp β) (od : ProbComp δ)
     (k : α → β → δ → ProbComp ζ) :

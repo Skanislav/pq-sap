@@ -4,6 +4,22 @@ import VCVio.CryptoFoundations.KeyEncapMech
 import LatticeCrypto.MLKEM.KEM
 import LatticeCrypto.MLKEM.Concrete.Instance
 
+/-!
+# ML-KEM-768
+
+Proved: the three `DecidableEq` instances VCVio's concrete encoding lacks (it
+sets all encoded types to `ByteArray` but as a plain `def`); that the concrete
+ciphertext type is INFINITE, hence `SampleableType` on it is provably
+uninhabited and the SPR simulator must be an explicit argument; the
+uniform-1088-byte FIPS 203 simulator and the `u` half of its layout against what
+honest K-PKE encryption emits; and the three capstones -- `_le`,
+`_le_full_decomposition`, `_le_indCpa` -- with no instance hypotheses left open.
+
+Assumed: the `v`-half byte count, taken from FIPS 203 because VCVio's
+`byteEncode_size` is `private`; and KEM-IND-CPA → MLWE, the missing upstream
+lemma recorded below. See `docs/spr-two-hop.md`.
+-/
+
 open OracleComp OracleSpec MLKEM MLKEM.Concrete
 
 namespace PqStealth
@@ -196,22 +212,6 @@ theorem MLKEM.kem_ind_cpa_security {params : Params} (ring : NTTRingOps)
 `LatticeCrypto/MLKEM/Security.lean` supplies `kpke_ind_cpa_security` instead: it
 is about K-PKE rather than the KEM, and is `sorry` upstream. The step between
 them is the T-transform half of Fujisaki-Okamoto. See `docs/spr-two-hop.md`. -/
-
-/-!
-# ML-KEM-768
-
-Proved: the three `DecidableEq` instances VCVio's concrete encoding lacks (it
-sets all encoded types to `ByteArray` but as a plain `def`); that the concrete
-ciphertext type is INFINITE, hence `SampleableType` on it is provably
-uninhabited and the SPR simulator must be an explicit argument; the
-uniform-1088-byte FIPS 203 simulator and the `u` half of its layout against what
-honest K-PKE encryption emits; and the three capstones -- `_le`,
-`_le_full_decomposition`, `_le_indCpa` -- with no instance hypotheses left open.
-
-Assumed: the `v`-half byte count, taken from FIPS 203 because VCVio's
-`byteEncode_size` is `private`; and KEM-IND-CPA → MLWE, the missing upstream
-lemma recorded below. See `docs/spr-two-hop.md`.
--/
 
 /-! ## The instances resolve -/
 
