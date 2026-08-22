@@ -40,3 +40,22 @@ Consumers keep their `(v, r, s)` ABI; `PointerSigVault.withdrawWithSig` is the e
 cd ETHDILITHIUM && python3 -m venv pythonref/myenv && pythonref/myenv/bin/pip install -r pythonref/requirements.txt
 forge test --match-contract PointerSigTest -vv
 ```
+
+## Live run on anvil (real transactions)
+
+Copy `docs/pointer-sig-poc/PointerSigDemo.s.sol` and `demo_anvil.sh` into `ETHDILITHIUM/script/`, then
+`cd ETHDILITHIUM && bash script/demo_anvil.sh`. Boots anvil, broadcasts every step from anvil account #0, reads state back with `cast`.
+
+Per-tx gas measured (anvil, solc 0.8.30, optimizer 10k runs):
+
+| tx | gas |
+|---|---|
+| deploy `ZKNOX_ethdilithium` | 2,450,564 |
+| deploy `PointerSigRegistry` | 988,104 |
+| deploy `PointerSigVault` | 438,068 |
+| `registerKey` (expanded ML-DSA-44 pk → SSTORE2, one-time per key) | 4,943,054 |
+| `publishSignature` (2420 B ML-DSA sig → SSTORE2) | 625,420 |
+| `withdrawWithSig` **pq** (`v=0x50`, r=0, s=0) | 4,943,553 |
+| `withdrawWithSig` **classic** (`v=27/28`) | 67,518 |
+
+Result: recipient balance 0.35 ETH (0.25 pq + 0.1 classic) through the same `withdrawWithSig(owner,to,amount,v,r,s)` entry point; `keyCount=1`, `signatureCount=1`.
