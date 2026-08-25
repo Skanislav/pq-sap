@@ -151,33 +151,33 @@ variable {F : Type} [SampleableType F] {G : Type} [DecidableEq G]
 
 /-- The ROM implementation: uniform queries pass through, hash queries are
 lazily sampled and cached. -/
-noncomputable def romImpl (F G : Type) [SampleableType F] [DecidableEq G] :
+noncomputable def dksapRomImpl (F G : Type) [SampleableType F] [DecidableEq G] :
     QueryImpl (scalarSpec F G) (StateT ((G →ₒ F).QueryCache) ProbComp) :=
   unifFwdImpl (G →ₒ F) + OracleSpec.randomOracle (spec := (G →ₒ F))
 
-/-- `romImpl` is the generic `roImpl` of `ROMUpToBad` at the hash spec `G →ₒ F`. -/
-theorem romImpl_eq_roImpl : romImpl F G = roImpl (G →ₒ F) := rfl
+/-- `dksapRomImpl` is the generic `roImpl` of `ROMUpToBad` at the hash spec `G →ₒ F`. -/
+theorem dksapRomImpl_eq_roImpl : dksapRomImpl F G = roImpl (G →ₒ F) := rfl
 
 /-- Lifted `ProbComp` prefixes leave the cache alone, so they can be peeled out
-of a simulated computation. VCVio's `roSim.run'_liftM_bind`, at `romImpl`. -/
-theorem romImpl_run'_liftM_bind {α β : Type} (oa : ProbComp α)
+of a simulated computation. VCVio's `roSim.run'_liftM_bind`, at `dksapRomImpl`. -/
+theorem dksapRomImpl_run'_liftM_bind {α β : Type} (oa : ProbComp α)
     (rest : α → StateT ((G →ₒ F).QueryCache) ProbComp β)
     (s : (G →ₒ F).QueryCache) :
-    (simulateQ (romImpl F G) (liftM oa) >>= rest).run' s
+    (simulateQ (dksapRomImpl F G) (liftM oa) >>= rest).run' s
       = oa >>= fun x => (rest x).run' s :=
   roSim.run'_liftM_bind _ oa rest s
 
 /-- A hash query on an UNCACHED point is a fresh uniform sample that is then
 written into the cache. The one lazy-sampling step the games need. -/
-theorem romImpl_run'_scalarQuery_bind (Z : G)
+theorem dksapRomImpl_run'_scalarQuery_bind (Z : G)
     (rest : F → StateT ((G →ₒ F).QueryCache) ProbComp Bool)
     (cache : (G →ₒ F).QueryCache) (hc : cache Z = none) :
-    (simulateQ (romImpl F G) (scalarQuery (F := F) Z) >>= rest).run' cache
+    (simulateQ (dksapRomImpl F G) (scalarQuery (F := F) Z) >>= rest).run' cache
       = ($ᵗ F) >>= fun s => (rest s).run' (QueryCache.cacheQuery cache Z s) := by
-  have hstep : (simulateQ (romImpl F G) (scalarQuery (F := F) Z) :
+  have hstep : (simulateQ (dksapRomImpl F G) (scalarQuery (F := F) Z) :
       StateT ((G →ₒ F).QueryCache) ProbComp F)
       = OracleSpec.randomOracle (spec := (G →ₒ F)) Z := by
-    simp only [romImpl, scalarQuery, add_apply_inr, simulateQ_query, OracleQuery.input_query,
+    simp only [dksapRomImpl, scalarQuery, add_apply_inr, simulateQ_query, OracleQuery.input_query,
       OracleQuery.cont_query, QueryImpl.add_apply_inr, QueryImpl.withCaching_apply, map_bind, id_map]
   rw [hstep]
   simp only [StateT.run'_eq]
@@ -211,7 +211,7 @@ def dksapROSetup (g : G) : OracleComp (scalarSpec F G) ((G × G) × (G × G)) :=
 /-- The adversary run under the lazy random oracle, starting from `cache`. -/
 noncomputable def advRunAt (adv : UnlinkAdvRO F G) (a : (G × G) × (G × G)) (c : G × G)
     (cache : (G →ₒ F).QueryCache) : ProbComp Bool :=
-  (simulateQ (romImpl F G) (adv a.1 a.2 c)).run' cache
+  (simulateQ (dksapRomImpl F G) (adv a.1 a.2 c)).run' cache
 
 /-- Real branch `b`: the shared scalar is the hash oracle at the DH point
 `r • V_b`, and the adversary sees the same oracle afterwards. -/
@@ -230,11 +230,11 @@ def dksapROIdealBranch (g : G) (adv : UnlinkAdvRO F G) (b : Bool)
 
 /-- The real game on branch `b`, run from an empty cache. -/
 noncomputable def dksapRORun (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ProbComp Bool :=
-  (simulateQ (romImpl F G) (dksapROSetup g >>= dksapROBranch g adv b)).run' ∅
+  (simulateQ (dksapRomImpl F G) (dksapROSetup g >>= dksapROBranch g adv b)).run' ∅
 
 /-- The idealized game on branch `b`, run from an empty cache. -/
 noncomputable def dksapROIdealRun (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ProbComp Bool :=
-  (simulateQ (romImpl F G) (dksapROSetup g >>= dksapROIdealBranch g adv b)).run' ∅
+  (simulateQ (dksapRomImpl F G) (dksapROSetup g >>= dksapROIdealBranch g adv b)).run' ∅
 
 /-! ### The idealized game is perfectly unlinkable, in the ROM -/
 
@@ -246,11 +246,11 @@ theorem dksapROIdealRun_eq (g : G) (adv : UnlinkAdvRO F G) (b : Bool) :
         advRunAt adv a (r • g, (if b then a.2 else a.1).1 + s • g) ∅ := by
   unfold dksapROIdealRun dksapROSetup dksapROIdealBranch advRunAt
   simp only [simulateQ_bind]
-  rw [romImpl_run'_liftM_bind]
+  rw [dksapRomImpl_run'_liftM_bind]
   refine bind_congr fun a => ?_
-  rw [romImpl_run'_liftM_bind]
+  rw [dksapRomImpl_run'_liftM_bind]
   refine bind_congr fun r => ?_
-  rw [romImpl_run'_liftM_bind]
+  rw [dksapRomImpl_run'_liftM_bind]
 
 /-- **The idealized RO game is perfectly unlinkable, sorry-free.** Exactly zero,
 even though the adversary holds the random oracle: the ideal announcement never
@@ -315,11 +315,11 @@ theorem dksapRORun_eq (g : G) (adv : UnlinkAdvRO F G) (b : Bool) :
           (QueryCache.cacheQuery ∅ (r • (if b then a.2 else a.1).2) s) := by
   unfold dksapRORun dksapROSetup dksapROBranch advRunAt
   simp only [simulateQ_bind]
-  rw [romImpl_run'_liftM_bind]
+  rw [dksapRomImpl_run'_liftM_bind]
   refine bind_congr fun a => ?_
-  rw [romImpl_run'_liftM_bind]
+  rw [dksapRomImpl_run'_liftM_bind]
   refine bind_congr fun r => ?_
-  exact romImpl_run'_scalarQuery_bind _ _ ∅ rfl
+  exact dksapRomImpl_run'_scalarQuery_bind _ _ ∅ rfl
 
 /-- The prefix both games share: the two key pairs, the ephemeral scalar, the shared scalar. -/
 def dksapROPrefix (g : G) : ProbComp (((G × G) × (G × G)) × F × F) :=
@@ -354,13 +354,13 @@ theorem hashedDHRO_le_dksapROBadProb (g : G) (adv : UnlinkAdvRO F G) (b : Bool) 
       dksapROPrefix g >>= fun x => (simulateQ (roImpl (G →ₒ F)) (dksapROAdvRun g adv b x)).run'
         ((∅ : (G →ₒ F).QueryCache).cacheQuery (dksapRODHPoint b x) x.2.2) := by
     rw [dksapRORun_eq]
-    simp only [dksapROPrefix, dksapROAdvRun, dksapRODHPoint, advRunAt, romImpl_eq_roImpl,
+    simp only [dksapROPrefix, dksapROAdvRun, dksapRODHPoint, advRunAt, dksapRomImpl_eq_roImpl,
       bind_assoc, pure_bind]
   have hideal : dksapROIdealRun g adv b =
       dksapROPrefix g >>= fun x =>
         (simulateQ (roImpl (G →ₒ F)) (dksapROAdvRun g adv b x)).run' ∅ := by
     rw [dksapROIdealRun_eq]
-    simp only [dksapROPrefix, dksapROAdvRun, advRunAt, romImpl_eq_roImpl, bind_assoc, pure_bind]
+    simp only [dksapROPrefix, dksapROAdvRun, advRunAt, dksapRomImpl_eq_roImpl, bind_assoc, pure_bind]
   unfold hashedDHRO dksapROBadProb dksapROBad
   rw [hreal, hideal]
   exact h

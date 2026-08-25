@@ -130,7 +130,7 @@ Ordered by how loudly it fails.
   `ProbeEps.lean`; `evalDist_bind_const_neverFails`, used by
   `MultiRecipient.lean`). Neither is reached by VCVio's own root import, so a
   bump that moves or renames them fails at *import resolution*, not at a lemma
-  name. `romImpl` also mirrors VCVio's `PRF.prfIdealQueryImpl` line for line —
+  name. `dksapRomImpl` (and `BlindingROM.romImpl`) mirror VCVio's `PRF.prfIdealQueryImpl` line for line —
   if that handler's shape changes, copy the change across.
 - **`PqStealth/Demo.lean` — 8 `#guard_msgs` around `#eval`.** Frozen numeric
   output. Only breaks if `ZMod 23` arithmetic or `Repr` output changes.
