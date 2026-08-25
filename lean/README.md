@@ -21,8 +21,9 @@ announcement, `auxGen`, the decomposition, construction A, the controls),
 `spr-two-hop.md` (KEM anonymity from SPR, the ML-KEM instantiation, the missing
 upstream lemma), `msis-reshaping.md` (the spend side), `dksap-asymmetry.md`
 (the classical comparison), `encodings.md` (the byte-level wire formats and
-what VCVio does not supply). The Lean modules carry short docstrings and point
-here.
+what VCVio does not supply), `etheorem-lessons.md` (what the etheorem
+consensus-layer Lean codebase does that we borrowed or could). The Lean
+modules carry short docstrings and point here.
 
 ## The proved decomposition
 
@@ -231,6 +232,12 @@ and linked with `elan toolchain link`.)
   running the instantiated scheme's own `scan` and `CorrectExp` through VCVio's
   `OracleComp.runIO`), so the
   numbers in its docstrings are checked, and the build prints nothing.
+- **Docs and vectors stay in step** with two stdlib-only scripts, run from
+  the repo root: `python3 lean/scripts/check_citations.py` resolves every
+  `` `File.lean:N-M` `` citation in `docs/` and this file against the named
+  declaration (`--fix` moves drifted ranges); `python3 lean/scripts/check_sizes.py`
+  compares the byte sizes proved by `rfl` in `Invariants.lean` with the sizes
+  in `python/vectors/**/vectors.json`. Both exit non-zero on drift.
 - **CI** (`.github/workflows/lean.yml`) runs exactly the two commands above
   on every push and pull request; the badge at the top of this file reports
   the result. Note that VCVio is not in the mathlib binary cache and compiles

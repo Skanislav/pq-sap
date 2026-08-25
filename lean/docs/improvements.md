@@ -58,8 +58,9 @@ was added.
 | 19 | Closed by the simplification refactor — zero `omit [...] in` and zero `(F := F)` in the tree. |
 | 20 | Done — README rewritten around the module map and the decomposition block; `KEM` is an `abbrev` for VCVio's `KEMScheme ProbComp`; reading order updated. |
 | 21 | Done — `docs/vcvio-pin.md`: the pin table, the bump procedure (the axiom guard *is* the build), the two upstream files to diff, the three upstream asks (`DecidableEq` beside `mlkem768Encoding`, de-privatize `byteEncode_size`, a KEM-level `kem_ind_cpa_security`), and what in this tree is bump-sensitive. |
+| 22 | Open — `docs/etheorem-lessons.md` landed with `scripts/check_citations.py` (35 citations clean after fixing 7 stale ones here) and `scripts/check_sizes.py` (6 rows, Lean `rfl` sizes vs `vectors.json`); the `LeanSha256` `viewTag` instantiation and CI wiring remain. |
 
-Open: #16 (license headers); the named residual terms — #7's
+Open: #16 (license headers); #22 (`LeanSha256` view tag, CI wiring); the named residual terms — #7's
 `primitiveIdealization` (ROM/PRF derandomisation of ML-KEM's coins) and
 `simulatorGap` (encoding regularity), #9(b)'s `q_H` guessing step (the lazy-RO
 switching lemma is now closed via `ROMUpToBad`), `BlindingROM`'s identification
@@ -124,8 +125,8 @@ README updated.
 `mlkem_unlinkAdvantage_le_full_decomposition` are stated under section
 variables `[SampleableType SharedSecret]`,
 `[SampleableType (Ciphertext params encoding)]`, and three `DecidableEq`
-instances on the encoding types (`PqStealth/MLKEMInstance.lean:39-44`,
-`AnonymityFromSPR.lean:122-128`). Checked against the pinned VCVio with
+instances on the encoding types (`PqStealth/MLKEM.lean:32-41`,
+`AnonymityFromSPR.lean:60`). Checked against the pinned VCVio with
 `lake env lean` on a scratch file (2026-08-17):
 
 - `SampleableType SharedSecret` — **resolves** (`Vector Byte 32` via
@@ -163,7 +164,9 @@ theorems it should be closed.)
   raw `ByteArray`, sample a `Vector Byte n` and convert).
 - State one theorem `mlkem768_unlinkAdvantage_le …` at
   `concreteNTTRingOps`/`mlkem768Encoding`/`mlkem768Primitives`
-  (`Concrete/NTT.lean:324`, `Concrete/Instance.lean:119,147`) with **no**
+  (`Concrete/NTT.lean:324 concreteNTTRingOps`,
+  `Concrete/Instance.lean:119 mlkem768Encoding`,
+  `Concrete/Instance.lean:147 mlkem768Primitives`) with **no**
   instance hypotheses.
 
 **Acceptance.** A theorem about `mlkem768` whose only hypotheses are the
@@ -214,7 +217,7 @@ with no theorem about it.
 
 **Labels:** `lean`, `model-gap`, `proof` · **Priority:** P1
 
-**Context.** `UnlinkExp` (`Games.lean:84-107`) has exactly two recipients
+**Context.** `UnlinkExp` (`Games.lean:137-157`) has exactly two recipients
 and one challenge announcement. plan.md's deliverable is "unlinkability
 across payments": many announcements to many recipients, adversary sees all
 meta-addresses and all announcements. The standard hybrid argument gives
@@ -306,7 +309,7 @@ step" paragraph rewritten to point at it.
 **Labels:** `lean`, `proof`, `model-gap` · **Priority:** P1
 
 **Context.**
-- `IsSigningKey` (`Invariants.lean:84-87`) is literally the same
+- `IsSigningKey` (`Invariants.lean:81-84`) is literally the same
   definition as `IsOwnershipWitness`, so `ownership_iff_signing` is
   `Iff.rfl`. A signing key is a *short* `(s₁,s₂)`; the bridge should carry
   `cInfNorm sᵢ ≤ η` and use `blinded_norm_bound` for the `2η` version.
@@ -369,8 +372,8 @@ DDH + entropy smoothing of `h`" with explicit reductions.
 
 **Labels:** `lean`, `model-gap` · **Priority:** P2
 
-**Context.** `MetaAddress`/`encodeMeta`/`decodeMeta`
-(`Invariants.lean:126-147`) is a three-field record with
+**Context.** `metaAddressEncode`/`metaAddressDecode`/`meta_address_roundtrips`
+(`Invariants.lean:168-186 metaAddressEncode`) is a three-field record with
 `version : Nat`; the roundtrip theorem is `simp` on a structural record and
 says nothing about the wire format `version ‖ rho ‖ pack23(t) ‖ ek`
 (TECHNICAL_SPEC, 5,633 B) or about the reduced ZK-spend layout
@@ -585,7 +588,7 @@ argument of `dksapIdeal` (`def dksapIdeal (F) (g : G)`) so call sites read
 
 **Labels:** `lean`, `cleanup` · **Priority:** P3
 
-- `honest_witness_relation` (`Ownership.lean:65-68`) is
+- `honest_witness_valid` (`Ownership.lean:81-87`) is
   `blinded_is_ownership_witness` restated; keep one, or make the second a
   `@[simp]`-oriented corollary with a reason in the docstring.
 - `IsOwnershipWitness`/`IsSigningKey` are `def`s returning `Prop`; the
@@ -618,6 +621,30 @@ re-run the axiom guard (#12), diff `LatticeCrypto/MLKEM/Security.lean` and
 `KeyEncapMech.lean` for new anonymity/ANO-CCA definitions to adopt, and
 record the new pin date in README. Cadence: once per month or when
 upstream announces KEM anonymity.
+
+---
+
+### 22. Executable `viewTag` via `LeanSha256`; keep docs and vectors in step
+
+**Labels:** `lean`, `infra` · **Priority:** P3
+
+**Context.** `docs/etheorem-lessons.md` surveys the etheorem consensus-layer
+Lean codebase. Two of its tooling ideas are already here
+(`scripts/check_citations.py`, `scripts/check_sizes.py`; the first run found
+7 stale citations in this file). The remaining concrete opportunity is its
+`LeanSha256` package: pure Lean, Mathlib-free, CAVP-validated, and it builds
+unmodified on our `v4.32.0` toolchain (probe 2026-08-21, `hash "abc"` gives
+the FIPS KAT). Our spec's view tag is a SHA-256 truncation, currently the
+uninterpreted `Prims.viewTag`.
+
+**Proposal.** (a) Add `LeanSha256` as a second pinned `[[require]]`
+(LGPL-3.0-only; record the licence and pin beside `docs/vcvio-pin.md`).
+(b) Define a concrete `viewTag` from `LeanSha256.hash` and specialise the
+`Soundness.lean` tag theorems to it — no proof changes, they take the tag
+function as a parameter. (c) Check the `view_tag` fields of
+`python/vectors/v0/vectors.json` from Lean with `#guard_msgs`-wrapped `#eval`,
+the `Demo.lean` pattern — the first value-level (not size-level) Lean ↔
+implementation check. (d) Run the two scripts in CI next to `lake build`.
 
 ---
 
