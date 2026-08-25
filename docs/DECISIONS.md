@@ -318,6 +318,48 @@ the discovery pipeline single-hash-family, PQ-sound from standard hashes
 alone — the same assumption set lean Ethereum converges on. Full analysis:
 `docs/research/hash-migration-blake2-binius.md`.
 
+## D-016 — Hash-based commitments cannot replace the discovery KEM; the lattice (or another structured PQ KEM) is load-bearing — **FINDING**
+
+Question (2026-08-25): can a SHA-256 / BLAKE3 commitment scheme stand in for
+ML-KEM so the scheme needs no lattice assumption? Answer: **no, by theorem**,
+and the argument for a structured assumption in discovery is closed.
+
+- **Wrong shape.** A commitment's opening stays with the committer; a
+  discovery step needs the *recipient* to recover a secret from a message the
+  *sender* built from public data alone — a trapdoor, i.e. public-key
+  structure. Any hash-only protocol is a random-oracle key exchange, and those
+  are capped: n honest queries ⇒ O(n²)-query break (Barak–Mahmoody CRYPTO'09,
+  tightening Impagliazzo–Rudich STOC'89); Merkle puzzles already sit at the cap.
+  The cap is about the access model, so SHA-256 vs BLAKE3 is irrelevant to it.
+- **Quantum makes it worse, not better.** Against a quantum eavesdropper
+  Merkle's scheme with classical parties has **no gap** (Grover); the best
+  known classical-party hash-only family only approaches n^{3/2}
+  (Brassard–Høyer–Kalach–Kaplan–Laplante–Salvail CRYPTO'11). Hash-only key
+  exchange is the one KEX family that gets *less* secure post-quantum.
+- **Measured (`benchmarks/hash_kex_bench.py`, 2026-08-25).** Classical-attacker
+  2^128 needs 2^64 hashes per party and a **738 EB** recipient key; even a
+  2^80 budget (~17 min of the 2026 Bitcoin network) needs a 44 TB key and 64
+  GPU-s per payment, with zero quantum security. ML-KEM-768: 1,184-B key,
+  17.2 µs decaps, 67,700 gas, L3 against both. Scan-side hashing is 0.3–1.7 µs
+  per announcement — the hash choice moves scan time <5%; the KEM decides it.
+- **What hashes legitimately do.** (a) *Amortize* the KEM: pre-shared-secret
+  tag chains (our §2.2 design, SHA-256 per D-015) pay the 1,088-B ciphertext
+  once per relationship; the root secret still needs one PQ handshake — or an
+  out-of-band channel, which is the honest "hash-only end to end" opt-out for
+  pairs that have one. (b) Own spend/KDF/tags (D-008/D-012/D-015). A published
+  one-time-address list is hash-only but has no unlinkability — not a stealth
+  address.
+- **The real comparison is ML-KEM vs structured non-lattice KEMs** (D-012):
+  HQC (NIST backup, 2025-03-11; 2,241/4,433 B at L1, 2.37 ms decaps, 190 s
+  per 80k scan, 201k-gas announcement), NTRU, Frodo, McEliece, CSIDH. ML-KEM
+  wins on decaps and footprint. The assumption-diversity hedge, if wanted, is
+  an **optional hybrid ML-KEM‖HQC parameter set** (additive cost, secure if
+  either holds), not a hash construction.
+
+Follow-ups: one Rationale sentence in the ERC citing Barak–Mahmoody so "why not
+hashes" stays closed; permit out-of-band `cs` for tag chains; decide whether
+to offer the hybrid set. Full analysis: `docs/research/hash-based-key-exchange.md`.
+
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured

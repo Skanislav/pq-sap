@@ -139,6 +139,49 @@ round-2 exit.
   FrodoKEM is the conservative-assumption hedge at a 15.7 kB meta-address
   and 60 s scans; the code KEMs don't pay off for stealth scanning.
 
+## Hash-only key exchange economics (`hash_kex_bench.py`)
+
+Question (2026-08-25): can a SHA-256 / BLAKE3 commitment scheme replace the
+discovery KEM, removing the lattice assumption? Theory caps any hash-only key
+exchange at a polynomial gap — Impagliazzo–Rudich (STOC '89), Barak–Mahmoody
+(CRYPTO '09: n honest oracle queries ⇒ O(n²)-query break; Merkle puzzles are
+tight) — and against a *quantum* eavesdropper Merkle's scheme has **no gap at
+all** (Brassard–Høyer–Kalach–Kaplan–Laplante–Salvail, CRYPTO '11; best
+classical-party family only approaches n^{3/2}). The script measures hash
+rates on this machine and converts the exponents into honest work, recipient
+"public key" (puzzle set) size and calldata, against the ML-KEM rows of
+`discovery_kem_20260801.json`. Run 2026-08-25, M1 Max, Python 3.12, `blake3`
+1.0.9 → `hash_kex_20260825.json`.
+
+| hash (64-B msg, Python-bound) | calls/s | bulk MB/s |
+|---|---|---|
+| SHA-256 | 3.36 M | 2,366 |
+| BLAKE3 | 2.36 M | 1,768 |
+| SHA3-256 | 1.77 M | 629 |
+| keccak256 (pycryptodome) | 0.35 M | 554 |
+
+Per-announcement scanner hashing (view tag over 32 B / KDF over 1,088 B) is
+0.3–0.7 µs with SHA-256, 0.4–1.7 µs with BLAKE3 — vs 17.2 µs ML-KEM-768
+decaps. The hash *choice* is irrelevant to scan time; the KEM is.
+
+Merkle-puzzle cost to force attacker work 2^W (n = hash calls per honest
+party = puzzles the recipient must publish, 40 B each; native core 2^24.5
+H/s, GPU 2^34 H/s assumed; 40 gas/B calldata floor):
+
+| attacker model | gap | W=2^80 | W=2^128 |
+|---|---|---|---|
+| classical Eve, Merkle 1974 (optimal) | n² | n=2^40: 64 GPU-s/payment, **44 TB** pubkey | n=2^64: 34 GPU-yr, **738 EB** pubkey |
+| quantum Eve, classical parties, Merkle 1974 | n¹ | n=2^80 — no gap, broken | n=2^128 — broken |
+| quantum Eve, classical parties, BHKKLS'11 concrete | n^{7/6} | n=2^68.6: 809 GPU-yr | n=2^109.7 |
+| quantum Eve, classical parties, family limit | n^{3/2} | n=2^53.3: 184 GPU-h, 454 PB | n=2^85.3 |
+| quantum Eve, **quantum** honest parties | n^{5/3} | n=2^48: 4.6 GPU-h, 11 PB | n=2^76.8 |
+
+For scale: 2^80 hashes is ~17 minutes of the 2026 Bitcoin network (~2^70 H/s).
+ML-KEM-768 gives L3 security against both attacker classes for a 1,184-B key,
+1,088-B ciphertext, 17.2 µs decaps and 67,700 gas. Write-up and the
+hash-only designs that *do* work (pre-shared-secret tag chains — already in
+the design, seeded by one ML-KEM handshake): `docs/research/hash-based-key-exchange.md`.
+
 ## On-chain verification gas (kohaku / ZKNOX, stretch-goal route)
 
 Measured via `ETHDILITHIUM`'s own KAT tests (forge, optimizer 10k runs,
@@ -352,6 +395,7 @@ python benchmarks/viewtag_sweep.py --n 40000 --tags 1,2,3 --json benchmarks/view
 
 # Discovery-KEM alternatives (lattice vs code vs isogeny: scan/footprint/gas)
 python benchmarks/discovery_kem_bench.py --reps 60 --json benchmarks/discovery_kem.json
+python benchmarks/hash_kex_bench.py --reps 5 --json benchmarks/hash_kex.json   # needs `pip install blake3`
 
 # Registry-size scaling curve (linearity fit, ours vs DKSAP)
 python benchmarks/registry_curve.py --reps 3 --json benchmarks/registry_curve.json

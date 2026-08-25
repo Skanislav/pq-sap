@@ -1,0 +1,224 @@
+{
+ "hash_rates": {
+  "SHA-256": {
+   "small_calls_per_s": 3285965.20638384,
+   "log2": 21.64788577364039,
+   "bulk_MB_s": 2287.239060690715
+  },
+  "SHA3-256": {
+   "small_calls_per_s": 1734308.850514291,
+   "log2": 20.72592940988403,
+   "bulk_MB_s": 622.2316524758962
+  },
+  "BLAKE3": {
+   "small_calls_per_s": 1999208.3668843154,
+   "log2": 20.930997413695188,
+   "bulk_MB_s": 1724.9782985685558
+  },
+  "keccak256": {
+   "small_calls_per_s": 336478.0521906506,
+   "log2": 18.36015287814796,
+   "bulk_MB_s": 534.9014505659273
+  }
+ },
+ "scan_hashing": {
+  "view tag over 32-B ss": {
+   "SHA-256": 0.2956922413790461,
+   "SHA3-256": 0.5924464171845099,
+   "BLAKE3": 0.4400957353232849,
+   "keccak256": 2.9529481176081496
+  },
+  "KDF over 1088-B ct": {
+   "SHA-256": 0.7214745600532086,
+   "SHA3-256": 2.296489503906457,
+   "BLAKE3": 1.7263318964644154,
+   "keccak256": 4.898728153127577
+  }
+ },
+ "merkle_puzzles": [
+  {
+   "model": "classical Eve, Merkle 1974 (Barak-Mahmoody: optimal)",
+   "exponent": 2.0,
+   "attacker_work_log2": 80,
+   "honest_work_log2": 40.0,
+   "sender_time_native_core_s": 46340.950011841574,
+   "sender_time_gpu_s": 64.0,
+   "puzzle_set_bytes": 43980465111040.0,
+   "puzzle_set_calldata_gas": 1759218604441600.0
+  },
+  {
+   "model": "classical Eve, Merkle 1974 (Barak-Mahmoody: optimal)",
+   "exponent": 2.0,
+   "attacker_work_log2": 96,
+   "honest_work_log2": 48.0,
+   "sender_time_native_core_s": 11863283.203031443,
+   "sender_time_gpu_s": 16384.0,
+   "puzzle_set_bytes": 1.125899906842624e+16,
+   "puzzle_set_calldata_gas": 4.503599627370496e+17
+  },
+  {
+   "model": "classical Eve, Merkle 1974 (Barak-Mahmoody: optimal)",
+   "exponent": 2.0,
+   "attacker_work_log2": 128,
+   "honest_work_log2": 64.0,
+   "sender_time_native_core_s": 777472127993.8687,
+   "sender_time_gpu_s": 1073741824.0,
+   "puzzle_set_bytes": 7.37869762948382e+20,
+   "puzzle_set_calldata_gas": 2.9514790517935283e+22
+  },
+  {
+   "model": "quantum Eve, classical parties, Merkle 1974 (BHKKLS'11: broken, no gap)",
+   "exponent": 1.0,
+   "attacker_work_log2": 80,
+   "honest_work_log2": 80.0,
+   "sender_time_native_core_s": 5.095241338020618e+16,
+   "sender_time_gpu_s": 70368744177664.0,
+   "puzzle_set_bytes": 4.835703278458517e+25,
+   "puzzle_set_calldata_gas": 1.9342813113834067e+27
+  },
+  {
+   "model": "quantum Eve, classical parties, Merkle 1974 (BHKKLS'11: broken, no gap)",
+   "exponent": 1.0,
+   "attacker_work_log2": 96,
+   "honest_work_log2": 96.0,
+   "sender_time_native_core_s": 3.339217363285192e+21,
+   "sender_time_gpu_s": 4.611686018427388e+18,
+   "puzzle_set_bytes": 3.1691265005705735e+30,
+   "puzzle_set_calldata_gas": 1.2676506002282294e+32
+  },
+  {
+   "model": "quantum Eve, classical parties, Merkle 1974 (BHKKLS'11: broken, no gap)",
+   "exponent": 1.0,
+   "attacker_work_log2": 128,
+   "honest_work_log2": 128.0,
+   "sender_time_native_core_s": 1.434182936954525e+31,
+   "sender_time_gpu_s": 1.9807040628566084e+28,
+   "puzzle_set_bytes": 1.3611294676837539e+40,
+   "puzzle_set_calldata_gas": 5.4445178707350154e+41
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.1666666666666667,
+   "attacker_work_log2": 80,
+   "honest_work_log2": 68.57142857142857,
+   "sender_time_native_core_s": 18485106274592.605,
+   "sender_time_gpu_s": 25529187495.54381,
+   "puzzle_set_bytes": 1.754352406189005e+22,
+   "puzzle_set_calldata_gas": 7.01740962475602e+23
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.1666666666666667,
+   "attacker_work_log2": 96,
+   "honest_work_log2": 82.28571428571428,
+   "sender_time_native_core_s": 2.4844675050056714e+17,
+   "sender_time_gpu_s": 343121839927174.44,
+   "puzzle_set_bytes": 2.357915329648898e+26,
+   "puzzle_set_calldata_gas": 9.431661318595592e+27
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.1666666666666667,
+   "attacker_work_log2": 128,
+   "honest_work_log2": 109.71428571428571,
+   "sender_time_native_core_s": 4.488033180872593e+25,
+   "sender_time_gpu_s": 6.198278703877426e+22,
+   "puzzle_set_bytes": 4.25942469194349e+34,
+   "puzzle_set_calldata_gas": 1.703769876777396e+36
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 family limit (never reached)",
+   "exponent": 1.5,
+   "attacker_work_log2": 80,
+   "honest_work_log2": 53.333333333333336,
+   "sender_time_native_core_s": 478297607.30763566,
+   "sender_time_gpu_s": 660561.4874072843,
+   "puzzle_set_bytes": 4.539343976658243e+17,
+   "puzzle_set_calldata_gas": 1.8157375906632972e+19
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 family limit (never reached)",
+   "exponent": 1.5,
+   "attacker_work_log2": 96,
+   "honest_work_log2": 64.0,
+   "sender_time_native_core_s": 777472127993.8687,
+   "sender_time_gpu_s": 1073741824.0,
+   "puzzle_set_bytes": 7.37869762948382e+20,
+   "puzzle_set_calldata_gas": 2.9514790517935283e+22
+  },
+  {
+   "model": "quantum Eve, classical parties, BHKKLS'11 family limit (never reached)",
+   "exponent": 1.5,
+   "attacker_work_log2": 128,
+   "honest_work_log2": 85.33333333333333,
+   "sender_time_native_core_s": 2.0542725811413356e+18,
+   "sender_time_gpu_s": 2837089985411388.0,
+   "puzzle_set_bytes": 1.9496333925041646e+27,
+   "puzzle_set_calldata_gas": 7.798533570016659e+28
+  },
+  {
+   "model": "quantum Eve, QUANTUM honest parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.6666666666666667,
+   "attacker_work_log2": 80,
+   "honest_work_log2": 48.0,
+   "sender_time_native_core_s": 11863283.203031443,
+   "sender_time_gpu_s": 16384.0,
+   "puzzle_set_bytes": 1.125899906842624e+16,
+   "puzzle_set_calldata_gas": 4.503599627370496e+17
+  },
+  {
+   "model": "quantum Eve, QUANTUM honest parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.6666666666666667,
+   "attacker_work_log2": 96,
+   "honest_work_log2": 57.599999999999994,
+   "sender_time_native_core_s": 9206463940.628084,
+   "sender_time_gpu_s": 12714752.115561608,
+   "puzzle_set_bytes": 8.737511122093427e+18,
+   "puzzle_set_calldata_gas": 3.4950044488373705e+20
+  },
+  {
+   "model": "quantum Eve, QUANTUM honest parties, BHKKLS'11 concrete scheme",
+   "exponent": 1.6666666666666667,
+   "attacker_work_log2": 128,
+   "honest_work_log2": 76.8,
+   "sender_time_native_core_s": 5544581521179422.0,
+   "sender_time_gpu_s": 7657443735288.267,
+   "puzzle_set_bytes": 5.26215526624371e+24,
+   "puzzle_set_calldata_gas": 2.104862106497484e+26
+  }
+ ],
+ "mlkem": {
+  "ML-KEM-512": {
+   "name": "ML-KEM-512",
+   "family": "lattice",
+   "assumption": "Module-LWE",
+   "level": "L1",
+   "pk_B": 800,
+   "ct_B": 768,
+   "keygen_ms": 0.013,
+   "decaps_ms": 0.0116,
+   "scan80k_s": 0.92,
+   "meta_addr_B": 833,
+   "announce_gas": 54900
+  },
+  "ML-KEM-768": {
+   "name": "ML-KEM-768",
+   "family": "lattice",
+   "assumption": "Module-LWE",
+   "level": "L3*",
+   "pk_B": 1184,
+   "ct_B": 1088,
+   "keygen_ms": 0.018,
+   "decaps_ms": 0.0172,
+   "scan80k_s": 1.38,
+   "meta_addr_B": 1217,
+   "announce_gas": 67700
+  }
+ },
+ "attacker_rates_log2": {
+  "one GPU (~16 GH/s SHA-256)": 34.0,
+  "Bitcoin network (~1e21 H/s, 2026)": 70.0,
+  "local_python": 21.64788577364039,
+  "native_core_assumed": 24.5
+ }
+}
