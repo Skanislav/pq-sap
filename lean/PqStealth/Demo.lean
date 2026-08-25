@@ -26,7 +26,9 @@ open PqStealth
 instance instFactPrime23 : Fact (Nat.Prime 23) := ⟨by norm_num⟩
 
 /-- Scalars and group elements both live in `ZMod 23`, viewed as a module over
-itself: `x • g` is ordinary multiplication. -/
+itself: `x • g` is ordinary multiplication. In this instance `smul_eq_mul` holds definitionally (`x • g = x * g` in `ZMod 23`),
+so `recover`/`dlog` below are plain field arithmetic; the general theorems only
+use the group law. -/
 abbrev F := ZMod 23
 
 /-- The generator. Any nonzero element works. -/

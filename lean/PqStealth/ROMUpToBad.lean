@@ -10,7 +10,7 @@ between a lazily sampled random oracle and a *programmed* one (the oracle forced
 chosen point with a chosen value) by the probability that the programmed point is queried. It is
 stated for computations whose only oracle is the hash. Our ROM games live over
 `unifSpec + hashSpec` — the adversary also samples — and are simulated by
-`unifFwdImpl hashSpec + hashSpec.randomOracle` (`romImpl` in `DKSAPOracle`, `BlindingROM`).
+`unifFwdImpl hashSpec + hashSpec.randomOracle` (`dksapRomImpl` in `DKSAPOracle`, `romImpl` in `BlindingROM`).
 
 Proved, for that shape (everything here is stated over an arbitrary `hashSpec`):
 
@@ -45,7 +45,7 @@ noncomputable def unifFwdFlagImpl (hashSpec : OracleSpec ι) :
     (StateT (hashSpec.QueryCache × Bool) ProbComp)
 
 /-- The plain ROM implementation: uniform queries forwarded, hash queries lazily sampled and
-cached. `romImpl` in the scheme files is this at `hashSpec := G →ₒ F`. -/
+cached. `romImpl` and `dksapRomImpl` in the scheme files are this at `hashSpec := G →ₒ F`. -/
 noncomputable def roImpl (hashSpec : OracleSpec ι)
     [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t)] :
     QueryImpl (unifSpec + hashSpec) (StateT hashSpec.QueryCache ProbComp) :=

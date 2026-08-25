@@ -286,7 +286,7 @@ probability, and reports honestly how far that argument is machine-checked.
 
 The hash `h : G → F` is replaced by the second summand of `scalarSpec F G`,
 implemented by VCVio's lazy random oracle (`OracleSpec.randomOracle` =
-`uniformSampleImpl.withCaching`, state `(G →ₒ F).QueryCache`). `romImpl F G`
+`uniformSampleImpl.withCaching`, state `(G →ₒ F).QueryCache`). `dksapRomImpl F G`
 forwards uniform queries and hands hash queries to that oracle. The adversary
 `UnlinkAdvRO` is a function of the two meta-addresses and the challenge
 announcement into `OracleComp (scalarSpec F G) Bool` — it holds the same oracle
@@ -319,7 +319,7 @@ plain model, with the idealized middle game again contributing exactly zero.
 `dksapRORun_eq`: the real game IS the ideal game run against a cache already
 programmed at the DH point. This holds because the sender's query is the *first*
 oracle query, so it hits an empty cache and is a fresh uniform sample that is
-then written in (`romImpl_run'_scalarQuery_bind`). Both games therefore end up
+then written in (`dksapRomImpl_run'_scalarQuery_bind`). Both games therefore end up
 in identical shape, with identical announcements, differing only in the starting
 cache.
 
