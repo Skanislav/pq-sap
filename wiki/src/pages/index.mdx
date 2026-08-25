@@ -1,0 +1,41 @@
+# Post-Quantum Stealth Addresses
+
+A post-quantum stealth address scheme for Ethereum, registered as a new
+[ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID and working
+against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
+
+- **Detection** — ML-KEM-768 (FIPS 203). The announcement's ephemeral key is a
+  KEM ciphertext; the shared secret drives a one-byte view tag and the address
+  derivation. This is the part "harvest now, decrypt later" threatens, so it is
+  the priority.
+- **Spending** — an ML-DSA-65 (FIPS 204) key additively blinded by values
+  derived from the shared secret. The sender computes the recipient's
+  one-time address without learning any secret, exactly as in the secp256k1
+  scheme, and the resulting signatures verify under stock FIPS 204 verifiers.
+
+## Where to start
+
+| If you want to… | Read |
+| --- | --- |
+| Understand the scope and motivation | [Project plan](/overview/plan) |
+| Implement the scheme | [ERC draft](/spec/erc-draft) → [Technical spec](/spec/technical-spec) |
+| Know *why* something is the way it is | [Decisions & findings](/spec/decisions) |
+| Check your implementation | [Python executable spec](/impl/python) and its [test vectors](https://github.com/Skanislav/pq-sap/tree/main/python/vectors/v0) |
+| See what is machine-checked | [Lean 4 / VCVio proofs](/lean) |
+| Follow the open research threads | [Research](/research/hash-based-key-exchange) |
+
+## Status
+
+The technical spec, ADR log, v0 test vectors (with negative cases), the Python
+reference library, a TypeScript scanning client that matches the vectors byte
+for byte, and a Lean 4 development of the core security arguments all exist in
+the repository. What remains is the security write-up and community review
+before the ERC text freezes — see the [gap analysis](/research/erc-submission-gap-analysis).
+
+## About this wiki
+
+Most pages here are mirrored from markdown that lives next to the code
+(`docs/`, `lean/docs/`, the per-implementation `README.md` files). Each mirrored
+page names its source at the top; edit the source, not the copy. See
+[`wiki/README.md`](https://github.com/Skanislav/pq-sap/blob/main/wiki/README.md)
+for how the mirroring works and how to add pages.
