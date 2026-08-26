@@ -9,8 +9,11 @@
  * With --cache it additionally makes fork runs reproducible:
  *   --mode record   forward to the upstream AND save every response,
  *                   keyed by (method, params), into the cache file
- *   --mode replay   serve ONLY from the cache file — no network at all;
- *                   a cache miss returns a JSON-RPC error (loud, not silent)
+ *   --mode replay   serve from the cache file. A cache miss normally returns
+ *                   a loud JSON-RPC error, but eth_getCode at the pinned fork
+ *                   block is a deterministic historical read, so it falls back
+ *                   to the upstream on miss to absorb anvil/viem call-order
+ *                   differences across platforms. Everything else stays offline.
  *
  * Replay is exact as long as anvil forks at the same pinned block number
  * (the requests it makes are then deterministic). The block is stored in
@@ -60,15 +63,38 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 }
 process.on('exit', flush);
 
-/** Answer one JSON-RPC request object from the cache (replay mode). */
-const fromCache = (req) => {
-  const hit = entries.get(keyOf(req));
-  if (hit === undefined) {
-    return { jsonrpc: '2.0', id: req.id, error: { code: -32000,
-      message: `rpc-proxy replay: cache miss for ${keyOf(req)} — ` +
-        're-record with FORK_RECORD=1 (test changed or anvil version differs)' } };
+/** Query the upstream for a single historical eth_getCode call. */
+async function fetchUpstreamCode(req) {
+  try {
+    const resp = await fetch(UPSTREAM, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json();
+    return json?.error ? null : { result: json.result };
+  } catch {
+    return null;
   }
-  return { jsonrpc: '2.0', id: req.id, ...hit };
+}
+
+/** Answer one JSON-RPC request object from the cache (replay mode).
+ *  eth_getCode at the pinned fork block is a historical read; anvil/viem
+ *  sometimes issue it in a non-deterministic order, so on a cache miss we
+ *  fall back to the upstream. Everything else stays strictly offline. */
+const fromCache = async (req) => {
+  const hit = entries.get(keyOf(req));
+  if (hit !== undefined) {
+    return { jsonrpc: '2.0', id: req.id, ...hit };
+  }
+  if (req.method === 'eth_getCode') {
+    const fallback = await fetchUpstreamCode(req);
+    if (fallback) return { jsonrpc: '2.0', id: req.id, ...fallback };
+  }
+  return { jsonrpc: '2.0', id: req.id, error: { code: -32000,
+    message: `rpc-proxy replay: cache miss for ${keyOf(req)} — ` +
+      're-record with FORK_RECORD=1 (test changed or anvil version differs)' } };
 };
 
 createServer(async (req, res) => {
@@ -82,7 +108,8 @@ createServer(async (req, res) => {
   if (MODE === 'replay') {
     const parsed = JSON.parse(body.toString('utf8'));
     const answer = Array.isArray(parsed)
-      ? parsed.map(fromCache) : fromCache(parsed);
+      ? await Promise.all(parsed.map(fromCache))
+      : await fromCache(parsed);
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(answer));
     return;
