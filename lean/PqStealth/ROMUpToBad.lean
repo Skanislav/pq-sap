@@ -313,6 +313,41 @@ theorem tvDist_run'_roImpl_cacheOr_le_probEvent_bad {α : Type}
         exact tvDist_map_le Prod.fst _ _
     _ ≤ _ := tvDist_programmedROImpl_trackingROImpl_le policy oa cache₀
 
+/-- **Bad-flag probability is symmetric.** The programmed and tracking runs fire the flag with
+exactly the same probability: they agree on every non-bad transition, and once the flag fires
+both keep it set. This is the equality counterpart of
+`tvDist_programmedROImpl_trackingROImpl_le`. -/
+theorem probEvent_flag_programmed_eq_tracking {α : Type}
+    (oa : OracleComp (unifSpec + hashSpec) α) (cache₀ : hashSpec.QueryCache) :
+    Pr[fun z => z.2.2 = true |
+        (simulateQ (programmedROImpl policy) oa).run (cache₀, false)] =
+      Pr[fun z => z.2.2 = true |
+        (simulateQ (trackingROImpl policy) oa).run (cache₀, false)] := by
+  refine OracleComp.ProgramLogic.Relational.probEvent_output_bad_eq'
+    (programmedROImpl policy) (trackingROImpl policy) ?_ ?_ ?_ oa cache₀
+  · rintro (n | t) s u s'
+    · rfl
+    · exact probOutput_withProgramming_eq_withCachingTrackingPolicy_of_not_bad_output
+        policy t s u s'
+  · rintro (n | t) ⟨c, b⟩ hp z hz
+    · cases (show b = true from hp)
+      simp only [add_apply_inl, programmedROImpl, QueryImpl.add_apply_inl, unifFwdFlagImpl_run,
+        support_map, ProbComp.support_uniformFin, Set.image_univ] at hz
+      obtain ⟨x, rfl⟩ := hz
+      rfl
+    · cases (show b = true from hp)
+      exact QueryImpl.withProgramming_bad_monotone (so := uniformSampleImpl) (policy := policy)
+        t c z hz
+  · rintro (n | t) ⟨c, b⟩ hp z hz
+    · cases (show b = true from hp)
+      simp only [add_apply_inl, trackingROImpl, QueryImpl.add_apply_inl, unifFwdFlagImpl_run,
+        support_map, ProbComp.support_uniformFin, Set.image_univ] at hz
+      obtain ⟨x, rfl⟩ := hz
+      rfl
+    · cases (show b = true from hp)
+      exact QueryImpl.withCachingTrackingPolicy_bad_monotone (so := uniformSampleImpl)
+        (policy := policy) t c z hz
+
 end Projections
 
 /-! ## Programming a single point, and the averaged bound -/

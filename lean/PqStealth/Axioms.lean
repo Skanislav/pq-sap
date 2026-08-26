@@ -195,6 +195,9 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.tvDist_run'_roImpl_cacheOr_le_probEvent_bad' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.tvDist_run'_roImpl_cacheOr_le_probEvent_bad
 
+/-- info: 'PqStealth.probEvent_flag_programmed_eq_tracking' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_flag_programmed_eq_tracking
+
 /-- info: 'PqStealth.boolDistAdvantage_run'_cacheQuery_run'_empty_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.boolDistAdvantage_run'_cacheQuery_run'_empty_le
 
