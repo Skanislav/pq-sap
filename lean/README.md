@@ -181,7 +181,7 @@ Classical comparison and controls:
   that drops the spending key is not complete.
 - **`Demo.lean`** — a runnable `ZMod 23` instance of DKSAP and its attack, with
   every `#eval` wrapped in `#guard_msgs`.
-- **`Axioms.lean`** — 95 build-checked `#print axioms` assertions.
+- **`Axioms.lean`** — 114 build-checked `#print axioms` assertions.
 
 What is *not* claimed: the computational assumptions at the bottom
 (KEM IND-CPA → MLWE, the SPR two-hop, the random-oracle step for the blinding
@@ -221,7 +221,7 @@ and linked with `elan toolchain link`.)
 `lake build` *is* the check — there is nothing to run afterwards.
 
 - **Sorry-freedom and the axiom basis** are asserted by
-  `PqStealth/Axioms.lean`, which the root module imports. It carries 95
+  `PqStealth/Axioms.lean`, which the root module imports. It carries 114
   `#guard_msgs (whitespace := lax) in #print axioms …` blocks, one per headline
   theorem, freezing that theorem's exact axiom list (mostly
   `propext, Classical.choice, Quot.sound`; the pure-algebra facts need less).

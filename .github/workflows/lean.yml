@@ -66,3 +66,15 @@ jobs:
             exit 1
           fi
           grep -q "Build completed successfully" build.log
+
+      # The scripts below are stdlib-only, but setup-python gives a reliable
+      # interpreter across runner images.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Lean ↔ docs citations are in sync
+        run: python3 scripts/check_citations.py
+
+      - name: Check Lean byte sizes match reference vectors
+        run: python3 scripts/check_sizes.py

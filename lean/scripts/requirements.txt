@@ -1,0 +1,8 @@
+# Lean helper scripts — stdlib-only
+#
+# These scripts intentionally use only the Python standard library so that
+# any Python 3.10+ interpreter can run them without installing third-party
+# packages. Keep them dependency-free unless a strong reason appears.
+#
+#   python3 lean/scripts/check_citations.py
+#   python3 lean/scripts/check_sizes.py

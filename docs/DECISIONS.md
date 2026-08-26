@@ -246,6 +246,18 @@ adversaries), `MLKEMInstance` (bridge to VCVio's concrete ML-KEM),
 `AnonymityFromSPR` (SPR games + full decomposition capstone),
 `Ownership` (spend forgery as VCVio `SIS.Problem`, honest-witness validity).
 
+**Update (2026-08-26).** The game layer expanded from the original five
+modules to 18 content modules plus the root and `Axioms.lean`. The full
+`lake build` remains green and sorry-free. `PqStealth/Axioms.lean` now
+freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
+`MultiUnlink`, `MultiRecipient`, `KEMAnonymity`, `ConstructionA`,
+`BlindingROM`, `ROMUpToBad`, `SharedSecretHiding`, `AnonymityFromSPR`,
+`MLKEM`, `SPRTwoHop`, `Ownership`, `Soundness`, `DKSAPOracle`, `Controls`,
+`Demo`, and the renamed theorems). The build is the guard: a `sorry`
+under any headline theorem's dependency cone turns the axiom mismatch into
+a compile error. A full module map and the iteration queue live in
+`docs/lean-iterations.md`.
+
 ## D-014 — Spend and registry authentication standardize on ERC-7913 signers — **LOCKED**
 
 ERC-7913 (Signature Verifiers, Final 2025) represents a signer as the byte
