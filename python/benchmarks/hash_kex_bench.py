@@ -122,7 +122,11 @@ def main():
     for name, fn in HASHES.items():
         r = rate(fn, os.urandom(64), args.reps)
         b = bulk(fn, 64, args.reps)
-        out["hash_rates"][name] = {"small_calls_per_s": r, "log2": math.log2(r), "bulk_MB_s": b}
+        out["hash_rates"][name] = {
+            "small_calls_per_s": r,
+            "log2": math.log2(r),
+            "bulk_MB_s": b,
+        }
         print(f"{name:10} {r:18,.0f} {math.log2(r):6.1f} {b:10,.0f}")
 
     # --- 2. per-announcement scanner hashing (view tag / KDF) ---
@@ -147,20 +151,33 @@ def main():
     if out["mlkem"]:
         print("\n== ML-KEM reference (discovery_kem_20260801.json) ==")
         for k, r in out["mlkem"].items():
-            print(f"  {k}: pk {r['pk_B']} B, ct {r['ct_B']} B, decaps {r['decaps_ms']*1e3:.1f} µs, "
-                  f"announce {r['announce_gas']:,} gas, scan80k {r['scan80k_s']} s")
+            print(
+                f"  {k}: pk {r['pk_B']} B, ct {r['ct_B']} B, "
+                f"decaps {r['decaps_ms'] * 1e3:.1f} µs, "
+                f"announce {r['announce_gas']:,} gas, "
+                f"scan80k {r['scan80k_s']} s"
+            )
 
     # --- 4. Merkle-puzzle economics ---
     # Honest work n (hash calls per party) needed so that Eve's work is 2^W
     # under gap exponent e (Eve = n^e). Puzzle-set size = n puzzles.
     local = out["hash_rates"]["SHA-256"]["small_calls_per_s"]
     local_log2 = math.log2(local)
-    hw_core_log2 = 24.5  # ~24M SHA-256/s: one core with SHA extensions (native, not Python)
+    # ~24M SHA-256/s: one core with SHA extensions (native, not Python)
+    hw_core_log2 = 24.5
     gap_models = [
         ("classical Eve, Merkle 1974 (Barak-Mahmoody: optimal)", 2.0),
-        ("quantum Eve, classical parties, Merkle 1974 (BHKKLS'11: broken, no gap)", 1.0),
+        (
+            "quantum Eve, classical parties, Merkle 1974 "
+            "(BHKKLS'11: broken, no gap)",
+            1.0,
+        ),
         ("quantum Eve, classical parties, BHKKLS'11 concrete scheme", 7 / 6),
-        ("quantum Eve, classical parties, BHKKLS'11 family limit (never reached)", 1.5),
+        (
+            "quantum Eve, classical parties, BHKKLS'11 family limit "
+            "(never reached)",
+            1.5,
+        ),
         ("quantum Eve, QUANTUM honest parties, BHKKLS'11 concrete scheme", 5 / 3),
     ]
     targets = [80, 96, 128]
@@ -180,17 +197,27 @@ def main():
                 "puzzle_set_calldata_gas": n * PUZZLE_BYTES * GAS_PER_NONZERO_BYTE,
             }
             out["merkle_puzzles"].append(row)
-            print(f"    W=2^{W:3}: n=2^{n_log2:5.1f}  sender {fmt_time(row['sender_time_native_core_s']):>9} (1 core) "
-                  f"/ {fmt_time(row['sender_time_gpu_s']):>9} (GPU); "
-                  f"recipient pubkey = {fmt_bytes(row['puzzle_set_bytes']):>8}; "
-                  f"calldata {row['puzzle_set_calldata_gas']:.2e} gas")
+            print(
+                f"    W=2^{W:3}: n=2^{n_log2:5.1f} "
+                f"sender {fmt_time(row['sender_time_native_core_s']):>9} (1 core) "
+                f"/ {fmt_time(row['sender_time_gpu_s']):>9} (GPU); "
+                f"recipient pubkey = {fmt_bytes(row['puzzle_set_bytes']):>8}; "
+                f"calldata {row['puzzle_set_calldata_gas']:.2e} gas"
+            )
 
     # Attacker time for the classical-Eve, W=2^128 case at reference rates
     print("\n== who can afford what (SHA-256 H/s, log2) ==")
-    print(f"  this machine, Python-bound: 2^{local_log2:.1f}; native core assumed 2^{hw_core_log2}")
+    print(
+        f"  this machine, Python-bound: 2^{local_log2:.1f}; "
+        f"native core assumed 2^{hw_core_log2}"
+    )
     for k, v in ATTACKER_RATES.items():
         print(f"  {k}: 2^{v}")
-    out["attacker_rates_log2"] = {**ATTACKER_RATES, "local_python": local_log2, "native_core_assumed": hw_core_log2}
+    out["attacker_rates_log2"] = {
+        **ATTACKER_RATES,
+        "local_python": local_log2,
+        "native_core_assumed": hw_core_log2,
+    }
 
     if args.json:
         json.dump(out, open(args.json, "w"), indent=1)
