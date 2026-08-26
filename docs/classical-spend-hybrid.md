@@ -1,6 +1,8 @@
 # Classical-spend hybrid (secp256k1 + ML-KEM)
 
-*Authors: [@ivanmmurciaua](https://github.com/ivanmmurciaua), Claude (Opus 5).*
+*Authors: [@ivanmmurciaua](https://github.com/ivanmmurciaua).*
+
+*Tooling note: parts of this document were drafted with assistance from Claude (Opus 5). The project discloses AI assistance at the repository level rather than listing a tool as a co-author.*
 
 An alternative construction in the same family as the ML-DSA scheme, offered as a complementary point in the design space, not a replacement.
 
@@ -16,7 +18,10 @@ This is exactly the DKSAP baseline that `benchmarks/scan_bench.py` measures (`ss
 
 ## Where it sits
 
-Both schemes derive a per-payment tweak from an ML-KEM shared secret and add it to the recipient's published key. They differ only in the group the spending key lives in:
+This construction is a **companion scheme in the same family**, not a variant
+of the ML-DSA scheme. Both derive a per-payment tweak from an ML-KEM shared
+secret and add it to the recipient's published key; they differ only in the
+group the spending key lives in:
 
 | | ML-DSA scheme | Classical-spend hybrid |
 |---|---|---|
@@ -79,11 +84,17 @@ The trade is deliberate: give up post-quantum resistance on the spend signature 
 
 The hybrid uses the ERC-6538 registry the ML-DSA scheme already targets (`MetaPublic`: "published ... via ERC-6538 registry or ENS"). The registry maps `(registrant, schemeId) -> bytes` and is agnostic to the blob's schema, so:
 
-- The ML-DSA scheme registers under its `schemeId`.
-- The hybrid registers under **a distinct `schemeId`, in the same canonical registry, with no new contract**.
+- The ML-DSA scheme registers under the scheme ID declared in its own ERC (here, `2`).
+- The hybrid registers under **its own distinct scheme ID in the same canonical registry**. Because the registry is content-agnostic, no new contract is needed; the mapping for the hybrid's ID is declared in the hybrid's own ERC rather than this one.
 - Both coexist; the sender reads by `schemeId`. No off-chain meta-address sharing on either path.
 
 The same registry deployment serves every scheme on every network: the reuse is free.
+
+**ERC placement.** This document treats the hybrid as a separate ERC
+candidate (`docs/classical-spend-hybrid.md`). Keeping it out of this ERC keeps
+the ML-DSA scheme single-scheme and the conformance checker simple, while the
+shared registry and account model let wallets publish both meta-addresses
+side-by-side.
 
 For the **announcement**, the hybrid rides the same rail: the ERC-5564-style `Announcement` (`stealth_address`, `ephemeral_pub_key = R`, `view_tag`). An announcer-less variant that carries the announcement blob in the payment transaction's calldata is possible and removes the dedicated announcer, at the cost of a chain-wide calldata scan; it is a deployment choice, not a change to the scheme, and is out of scope for the reference here.
 

@@ -23,6 +23,7 @@ from pq_stealth import (
 )
 
 SCHEMA_VERSION = "v0"
+SCHEME_ID = 2
 
 
 def hx(b: bytes) -> str:
@@ -122,6 +123,7 @@ def generate() -> dict:
 
     return {
         "schema": SCHEMA_VERSION,
+        "scheme_id": SCHEME_ID,
         "scheme": "pq-stealth "
                   "(ML-KEM encaps + additive ML-DSA key blinding, fresh error term)",
         "params": DEFAULT.name,

@@ -18,7 +18,7 @@ export const SEPOLIA = {
 } as const;
 
 // placeholder pending ERC-5564 scheme-ID registration
-export const SCHEME_ID = 0x5567n;
+export const SCHEME_ID = 2n;
 
 export const ANNOUNCER_ABI = parseAbi([
   'event Announcement(uint256 indexed schemeId, address indexed stealthAddress, address indexed caller, bytes ephemeralPubKey, bytes metadata)',

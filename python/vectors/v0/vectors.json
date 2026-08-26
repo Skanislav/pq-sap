@@ -1,5 +1,6 @@
 {
   "schema": "v0",
+  "scheme_id": 2,
   "scheme": "pq-stealth (ML-KEM encaps + additive ML-DSA key blinding, fresh error term)",
   "params": "ML-KEM-768+ML-DSA-65",
   "view_tag_bytes": 1,

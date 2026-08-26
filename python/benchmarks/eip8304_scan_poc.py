@@ -34,7 +34,7 @@ import json
 import random
 import time
 
-SCHEME_ID = 0x5567
+SCHEME_ID = 2
 ANNOUNCER = bytes.fromhex("55649E01B5Df198D18D95b5cc5051630cfD45564")
 ANN_TOPIC0 = bytes.fromhex(
     "5f0eab8057630ba7676c49b4f21a0231414e79474595be8e4c432fbf6bf0f4e7")

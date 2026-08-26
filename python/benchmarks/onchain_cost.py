@@ -223,7 +223,7 @@ def main() -> None:
     ephemeral = hx(ann["ephemeral_pub_key"])
     stealth_addr = hx(ann["stealth_address"])
     metadata = hx(ann["view_tag"])
-    scheme_id = 0x5567
+    scheme_id = 2
 
     pq = model_announce(ephemeral, stealth_addr, metadata, scheme_id)
     ec = model_dksap_announce()

@@ -29,15 +29,22 @@ spend-side PQ is future-proofing.
 
 ## D-002 — Alignment with Ethereum's PQ roadmap — **FINDING**
 
-pq.ethereum.org designates **account abstraction** as the mechanism for the PQ
-signature transition ("transition to quantum-safe authentication through account
-abstraction, without a disruptive flag day"). Our ERC-4337 stealth-account spend
-path uses the same mechanism — the project maps onto the official roadmap rather
-than beside it. The roadmap's execution milestone **J\*** is a **vector-math
-precompile** that will make on-chain lattice signature verification cheap; timeline
-is L1 upgrades "by 2029, full execution-layer migration additional years beyond."
-Application-layer ZK-proof migration is **not** covered by the roadmap — the ZK
-direction here (D-008) is genuinely novel territory.
+pq.ethereum.org and ethereum.org/roadmap/security/quantum-resistance (April 2026)
+designate **account abstraction** as the mechanism for the PQ signature
+transition ("transition to quantum-safe authentication through account abstraction,
+without a disruptive flag day"), with post-quantum signature schemes expected to
+become available following the Hegotá hard fork and EIP-8141. Our ERC-4337
+stealth-account spend path uses the same mechanism — the project maps onto the
+official roadmap rather than beside it. The roadmap's execution milestone **J\***
+is a **vector-math precompile** that will make on-chain lattice signature
+verification cheap; the target is core PQ infrastructure by approximately 2029,
+with full execution-layer migration extending beyond that. Application-layer
+ZK-proof migration is **not** covered by the roadmap — the ZK direction here
+(D-008) is genuinely novel territory.
+
+**Watch item (2026-08-26):** the ACDE call on 2026-08-27 is expected to decide
+between EIP-8141 and EIP-8130 for Hegotá account abstraction. Update this entry
+and `plan.md` once the call minutes land.
 
 ## D-003 — Construction A (blinded ML-DSA) is the ownership mechanism — **LOCKED**
 
@@ -145,7 +152,7 @@ is building (D-002).
 - **Encoding (item 3):** `stealth_pk_roundtrips` (via VCVio's encoding `Laws`) and
   `meta_address_roundtrips` (the wrapper roundtrips whenever inner packing does).
 
-## D-012 — Discovery-only scope with ZK spend decouples the KEM; lattice wins discovery on decaps — **FINDING / direction**
+## D-012 — Discovery-only scope with ZK spend decouples the KEM; lattice wins discovery on decaps — **FINDING / stretch**
 
 Reframe (2026-07-29): the scheme's core is **discovery/detection**; spending is
 a **ZK ownership proof** (D-008), not a blinded ML-DSA signature. Two
@@ -184,8 +191,11 @@ consequences, the second measured in `benchmarks/discovery_kem_bench.py`:
   a 15.7 kB meta-address and 60 s scans — the conservative-assumption tax,
   quantified.
 
-Not yet done: verify the exact ZK-spend address-binding that lets the
-meta-address drop the `t` (assumed here; direction is clear, binding unproven).
+Status (2026-08-26): parked as **future work**. The exact ZK-spend
+address-binding that lets the meta-address drop the `t` is unproven, so the
+compact `version ‖ commitment ‖ ek` format is not normative for this ERC. The
+Lean roundtrip for that format stays in `Invariants.lean` as a documented
+variant.
 
 ## D-013 — Security games machine-checked in VCVio; the reduction skeleton is complete — **FINDING**
 
@@ -212,11 +222,13 @@ Key findings along the way:
 - **Unlinkability is KEM *anonymity* (key privacy), not IND-CCA** — the hidden
   bit picks the recipient, not the message. VCVio (and FIPS 203's own proof
   chain) stops at IND-CCA; anonymity is absent. That gap is the novel piece.
-- **VCVio already ships the assumption layer**: `LearningWithErrors`
+- **VCVio already ships the assumption layer definitions**: `LearningWithErrors`
   (LWE/MLWE, decision + search), `ShortIntegerSolution` (MSIS +
-  SelfTargetMSIS), and proven `K-PKE IND-CPA ≤ MLWE`. No new MLWE
-  formalization was needed — reductions land on their definitions. (Their
-  `ind_cca_security` is a self-flagged placeholder; we do not lean on it.)
+  SelfTargetMSIS), and a `K-PKE IND-CPA ≤ MLWE` lemma. The latter is a
+  `sorry` placeholder at the pinned VCVio commit — see `lean/README.md` and
+  `lean/PqStealth/MLKEM.lean`. No new MLWE formalization was needed for our
+  reductions to land on VCVio's definitions. (Their `ind_cca_security` is
+  also a self-flagged placeholder; we do not lean on it.)
 - **The tag/address caveat is a theorem, not a hope**: the auxiliary data
   hides the recipient *exactly insofar as* the shared secret is pseudorandom
   (`unlinkAdvantage_ofKEMFull_le`, proved via triangle inequality over
@@ -406,7 +418,7 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
 
 - Security analysis of construction A (widened-`z` leakage; unlinkability;
   the Dilithium-like signature-of-knowledge in D-008). Fellow A's core work.
-- Spec freeze + ERC draft + registered scheme ID (placeholder `0x5567`).
+- Spec freeze + ERC draft + declared scheme ID `2` (placeholder `0x5567` retired).
 - Cost report: **L2 pricing + ~5.6 kB meta-address story DONE (D-011)**;
   DKSAP is the single EC baseline (Curvy dropped, D-011).
 - NTT-domain + negacyclic + centered-range version of the ownership circuit.

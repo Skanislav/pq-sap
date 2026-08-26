@@ -3,7 +3,7 @@ eip: TBD
 title: Post-Quantum Stealth Addresses
 description: An ERC-5564 stealth address scheme using ML-KEM-768 key encapsulation for detection and additively blinded ML-DSA-65 keys for spending
 author: Skas Merkushin <skas.merkushin@gmail.com>, Iván Mañús (@ivanmmurciaua)
-discussions-to: TBD
+discussions-to: TBD  (to be updated once the Ethereum Magicians thread is opened; draft post prepared in `docs/magicians-thread-draft.md`)
 status: Draft
 type: Standards Track
 category: ERC
@@ -19,7 +19,7 @@ The scheme works against the deployed ERC-5564/[ERC-6538](./eip-6538.md) contrac
 
 ## Motivation
 
-ERC-5564 announcements are public and permanent. The SECP256K1 scheme's key exchange can be recorded today and broken later by a quantum computer running Shor's algorithm, revealing the recipient of every stealth payment ever made ("harvest now, decrypt later", NIST IR 8547). This is a confidentiality problem, not an ownership one: recording announcements does not enable retroactive theft, but it does enable retroactive deanonymization. Detection therefore needs a post-quantum key exchange *now*, while spend-side quantum safety can migrate later through account abstraction, in line with Ethereum's post-quantum roadmap.
+ERC-5564 announcements are public and permanent. The SECP256K1 scheme's key exchange can be recorded today and broken later by a quantum computer running Shor's algorithm, revealing the recipient of every stealth payment ever made ("harvest now, decrypt later", NIST IR 8547). This is a confidentiality problem, not an ownership one: recording announcements does not enable retroactive theft, but it does enable retroactive deanonymization. Detection therefore needs a post-quantum key exchange *now*, while spend-side quantum safety is expected to migrate later through account abstraction following the Hegotá hard fork and EIP-8141 (ethereum.org/roadmap/security/quantum-resistance, April 2026).
 
 This scheme replaces the elliptic-curve key exchange with ML-KEM and keeps the ERC-5564 flow unchanged: senders announce through the same contract, recipients scan the same logs, and the sender still names the address (a property that key-only recipient designs such as Native UTXOs require).
 
@@ -136,6 +136,8 @@ Both spend modes fit this one interface: a blinded ML-DSA signature verifies und
 
 **Why full-precision `t` in the meta-address.** `Power2Round` does not commute with the blinding addition; rounding before blinding makes the sender's and recipient's keys disagree. The ~4.4 kB cost is one-time per recipient.
 
+**Future variant (informative).** A ZK ownership proof (Section 7b / D-008) could let the meta-address carry only a short commitment to the spending key instead of the full-precision `t`, shrinking it from 5,633 B to roughly 1,217 B for ML-KEM-768. That format is *not* normative in this ERC because the exact address-binding proof is still open; it is recorded as future work in `docs/DECISIONS.md` D-012 and the Lean development keeps a roundtrip for it as a documented variant.
+
 **Why a 1-byte view tag.** Because the shared secret itself (not its hash) derives the address in this family, longer tags are safe, but measurements show the marginal scan-time benefit is negligible for native implementations; 1 byte matches the ERC-5564 convention.
 
 **Fees.** A PQ announcement's calldata puts the transaction on the EIP-7623 calldata floor (measured 67,580 gas on the canonical announcer, about 2.5x the SECP256K1 scheme); as EIP-4844 blob data the marginal cost is sub-cent. These numbers are part of the reference cost report.
@@ -170,4 +172,4 @@ A pure-Python executable specification (protocol layer over spec-faithful FIPS 2
 
 ## Copyright
 
-Copyright and related rights waived via [CC0](../LICENSE.md).
+Copyright and related rights waived via [CC0](../LICENSE).

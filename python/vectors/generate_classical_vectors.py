@@ -28,6 +28,7 @@ from pq_stealth.classical import (
 )
 
 SCHEMA_VERSION = "v0"
+SCHEME_ID = 2
 
 
 def hx(b: bytes) -> str:
@@ -133,6 +134,7 @@ def generate() -> dict:
 
     return {
         "schema": SCHEMA_VERSION,
+        "scheme_id": SCHEME_ID,
         "scheme": "classical-spend hybrid "
                   "(ML-KEM encaps + additive secp256k1 key blinding)",
         "params": DEFAULT.name,

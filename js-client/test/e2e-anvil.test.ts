@@ -31,7 +31,7 @@ const PORT = 8547;
 const ANVIL_KEY =
   '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 // placeholder scheme id — real value assigned via the ERC-5564 registry
-const SCHEME_ID = 0x5567n;
+const SCHEME_ID = 2n;
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const artifact = JSON.parse(readFileSync(

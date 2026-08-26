@@ -103,8 +103,8 @@ What remains is the part that gates the ERC: the **security write-up** and commu
 ## Security: formally analyzed, honestly scoped
 
 - Unlinkability turns out to rest on KEM **anonymity** — a *different* property than the standard IND-CCA everyone verifies. Identifying and formalizing that gap is the project's research contribution.
-- The full reduction chain down to lattice assumptions (MLWE / MSIS) is **machine-checked in Lean 4**, instantiated on real ML-KEM.
-- What's still open is stated plainly in the draft — the final write-up is the remaining core deliverable, with a standardized-operations fallback if the analysis demands it.
+- The security **game layer and structural reductions** are machine-checked in Lean 4 / VCVio; the concrete lattice assumptions (SPR → MLWE, the RO step, ANO-CCA lift) remain paper-level, exactly as scoped in `lean/README.md`.
+- What's still open is stated plainly in the draft — the final write-up is the remaining core deliverable.
 
 ---
 
@@ -121,7 +121,7 @@ The engineering landed early — including stretch goals (live testnet spend, ZK
 **To close the cohort**
 1. **Security analysis write-up** → the construction A/B verdict
 2. **Community review** (ethereum-magicians thread) → spec freeze
-3. **ERC PR** to `ethereum/ERCs` with a registered scheme ID + final report
+3. **ERC PR** to `ethereum/ERCs` with a declared scheme ID + final report
 
 **Beyond the cohort — where this plugs into the ecosystem**
 - Reference libraries wallets can adopt against the frozen vectors
@@ -132,9 +132,9 @@ The engineering landed early — including stretch goals (live testnet spend, ZK
 
 ## Links
 
-- **Repo `erc-5567`**: spec, vectors, clients, proofs, benchmarks — everything public
-- **ERC draft**: `docs/erc-draft.md` · decisions log: `docs/DECISIONS.md`
-- Write-ups: [machine-checked security games](https://claude.ai/code/artifact/efa33122-e029-4cc6-a3c4-5b28076d2ed4) · [the KEM design space, measured](https://claude.ai/code/artifact/ccbbf9df-498f-4228-bec0-0a79d0f67116)
+- **Repo `pq-sap`**: spec, vectors, clients, proofs, benchmarks — everything public
+- **ERC draft**: `docs/erc-draft.md` · decisions log: `docs/DECISIONS.md` · technical spec: `docs/TECHNICAL_SPEC.md`
+- Write-ups: machine-checked security games (`lean/docs/spr-two-hop.md`) · the KEM design space, measured (`python/benchmarks/README.md`)
 - Base paper: [ePrint 2025/112](https://eprint.iacr.org/2025/112) · Standards: [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564), [ERC-6538](https://eips.ethereum.org/EIPS/eip-6538), FIPS 203/204
 
 *Weekly dev updates per EPF process — figures regenerate from measured data: `docs/presentation/make_figs.py`*

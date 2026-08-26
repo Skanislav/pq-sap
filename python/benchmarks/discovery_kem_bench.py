@@ -72,7 +72,7 @@ LITERATURE = [
      "note": "round-2 exit; rank-1 module (less conservative than MLWE)"},
 ]
 
-SCHEME_ID = 0x5567
+SCHEME_ID = 2
 
 
 def median_ms(fn, reps):

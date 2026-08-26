@@ -1,5 +1,6 @@
 {
   "schema": "v0",
+  "scheme_id": 2,
   "scheme": "classical-spend hybrid (ML-KEM encaps + additive secp256k1 key blinding)",
   "params": "secp256k1+ML-KEM-768",
   "view_tag_bytes": 1,
