@@ -45,4 +45,23 @@ specifications, and no AI tool is listed as a co-author.
 
 ## License
 
-Copyright and related rights waived via [CC0-1.0](LICENSE).
+Licensed under the [MIT License](LICENSE).
+
+## Dependency license note
+
+The reference implementation builds on widely used, permissively licensed
+cryptography libraries. Runtime and benchmark dependencies include:
+
+- `kyber-py` (ML-KEM): MIT / Apache-2.0
+- `dilithium-py` (ML-DSA): MIT
+- `pycryptodome` (Keccak/SHA-256): BSD-2-Clause / public domain
+- `liboqs-python`: MIT (optional audit backend)
+- `coincurve` (secp256k1): MIT / Apache-2.0 (optional, classical hybrid benchmark)
+- `@noble/post-quantum`: MIT
+- `viem`: MIT
+- `@openzeppelin/contracts`: MIT
+
+There is no GPL or other copyleft dependency in the hot path. The ERC
+submission still intends to place the conformance vectors and checker in the
+[`ethereum/ERCs`](https://github.com/ethereum/ERCs) asset tree; the ERC repo
+uses its own CC0 process for the submitted spec and assets.

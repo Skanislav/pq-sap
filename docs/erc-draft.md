@@ -172,4 +172,4 @@ A pure-Python executable specification (protocol layer over spec-faithful FIPS 2
 
 ## Copyright
 
-Copyright and related rights waived via [CC0](../LICENSE).
+Copyright and related rights licensed under [MIT](../LICENSE).
