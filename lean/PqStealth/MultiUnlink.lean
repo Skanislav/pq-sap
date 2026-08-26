@@ -1,4 +1,4 @@
-import PqStealth.Games
+import PqStealth.KEMAnonymity
 
 /-!
 # Multi-challenge unlinkability (hybrid argument)
@@ -245,6 +245,57 @@ theorem unlinkAdvantageMulti_le_mul (q : ℕ) {ε : ℝ}
   calc ∑ k ∈ Finset.range q, S.unlinkAdvantage (S.hybridAdv advM k (q - k - 1))
       ≤ ∑ _k ∈ Finset.range q, ε := Finset.sum_le_sum fun k _ => h k (q - k - 1)
     _ = q * ε := by rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+
+/-! ## Composing with the per-challenge KEM reduction -/
+
+/-- **Multi-challenge unlinkability of the KEM-based scheme, honest form.** The
+`q`-challenge advantage of `ofKEMFull` is at most the sum over the hybrids of
+each derived adversary's four-term decomposition: shared-secret hiding on both
+branches, key independence of the auxiliary data, and KEM anonymity of the
+induced ciphertext adversary. Instantiation of `unlinkAdvantageMulti_le_sum`
+with `unlinkAdvantage_ofKEMFull_le` plus `Finset.sum_add_distrib`. -/
+theorem unlinkAdvantageMulti_ofKEMFull_le_sum {PK SK C K Aux : Type}
+    [SampleableType K] [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) (advM : UnlinkAdvMulti PK (C × Aux)) (q : ℕ) :
+    (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageMulti advM q ≤
+      ∑ k ∈ Finset.range q,
+        (sharedSecretHiding kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+            advM k (q - k - 1)) true
+          + auxKeyIndependence kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+              advM k (q - k - 1))
+          + kem.anonAdvantage (((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+              advM k (q - k - 1)).cipherOf auxGen)
+          + sharedSecretHiding kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+              advM k (q - k - 1)) false) := by
+  refine le_trans
+    ((StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageMulti_le_sum advM q) ?_
+  exact Finset.sum_le_sum fun k hk =>
+    unlinkAdvantage_ofKEMFull_le kem auxGen
+      ((StealthScheme.ofKEMFull kem auxGen).hybridAdv advM k (q - k - 1))
+
+/-- **Multi-challenge unlinkability of the KEM-based scheme, `q`-fold loss.** If
+every hybrid adversary's four-term sum is at most `ε`, the `q`-challenge
+advantage of `ofKEMFull` is at most `q * ε`. The `i j` quantification — not
+just the `q` derived adversaries of the telescope — keeps the statement uniform
+and matches the hypothesis shape of `unlinkAdvantageMulti_le_mul`. -/
+theorem unlinkAdvantageMulti_ofKEMFull_le {PK SK C K Aux : Type}
+    [SampleableType K] [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) (advM : UnlinkAdvMulti PK (C × Aux)) (q : ℕ) {ε : ℝ}
+    (h : ∀ i j,
+      sharedSecretHiding kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+          advM i j) true
+        + auxKeyIndependence kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+            advM i j)
+        + kem.anonAdvantage (((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+            advM i j).cipherOf auxGen)
+        + sharedSecretHiding kem auxGen ((StealthScheme.ofKEMFull kem auxGen).hybridAdv
+            advM i j) false ≤ ε) :
+    (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageMulti advM q ≤ q * ε :=
+  (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageMulti_le_mul advM q fun i j =>
+    le_trans
+      (unlinkAdvantage_ofKEMFull_le kem auxGen
+        ((StealthScheme.ofKEMFull kem auxGen).hybridAdv advM i j))
+      (h i j)
 
 end StealthScheme
 

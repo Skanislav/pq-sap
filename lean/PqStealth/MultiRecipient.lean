@@ -350,6 +350,34 @@ theorem unlinkAdvantageN_le_mul
     _ = (n * (n - 1) : ℕ) * ε := by
         rw [Finset.sum_const, hcard, nsmul_eq_mul]
 
+/-- **`n`-recipient unlinkability of the KEM-based scheme, `n·(n−1)` loss.** If
+every pair-guessing reduction's four-term sum is at most `ε`, the
+`n`-recipient advantage of `ofKEMFull` is at most `n·(n−1)·ε`. Pure
+instantiation of `unlinkAdvantageN_le_mul` with `unlinkAdvantage_ofKEMFull_le`
+at each `pairGuessAdv`. -/
+theorem unlinkAdvantageN_ofKEMFull_le {PK SK C K Aux : Type}
+    [SampleableType K] [DecidableEq Aux] (kem : KEM PK SK C K)
+    (auxGen : K → PK → Aux) {n : ℕ} {St : Type}
+    (pick : UnlinkChooseN PK n St) (guess : UnlinkGuessN PK (C × Aux) n St)
+    (hpick : ∀ (pks : Fin n → PK), ∀ i ∈ support (pick pks), i.1.1 ≠ i.1.2) {ε : ℝ}
+    (h : ∀ j : Fin n × Fin n,
+      sharedSecretHiding kem auxGen
+          ((StealthScheme.ofKEMFull kem auxGen).pairGuessAdv pick guess j) true
+        + auxKeyIndependence kem auxGen
+            ((StealthScheme.ofKEMFull kem auxGen).pairGuessAdv pick guess j)
+        + kem.anonAdvantage
+            (((StealthScheme.ofKEMFull kem auxGen).pairGuessAdv pick guess j).cipherOf
+              auxGen)
+        + sharedSecretHiding kem auxGen
+            ((StealthScheme.ofKEMFull kem auxGen).pairGuessAdv pick guess j) false ≤ ε) :
+    (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageN pick guess ≤
+      (n * (n - 1) : ℕ) * ε :=
+  (StealthScheme.ofKEMFull kem auxGen).unlinkAdvantageN_le_mul pick guess hpick fun j =>
+    le_trans
+      (unlinkAdvantage_ofKEMFull_le kem auxGen
+        ((StealthScheme.ofKEMFull kem auxGen).pairGuessAdv pick guess j))
+      (h j)
+
 end StealthScheme
 
 end PqStealth

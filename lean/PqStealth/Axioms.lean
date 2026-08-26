@@ -353,6 +353,12 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_le_mul
 
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_ofKEMFull_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_ofKEMFull_le_sum
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageMulti_ofKEMFull_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageMulti_ofKEMFull_le
+
 /-! ## Detection soundness (`Soundness`) -/
 
 /-- info: 'PqStealth.dksap_falsePositiveRate_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -407,6 +413,9 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_le_mul
+
+/-- info: 'PqStealth.StealthScheme.unlinkAdvantageN_ofKEMFull_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.StealthScheme.unlinkAdvantageN_ofKEMFull_le
 
 /-! ## The address hash as a random oracle (`BlindingROM`) -/
 
