@@ -6,7 +6,7 @@ The project will specify, implement, benchmark, and test a post-quantum stealth 
 
 Ethereum is preparing for the post-quantum transition well in advance: the EF roadmap expects post-quantum signature schemes to become available on Ethereum following the Hegotá hard fork and EIP-8141 (ethereum.org/roadmap/security/quantum-resistance, April 2026).
 
-Stealth address cryptography is already widely used ([Fluidkey](https://www.fluidkey.com/), [Cloaked](https://www.clkd.xyz/), [Umbra](https://umbraprivacy.com/), and other ERC-5564-based protocols) to preserve privacy while keeping human-readable handles — it is much cheaper than heavier privacy systems and offers better UX for compartmentalizing funds.
+Stealth address cryptography is already widely used ([Fluidkey](https://www.fluidkey.com/), [Cloaked](https://www.clkd.xyz/), [Umbra](https://umbraprivacy.com/), and other ERC-5564-based protocols) to preserve privacy while keeping human-readable handles  -  it is much cheaper than heavier privacy systems and offers better UX for compartmentalizing funds.
 
 To display a balance, a wallet downloads the announcement logs and in linear time checks a one-byte view tag to skip non-matching entries without decoding everything. On a candidate match, it computes the shared secret `S = v·R`, confirms the payment, and with the spending key converts it into the private key controlling the address. All of this data is public and permanent: a future quantum computer running Shor's algorithm can recover the viewing and spending keys from it, deanonymizing every stealth payment ever made ("harvest now, decrypt later", NIST IR 8547).
 
@@ -16,7 +16,7 @@ This project addresses that at the ERC level: a new scheme ID working against th
 
 ## Project description
 
-**Proposed solution.** Using lattice-based key encapsulation: Learning With Errors (LWE) and its Module variant (MLWE), the basis of NIST's ML-KEM — for the key-exchange step, we will produce a new ERC-5564 extension: a post-quantum-ready scheme ID. Per [ePrint 2025/112,](https://eprint.iacr.org/2025/112) the LWE approach *In some cases* brings an increase in parsing speed together with future-proofing the Native UTXO design and its ERC-5564 use case.
+**Proposed solution.** Using lattice-based key encapsulation: Learning With Errors (LWE) and its Module variant (MLWE), the basis of NIST's ML-KEM  -  for the key-exchange step, we will produce a new ERC-5564 extension: a post-quantum-ready scheme ID. Per [ePrint 2025/112,](https://eprint.iacr.org/2025/112) the LWE approach *In some cases* brings an increase in parsing speed together with future-proofing the Native UTXO design and its ERC-5564 use case.
 
 The parsing trick: the errors mixed into the polynomial equations are easy for the recipient to discover. After plugging in their real secret values, the error falls out as a subtraction from the publicly broadcast value. Without the key, separating the noise from the structure is the hard problem, for quantum computers too. We can also generate a proof of such statement for spending instead of using full-pq signature.
 
@@ -41,7 +41,7 @@ The work divides into one research question and one engineering deliverable.
 
 * Benchmarks as a runnable harness. We reproduced the 2025/112 scan experiment from 0x3327/pq-sap (about 23.8 µs per announcement at 80k, the number behind the ~66.8%-vs-Curvy figure) and ran our scheme against a DKSAP baseline on the same machine. We dropped the Curvy run on purpose: DKSAP is the scheme ERC-5564 actually deploys, so it's the honest bar. The cost numbers are measured: an ML-KEM-768 ciphertext is 1,088 bytes where today's ephemeral key is 33; on mainnet the announcement pays the EIP-7623 calldata floor (67,580 gas measured, about 2.5× DKSAP) and EIP-4844 blobs put the L2 data cost below a cent; on the spend side, account deployment around 6.2M gas, roughly 8.2M per ML-DSA verification, ~22 kB public key. The meta-address is ~5.6 kB (full-precision `t` plus the ML-KEM key), a one-time per-recipient registry/ENS cost. What's left is writing the report up.
 
-**Stretch goals** — optional, none part of the core scope:
+**Stretch goals**  -  optional, none part of the core scope:
 
 An end-to-end spend demonstration. The near-term route is done. We spent from a stealth address on Sepolia through an ERC-4337 account (Kohaku pq-account, ZKNOX verifiers). Their factory derives the account address via CREATE2 from the public keys, so the stealth address is just the counterfactual account address of the derived key, spendable today with no protocol change. It works with construction A, since the sender computes the derived pubkey. The whole receive-and-spend went through on Sepolia, and the per-address costs (deployment, ~22 kB ML-DSA pubkey storage, 1.7–8.4M gas per verification depending on the scheme) go into the cost report. Two things we don't paper over: ZKNOX's on-chain verifier is a level-2 Dilithium2 profile, not our default ML-DSA-65, and its account wants an ECDSA signature next to the PQ one, so what we showed is the plumbing working end to end, not a pure post-quantum spend. The long-term route, native spending via EIP-8141 (still a Draft, not scheduled for a fork), stays out of scope unless it reaches a devnet during the cohort.
 
@@ -98,17 +98,17 @@ Decisions the spec still has to close, in order: (1) construction A vs. B. A is 
 
 Worth saying up front: it's 2026, code is cheap. A lot of the engineering already exists as a prototype, which is what most of this write-up is reporting. So the estimates below are really about finishing and hardening each piece.
 
-* Benchmark reproduction + key-blinding bibliography — mostly done. The paper's numbers from 0x3327/pq-sap are reproduced. What's left is finishing the key-blinding reading (Tor v3 blinding, Eaton et al. Latincrypt 2021 and the work citing it) and locking the A/B call with mentors. Call it a week of the original three.
+* Benchmark reproduction + key-blinding bibliography  -  mostly done. The paper's numbers from 0x3327/pq-sap are reproduced. What's left is finishing the key-blinding reading (Tor v3 blinding, Eaton et al. Latincrypt 2021 and the work citing it) and locking the A/B call with mentors. Call it a week of the original three.
 
-* v0 spec + conformance vectors — done, not frozen yet. The executable Python spec and the versioned JSON vectors with negatives are in the repo. What remains is a review round with mentors and the community, then the freeze. Everything after builds against the frozen spec, same as before.
+* v0 spec + conformance vectors  -  done, not frozen yet. The executable Python spec and the versioned JSON vectors with negatives are in the repo. What remains is a review round with mentors and the community, then the freeze. Everything after builds against the frozen spec, same as before.
 
-* Security analysis — ~4–5 weeks, Unlinkability across payments, sender can't derive the spending key, viewing/spending separation, the widened-z distribution at β' = τ·2η, parameter analysis. Formal verification with lean4 using vcvio for algebraic and game-based testing.
+* Security analysis  -  ~4–5 weeks, Unlinkability across payments, sender can't derive the spending key, viewing/spending separation, the widened-z distribution at β' = τ·2η, parameter analysis. Formal verification with lean4 using vcvio for algebraic and game-based testing.
 
-* Reference library — done in v0, Python plus a TypeScript scanning client, built against the vectors. Remaining work is polish and keeping it in sync as the spec freezes.
+* Reference library  -  done in v0, Python plus a TypeScript scanning client, built against the vectors. Remaining work is polish and keeping it in sync as the spec freezes.
 
-* Benchmarks + cost report — ~2 weeks. The scan benchmarks and the on-chain gas numbers are measured already, and the cost model reproduces the measured 67,580-gas announcement to the gas, mainnet and L2 both priced. What's left is writing the report up.
+* Benchmarks + cost report  -  ~2 weeks. The scan benchmarks and the on-chain gas numbers are measured already, and the cost model reproduces the measured 67,580-gas announcement to the gas, mainnet and L2 both priced. What's left is writing the report up.
 
-* ERC draft + wrap-up — ~2 weeks. PR to ethereum/ERCs, conformance run, final report and Devcon presentation.
+* ERC draft + wrap-up  -  ~2 weeks. PR to ethereum/ERCs, conformance run, final report and Devcon presentation.
 
 A few things landed ahead of the plan too: the Lean proofs, the Noir zero-knowledge ownership prototype, and a live receive-and-spend on Sepolia (a stretch goal). So the shape shifted. The engineering came in early, which frees cohort time for the security analysis and the ERC draft and leaves more room for the stretch goals. Weekly dev updates per EPF process, everything published as I go.
 
@@ -144,39 +144,39 @@ Success means these things exist publicly:
 
 ### Mentors
 
-- [Tamaghna](https://github.com/RazorClient) — mentor assignment pending confirmation (currently expressed interest in contributing)
+- [Tamaghna](https://github.com/RazorClient)  -  mentor assignment pending confirmation (currently expressed interest in contributing)
 
 ## Resources
 
 **Papers and articles**
 
-* Mikić, Srbakoski, Praška — _Post-Quantum Stealth Address Protocols_, ePrint 2025/112: [https://eprint.iacr.org/2025/112](https://eprint.iacr.org/2025/112)
-* Mikić, Srbakoski, Praška — *More Efficient Stealth Address Protocol* (hybrid Curvy/MLWE, deliberately not quantum-secure to stay Ethereum-compatible — the gap this project closes): [https://arxiv.org/abs/2504.06744](https://arxiv.org/abs/2504.06744)
-* asanso — *Towards practical post quantum stealth addresses* (CSIDH-based, ethresear.ch, April 2023 — earliest PQ stealth design for Ethereum; isogeny-based, pre-standardization): [https://ethresear.ch/t/towards-practical-post-quantum-stealth-addresses/15437](https://ethresear.ch/t/towards-practical-post-quantum-stealth-addresses/15437)
-* *Post-Quantum Threats to Ethereum Privacy* (ethresear.ch, March 2026 — harvest-now-decrypt-later and why privacy migration is more time-sensitive than authentication migration): [https://ethresear.ch/t/post-quantum-threats-to-ethereum-privacy/24450](https://ethresear.ch/t/post-quantum-threats-to-ethereum-privacy/24450)
-* Eaton et al. — *Post-Quantum Key-Blinding for Authentication in Anonymity Networks*, Latincrypt 2021 (primary prior art for construction A)
-* Grubbs, Maram, Paterson — *Anonymous, Robust Post-Quantum Public Key Encryption*, Eurocrypt 2022 (KEM anonymity, the property detection unlinkability reduces to)
-* Maram, Xagawa — *Post-Quantum Anonymity of Kyber*, PKC 2023 (settles ANO-CCA for Kyber; the route the unlinkability analysis follows)
-* Lyubashevsky — *Basic Lattice Cryptography: The concepts behind Kyber (ML-KEM) and Dilithium (ML-DSA)* (tutorial, ePrint)
-* Wahrstätter et al. — _BaseSAP: Modular Stealth Address Protocol for Programmable Blockchains_, IEEE TIFS 2024
-* Mikić, Srbakoski — *Elliptic Curve Pairing Stealth Address Protocols* (Curvy): [https://arxiv.org/abs/2312.12131](https://arxiv.org/abs/2312.12131)
-* Buterin — _An incomplete guide to stealth addresses_: [https://vitalik.eth.limo/general/2023/01/20/stealth.html](https://vitalik.eth.limo/general/2023/01/20/stealth.html)
+* Mikić, Srbakoski, Praška  -  _Post-Quantum Stealth Address Protocols_, ePrint 2025/112: [https://eprint.iacr.org/2025/112](https://eprint.iacr.org/2025/112)
+* Mikić, Srbakoski, Praška  -  *More Efficient Stealth Address Protocol* (hybrid Curvy/MLWE, deliberately not quantum-secure to stay Ethereum-compatible  -  the gap this project closes): [https://arxiv.org/abs/2504.06744](https://arxiv.org/abs/2504.06744)
+* asanso  -  *Towards practical post quantum stealth addresses* (CSIDH-based, ethresear.ch, April 2023  -  earliest PQ stealth design for Ethereum; isogeny-based, pre-standardization): [https://ethresear.ch/t/towards-practical-post-quantum-stealth-addresses/15437](https://ethresear.ch/t/towards-practical-post-quantum-stealth-addresses/15437)
+* *Post-Quantum Threats to Ethereum Privacy* (ethresear.ch, March 2026  -  harvest-now-decrypt-later and why privacy migration is more time-sensitive than authentication migration): [https://ethresear.ch/t/post-quantum-threats-to-ethereum-privacy/24450](https://ethresear.ch/t/post-quantum-threats-to-ethereum-privacy/24450)
+* Eaton et al.  -  *Post-Quantum Key-Blinding for Authentication in Anonymity Networks*, Latincrypt 2021 (primary prior art for construction A)
+* Grubbs, Maram, Paterson  -  *Anonymous, Robust Post-Quantum Public Key Encryption*, Eurocrypt 2022 (KEM anonymity, the property detection unlinkability reduces to)
+* Maram, Xagawa  -  *Post-Quantum Anonymity of Kyber*, PKC 2023 (settles ANO-CCA for Kyber; the route the unlinkability analysis follows)
+* Lyubashevsky  -  *Basic Lattice Cryptography: The concepts behind Kyber (ML-KEM) and Dilithium (ML-DSA)* (tutorial, ePrint)
+* Wahrstätter et al.  -  _BaseSAP: Modular Stealth Address Protocol for Programmable Blockchains_, IEEE TIFS 2024
+* Mikić, Srbakoski  -  *Elliptic Curve Pairing Stealth Address Protocols* (Curvy): [https://arxiv.org/abs/2312.12131](https://arxiv.org/abs/2312.12131)
+* Buterin  -  _An incomplete guide to stealth addresses_: [https://vitalik.eth.limo/general/2023/01/20/stealth.html](https://vitalik.eth.limo/general/2023/01/20/stealth.html)
 * *Native UTXOs on Ethereum* (ethresear.ch, July 2026): [https://ethresear.ch/t/native-utxos-on-ethereum/25368](https://ethresear.ch/t/native-utxos-on-ethereum/25368)
 * *VCVio: Verified Cryptography in Lean via Oracle Effects and Handlers* ePrint 2026/899: [https://eprint.iacr.org/2026/899.pdf](https://eprint.iacr.org/2026/899.pdf)
 
 **Standards and specifications**
 
-* ERC-5564 — Stealth Addresses: [https://eips.ethereum.org/EIPS/eip-5564](https://eips.ethereum.org/EIPS/eip-5564)
-* ERC-6538 — Stealth Meta-Address Registry: [https://eips.ethereum.org/EIPS/eip-6538](https://eips.ethereum.org/EIPS/eip-6538)
-* EIP-8141 — Frame Transactions (Draft): [https://eips.ethereum.org/EIPS/eip-8141](https://eips.ethereum.org/EIPS/eip-8141)
+* ERC-5564  -  Stealth Addresses: [https://eips.ethereum.org/EIPS/eip-5564](https://eips.ethereum.org/EIPS/eip-5564)
+* ERC-6538  -  Stealth Meta-Address Registry: [https://eips.ethereum.org/EIPS/eip-6538](https://eips.ethereum.org/EIPS/eip-6538)
+* EIP-8141  -  Frame Transactions (Draft): [https://eips.ethereum.org/EIPS/eip-8141](https://eips.ethereum.org/EIPS/eip-8141)
 * NIST FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA); NIST IR 8547 (PQC transition)
 * Tor rend-spec-v3, key-blinding appendix (the deployed Ed25519 blinding design)
 * Ethereum post-quantum cryptography roadmap: [https://ethereum.org/roadmap/security/quantum-resistance/](https://ethereum.org/roadmap/security/quantum-resistance/) (April 2026)
 
 **Implementations and benchmarks**
 
-* `0x3327/pq-sap` — ePrint 2025/112 reference implementation and scan benchmarks (Rust): [https://github.com/0x3327/pq-sap](https://github.com/0x3327/pq-sap)
-* `ethereum/kohaku` `packages/pq-account` — ERC-4337 post-quantum accounts (ZKNOX ML-DSA/Falcon verifiers, deployed on Sepolia and Arbitrum Sepolia); the near-term spend route: [https://github.com/ethereum/kohaku/tree/master/packages/pq-account](https://github.com/ethereum/kohaku/tree/master/packages/pq-account)
-* PQClean / liboqs and the pq-crystals reference code — audited ML-KEM/ML-DSA implementations the library binds to
-* `GiacomoPope/kyber-py`, `dilithium-py` — spec-faithful Python implementations, used for vector generation and cross-checking
-* ScopeLift stealth-address-sdk / Umbra and Fluidkey deployments — DKSAP baseline behavior and announcer usage in production
+* `0x3327/pq-sap`  -  ePrint 2025/112 reference implementation and scan benchmarks (Rust): [https://github.com/0x3327/pq-sap](https://github.com/0x3327/pq-sap)
+* `ethereum/kohaku` `packages/pq-account`  -  ERC-4337 post-quantum accounts (ZKNOX ML-DSA/Falcon verifiers, deployed on Sepolia and Arbitrum Sepolia); the near-term spend route: [https://github.com/ethereum/kohaku/tree/master/packages/pq-account](https://github.com/ethereum/kohaku/tree/master/packages/pq-account)
+* PQClean / liboqs and the pq-crystals reference code  -  audited ML-KEM/ML-DSA implementations the library binds to
+* `GiacomoPope/kyber-py`, `dilithium-py`  -  spec-faithful Python implementations, used for vector generation and cross-checking
+* ScopeLift stealth-address-sdk / Umbra and Fluidkey deployments  -  DKSAP baseline behavior and announcer usage in production

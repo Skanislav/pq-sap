@@ -36,6 +36,13 @@ The conformance vectors and checker are intended to enter the
 [`ethereum/ERCs`](https://github.com/ethereum/ERCs) asset tree under CC0 when
 the PR is opened.
 
+## Tooling note
+
+Parts of the documentation and some exploratory code were drafted with
+assistance from Claude (Anthropic). The project discloses this at the
+repository level; humans are listed as authors of all project-facing
+specifications, and no AI tool is listed as a co-author.
+
 ## License
 
 Copyright and related rights waived via [CC0-1.0](LICENSE).
