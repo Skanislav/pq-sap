@@ -140,11 +140,14 @@ Success means these things exist publicly:
 ### Fellows
 
 - Skas (project lead, ERC draft, implementation, vectors, Lean coordination)
-- [Iván Mañús](https://github.com/ivanmmurciaua) (classical-spend hybrid, cross-client validation, research)
 
 ### Mentors
 
-- [Tamaghna](https://github.com/RazorClient)  -  mentor assignment pending confirmation (currently expressed interest in contributing)
+- [Tamaghna](https://github.com/RazorClient) — mentor assignment pending confirmation (currently expressed interest in contributing)
+
+### Acknowledgments
+
+- [Iván Mañús](https://github.com/ivanmmurciaua) contributed to the classical-spend hybrid design and cross-client validation work.
 
 ## Resources
 

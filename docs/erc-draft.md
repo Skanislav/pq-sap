@@ -2,7 +2,7 @@
 eip: TBD
 title: Post-Quantum Stealth Addresses
 description: An ERC-5564 stealth address scheme using ML-KEM-768 key encapsulation for detection and additively blinded ML-DSA-65 keys for spending
-author: Skas Merkushin <skas.merkushin@gmail.com>, Iván Mañús (@ivanmmurciaua)
+author: Skas Merkushin <skas.merkushin@gmail.com>
 discussions-to: TBD  (to be updated once the Ethereum Magicians thread is opened; draft post prepared in `docs/magicians-thread-draft.md`)
 status: Draft
 type: Standards Track

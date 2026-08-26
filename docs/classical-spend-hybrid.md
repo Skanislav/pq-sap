@@ -1,8 +1,8 @@
 # Classical-spend hybrid (secp256k1 + ML-KEM)
 
-*Authors: [@ivanmmurciaua](https://github.com/ivanmmurciaua).*
+*Author: Skas Merkushin.*
 
-*Tooling note: parts of this document were drafted with assistance from Claude (Opus 5). The project discloses AI assistance at the repository level rather than listing a tool as a co-author.*
+*Acknowledgments: the classical-spend hybrid design was discussed with Iván Mañús. Tooling note: parts of this document were drafted with assistance from Claude (Opus 5); the project discloses AI assistance at the repository level rather than listing a tool as a co-author.*
 
 An alternative construction in the same family as the ML-DSA scheme, offered as a complementary point in the design space, not a replacement.
 
