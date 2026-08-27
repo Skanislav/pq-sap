@@ -67,12 +67,37 @@ assert len(COMMIT_DOMAIN) == 32
 CHALLENGE = hashlib.sha256(b"pq-stealth/sphincs-c13/erc7913 spend demo").digest()
 
 
+# Pointer-signature vault fixture: anvil dev account #0 deploys, in this order,
+# from a fresh chain (js-client/test/e2e-pointer-sig.test.ts asserts the
+# resulting addresses match before using the signatures).
+ANVIL_DEPLOYER = bytes.fromhex("f39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+CHAIN_ID = 31337
+DEPLOY_NONCES = {"c13_verifier": 0, "mldsa_verifier": 1, "registry": 2, "vault": 3}
+WITHDRAW_TO = bytes(18) + b"\xbe\xef"
+WITHDRAW_AMOUNT = 250_000_000_000_000_000   # 0.25 ether
+
+
 def hx(b: bytes) -> str:
     return "0x" + b.hex()
 
 
 def keccak256(b: bytes) -> bytes:
     return keccak.new(digest_bits=256, data=b).digest()
+
+
+def create_address(sender: bytes, nonce: int) -> bytes:
+    """CREATE address = keccak256(rlp([sender, nonce]))[12:], nonce < 128."""
+    assert len(sender) == 20 and 0 <= nonce < 128
+    return keccak256(b"\xd6\x94" + sender + (b"\x80" if nonce == 0 else bytes([nonce])))[12:]
+
+
+def word(x: int | bytes) -> bytes:
+    return x.rjust(32, b"\x00") if isinstance(x, bytes) else x.to_bytes(32, "big")
+
+
+def withdraw_digest(vault: bytes, owner: bytes, to: bytes, amount: int, nonce: int) -> bytes:
+    """PointerSigVault.withdrawDigest = keccak256(abi.encode(chainid, vault, owner, to, amount, nonce))."""
+    return keccak256(word(CHAIN_ID) + word(vault) + word(owner) + word(to) + word(amount) + word(nonce))
 
 
 def run_signer(signer: str, *args: str) -> str:
@@ -109,6 +134,35 @@ def build(signer: str) -> dict:
     commitment = keccak256(COMMIT_DOMAIN + pk + opener)
     commit_sig = pk + opener + sig
 
+    # --- pointer-signature route (docs/pointer-signatures-poc.md, v = 0x52 / 0x53):
+    # the vault's withdraw digest binds chain id, vault address, owner, to, amount
+    # and nonce, so the fixture pins the e2e's deploy order (fresh anvil, account
+    # #0, CREATE nonces) and signs the two digests the test will actually present.
+    vault = create_address(ANVIL_DEPLOYER, DEPLOY_NONCES["vault"])
+    pointer = {
+        "chain_id": CHAIN_ID,
+        "deployer": hx(ANVIL_DEPLOYER),
+        "deploy_nonces": DEPLOY_NONCES,
+        "vault": hx(vault),
+        "to": hx(WITHDRAW_TO),
+        "amount": str(WITHDRAW_AMOUNT),
+        "v_sphincs": 0x52,
+        "v_sphincs_commit": 0x53,
+    }
+    for form, word in (("raw", pk), ("commit", commitment)):
+        owner = keccak256(word)[12:]
+        digest = withdraw_digest(vault, owner, WITHDRAW_TO, WITHDRAW_AMOUNT, 0)
+        vsig = bytes.fromhex(run_signer(
+            signer, "sign-with", keys["seed"], keys["sk_seed"], keys["root"], hx(digest))[2:])
+        assert len(vsig) == C13["sig_len"]
+        pointer[form] = {
+            "r": hx(word),
+            "owner": hx(owner),
+            "digest": hx(digest),
+            "sig": hx(vsig),
+            "blob": hx(vsig if form == "raw" else pk + opener + vsig),
+        }
+
     return {
         "profile": "SPHINCS- C13 spend key + ML-KEM-768 discovery "
                    "(hash-based spend, ERC-7913 raw-key and commit forms)",
@@ -126,6 +180,7 @@ def build(signer: str) -> dict:
         "opener": hx(opener),
         "commitment": hx(commitment),
         "commit_signature": hx(commit_sig),
+        "pointer": pointer,
         "sizes": {
             "key": len(pk),
             "kem_ct": len(ann.ephemeral_pub_key),

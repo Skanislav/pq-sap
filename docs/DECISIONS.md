@@ -535,6 +535,23 @@ and where a hash-based key can honestly sit in this scheme.
   the hash); H_msg takes the 32-byte hash directly (no envelope); the
   Verity proof is of the Solidity/Yul model, not of solc's output.
 
+- **Pointer-signature form (same day, user: "pack the key as ecrecover").**
+  Because the C13 key is one word, the `(v, r, s)` pointer trick of
+  `docs/pointer-signatures-poc.md` needs no key table: `v = 0x52`, `r` = the
+  key, `s` = signature index → address `keccak256(r)[12:]`; `v = 0x53`,
+  `r` = the commitment above → a stealth address in plain address shape
+  that the sender computes without any account. Measured
+  (`npm run e2e-pointer-sig`): `withdrawWithSig` 0x52 **182,799** / 0x53
+  183,237 vs classic 92,555 (2.0×) and ML-DSA `recover` ≈ 15.19 M;
+  publishing the signature ≈ 0.9 M. **Constraint stated late and now
+  written into the POC doc:** `recover` authorizes spends *inside adopting
+  contracts*; `keccak256(r)[12:]` cannot hold ETH or tokens itself, so this
+  is a spend-authorization shim for value already held by pointer-aware
+  contracts, not a stealth-receive mechanism — an ERC-5564 payment to a
+  bare address still needs the CREATE2 account route. The user reads the
+  spend-time linkability as a feature (the spend is an explicit, auditable
+  identification event) rather than a defect; recorded as such.
+
 Follow-ups: a meta-address version carrying the 32-B C13 key (hash-based-
 spend variant); link the Lean side — Verified-zkEVM/VCVio main ships a
 pure-Lean C13 (`HashSig/SLHDSA/C13`) with a KAT against this very verifier,

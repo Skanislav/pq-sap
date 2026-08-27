@@ -37,6 +37,10 @@ npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
 npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
                         # verifies through the vendored Verity-verified verifier,
                         # raw-key and committed ERC-7913 signers, same account
+npm run e2e-pointer-sig # (v, r, s) pointer signatures with r = the C13 key
+                        # (0x52) or its commitment (0x53); ML-DSA 0x50/0x51
+                        # at recover level. Value lives in the vault — see
+                        # docs/pointer-signatures-poc.md "Where the value lives"
 npm run e2e:fork        # Sepolia-fork rehearsals (announce/verify + spend);
                         # replays test/state/*.rpc.json offline if present,
                         # otherwise records it (needs a Sepolia RPC)
