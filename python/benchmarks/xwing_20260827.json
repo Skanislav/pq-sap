@@ -1,0 +1,38 @@
+{
+ "rows": [
+  {
+   "name": "ML-KEM-768 (reference)",
+   "pk_B": 1184,
+   "ct_B": 1088,
+   "decaps_us": 17.2,
+   "scan80k_s": 1.38,
+   "meta_addr_B": 1217,
+   "announce_gas": 67670
+  },
+  {
+   "name": "X-Wing (native comp.)",
+   "pk_B": 1216,
+   "ct_B": 1120,
+   "decaps_us": 48.0,
+   "scan80k_s": 3.84,
+   "meta_addr_B": 1249,
+   "announce_gas": 68890
+  },
+  {
+   "name": "X-Wing (py-wrapped x25519)",
+   "pk_B": 1216,
+   "ct_B": 1120,
+   "decaps_us": 177.1,
+   "scan80k_s": 14.17,
+   "meta_addr_B": 1249,
+   "announce_gas": 68950
+  }
+ ],
+ "components": {
+  "mlkem768_decaps_us_liboqs": 17.2,
+  "x25519_us_openssl_native": 30.2,
+  "x25519_us_python_cryptography": 159.31,
+  "sha3_256_combiner_us": 0.599
+ },
+ "vector_checked": true
+}

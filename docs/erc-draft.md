@@ -48,6 +48,22 @@ The default pairing is ML-KEM-768 + ML-DSA-65 (NIST security level 3). Implement
 | Stealth public key | 1,952 B | a standard ML-DSA-65 public key |
 | Signature / possession proof | 3,309 B | a standard ML-DSA-65 signature |
 
+#### Optional hybrid (PQ/T) parameter set
+
+Implementations MAY additionally support a hybrid parameter set in which the discovery KEM is MLKEM768-X25519 (the X-Wing construction: one ML-KEM-768 encapsulation plus one X25519 exchange, combined with SHA3-256), with spending unchanged (ML-DSA-65). The substitution is confined to the KEM: `ss` is the X-Wing shared secret and every derivation downstream of `ss` — blinding, view tag, scanning — is identical to the default set.
+
+Differences from the default set:
+
+| Object | Size | Notes |
+|---|---|---|
+| Meta-address | 5,665 B | version `0x02`; `ek` is the 1,216-B X-Wing encapsulation key |
+| Ephemeral public key `R` | 1,120 B | the X-Wing ciphertext |
+| Viewing (decapsulation) key | 32 B | a seed, expanded per the X-Wing specification |
+
+The decapsulation key MUST be generated, stored, and exchanged only in its 32-byte seed form; the expanded ML-KEM decapsulation key MUST NOT be exported (X-Wing's binding properties do not survive expanded-key transport). Senders MUST perform the ML-KEM encapsulation-key check required by the X-Wing specification. Scanning behavior on malformed ciphertexts is unchanged (implicit rejection; MUST NOT raise).
+
+The security scope of this set is deliberately narrow and is stated in Security Considerations: it hedges detection privacy against a classical break of Module-LWE; it does not hedge announcement unlinkability, which rests on ML-KEM's ciphertext anonymity in both parameter sets.
+
 ### Meta-address
 
 The recipient generates an ML-DSA spending key, retaining `t = A*s1 + s2` at **full precision**, and an ML-KEM viewing keypair `(ek, dk)`. The stealth meta-address is:
@@ -134,6 +150,8 @@ Both spend modes fit this one interface: a blinded ML-DSA signature verifies und
 
 **Why a classical-spend option is available (informative).** Because the detection layer derives the view tag and the address from the ML-KEM shared secret alone, it is indifferent to the group the spending key lives in, so blinding a secp256k1 spend key in place of the ML-DSA one (`P = K + KDF(ss)*G`, address `keccak256(uncompressed(P)[1:])[12:32]`) yields the ERC-7913 empty-key base case of the same account model: one that is spendable on-chain today with a plain ECDSA signature at `ecrecover` cost, at the price of a classical spend authorization deferred to the same migration. That price is narrower than it reads, since the stealth address is only a hash until it is spent from, so the secp256k1 public key surfaces just at spend time and a single-transaction full drain closes even that window, while confidentiality (which recipient received the payment) rests on ML-KEM and stays post-quantum throughout, the very harvest-now-decrypt-later split the Motivation draws. Sharing the recipient's ML-KEM viewing key and registering under its own scheme ID, the variant lets a wallet offer both, with a reference implementation and vectors published alongside.
 
+**Why the hybrid set is X-Wing (informative).** Among assumption-diversity hedges, the hybrid is the cheapest measured: 2.8x the default set's scan cost yet faster than every non-Module-LWE KEM family (the nearest NTRU alternative included), +32 B on the meta-address and ciphertext, and a 32-byte seed as the whole viewing key. Its combiner shape is compatible with the NIST SP 800-227 hybrid recommendation, and the identical construction is being standardized at the IETF (MLKEM768-X25519) with production deployments. Code-based alternatives cannot fill this role in the same combiner: its proof requires ciphertext second-preimage resistance of the post-quantum leg, which HQC lacks. A hash-based alternative is ruled out by theorem (random-oracle key exchange is capped at a quadratic gap classically and has no gap against a quantum adversary, per Barak-Mahmoody and Brassard et al.), which is why a structured second assumption is the only hedge on offer.
+
 **Why full-precision `t` in the meta-address.** `Power2Round` does not commute with the blinding addition; rounding before blinding makes the sender's and recipient's keys disagree. The ~4.4 kB cost is one-time per recipient.
 
 **Future variant (informative).** A ZK ownership proof (Section 7b / D-008) could let the meta-address carry only a short commitment to the spending key instead of the full-precision `t`, shrinking it from 5,633 B to roughly 1,217 B for ML-KEM-768. That format is *not* normative in this ERC because the exact address-binding proof is still open; it is recorded as future work in `docs/DECISIONS.md` D-012 and the Lean development keeps a roundtrip for it as a documented variant.
@@ -159,6 +177,8 @@ A pure-Python executable specification (protocol layer over spec-faithful FIPS 2
 **Threat model.** Harvest-now-decrypt-later attacks confidentiality, not ownership: a future quantum adversary replaying today's announcements can deanonymize recipients under the SECP256K1 scheme but cannot steal funds. This scheme's post-quantum guarantee is therefore strongest exactly where the urgency is: detection privacy. Spend-side authorization is a live-attacker problem and can migrate independently.
 
 **Unlinkability reduces to KEM anonymity, not IND-CCA.** Recipient unlinkability is the property that a ciphertext does not reveal *which* public key it was encapsulated to (ANO-CCA / key privacy). This is not implied by IND-CCA and is not part of FIPS 203's design goals; it has been established for Kyber in the literature (Grubbs–Maram–Paterson, Eurocrypt 2022; Maram–Xagawa, PKC 2023), and the accompanying security analysis reduces the scheme's unlinkability to it, with the view tag and address derivation covered by the shared secret's pseudorandomness (KEM IND-CPA). Implementations MUST derive the view tag and blinding only from the encapsulated shared secret, never from recipient-identifying material.
+
+**What the hybrid parameter set does and does not hedge.** The optional MLKEM768-X25519 set targets one scenario: a *classical* cryptanalytic break of Module-LWE. In that event the shared secret remains pseudorandom under the strong Diffie-Hellman assumption on Curve25519 (Barbosa et al., IACR CiC 2024), so view tags and derived stealth addresses — detection privacy — stay hiding. It does not extend to announcement unlinkability: a parallel hybrid concatenates both component ciphertexts, so its anonymity requires *both* components to be anonymous (an AND, unlike IND-CCA's OR), and since the X25519 component is an ephemeral public key carrying no recipient information, the hybrid's ciphertext anonymity equals ML-KEM's exactly (Bao-Pan, PKC 2026). Unlinkability therefore rests on ML-KEM ciphertext anonymity in both parameter sets, and wallets MUST NOT present the hybrid set as protecting unlinkability against a lattice break. Against a future quantum adversary the hybrid is neutral: the X25519 leg contributes nothing and security degrades to exactly the default set.
 
 **Widened signature distribution (open analysis).** The blinded secret's coefficients reach `2*eta`, so the post-rejection `z` distribution differs from standard ML-DSA's. Signatures verify everywhere, but the leakage analysis of the widened distribution is the open item of the security analysis; until it closes, treat on-chain reuse of a single stealth key for many signatures conservatively.
 
