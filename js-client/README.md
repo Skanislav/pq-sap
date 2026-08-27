@@ -34,6 +34,9 @@ npm run e2e             # spawns anvil, deploys the ERC-5564 announcer,
 npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
                         # through the vendored ZKNOX verifier + an
                         # OpenZeppelin SignerERC7913 account
+npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
+                        # verifies through the vendored Verity-verified verifier,
+                        # raw-key and committed ERC-7913 signers, same account
 npm run e2e:fork        # Sepolia-fork rehearsals (announce/verify + spend);
                         # replays test/state/*.rpc.json offline if present,
                         # otherwise records it (needs a Sepolia RPC)
@@ -93,6 +96,25 @@ git -C contracts/lib/ETHDILITHIUM checkout --recurse-submodules df999ed
 
 `contracts/lib/ETHDILITHIUM/VENDORED_REV.txt` records the pinned rev of a
 restored tree.
+
+## Vendored verifier (committed): SPHINCS- C13
+
+`contracts/src/vendor/sphincs-minus/SPHINCs-C13Asm.sol` is the Verity Labs
+machine-checked hash-based verifier from `lfglabs-dev/SPHINCS-` @ `2a40d0a`,
+copied byte for byte (270 lines, MIT; sha256 and re-verification command in
+`VENDORED_REV.txt` next to it). It is compiled with upstream's settings
+(via-IR, 200 runs) through a per-path `compilation_restrictions` entry in
+`contracts/foundry.toml`; everything else keeps the default profile.
+`contracts/src/SphincsC13Signer7913.sol` wraps it as two ERC-7913 signers
+(raw 32-byte key, and a commitment opened in the signature that makes the
+stealth address sender-derivable at the cost of spend-time linkability —
+see `docs/DECISIONS.md` D-018). Byte conventions: `src/sphincs.ts`.
+
+The fixture `python/scripts/sphincs_c13_7913_demo.json` was produced by
+`python/scripts/sphincs_c13_7913_demo.py` with upstream's Rust signer
+(`cd signer-wasm && cargo build --release --bin signer-c13`; keygen 0.2 s,
+one signature a few seconds); the script is deterministic, so a regenerated
+file must be byte-identical.
 
 The e2e test announces the two genuine payments plus the tampered variants
 (wrong view tag, truncated ciphertext, bit-flipped ciphertext) through a

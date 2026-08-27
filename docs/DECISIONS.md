@@ -455,6 +455,93 @@ component must sample a random *curve point*, not uniform bytes (curve
 membership is distinguishable at ~1/2). Full analysis:
 `docs/research/xwing-hybrid-kem.md`.
 
+## D-018 — SPHINCS- C13 (hash-based) as an ERC-7913 spend signer: Verity-verified verifier vendored, two signer forms, spend-time linkability stated — **FINDING / option**
+
+Question (2026-08-27, user): implement the Verity Labs SPHINCS- verifier
+(https://veritylabs.dev/research/sphincs-minus-verifier) for spending.
+Done (branch `worktree-sphincs-minus`): what was vendored, what it costs,
+and where a hash-based key can honestly sit in this scheme.
+
+- **What was vendored.** `lfglabs-dev/SPHINCS-` `src/SPHINCs-C13Asm.sol`
+  @ `2a40d0a` — byte-identical, sha256 recorded in
+  `js-client/contracts/src/vendor/sphincs-minus/VENDORED_REV.txt` (the
+  write-up prints the commit hash with a typo in its tail; the repo's HEAD
+  is the object we pin). SPHINCS+ "+C" variant (WOTS+C / FORS+C grinding,
+  ePrint 2025/2203): n=16, h=22, d=2, a=19, k=7, w=8, l=43, target sum 208,
+  keccak256 over the FIPS 205 §11.2.2 uncompressed ADRS, 3,688-B signature,
+  128-bit up to a 2^22-signatures-per-key cap (upstream's table). Verity
+  Labs' Lean refinement (`c13_refines_spec`: EVM model → `verifyBytes` →
+  `verifyParsed`; `propext`/`Classical.choice`/`Quot.sound` plus the
+  residual assembly bridges in their AXIOMS.md) covers exactly this file.
+  Compiled under upstream's settings (via-IR, 200 runs) through a per-path
+  `compilation_restrictions` profile; nothing else in the tree changes
+  profile. Upstream posture: research prototype, not audited; its own
+  agent-assisted review flags a public-grindable message randomizer `R`
+  (the few-time bound is unproven in-repo). Not FIPS 205.
+- **Two ERC-7913 signers** (`js-client/contracts/src/SphincsC13Signer7913.sol`),
+  both stateless, 52-byte signer strings (`verifier || key`), never
+  reverting on well-typed input (lengths checked, key words built
+  top-aligned so the verifier's two revert paths are unreachable; every
+  soundness failure is a uniform `0xffffffff`):
+  - **raw key**: `key = pkSeed[0:16] || pkRoot[0:16]`, `sig` = the 3,688-B
+    C13 signature. For keys that are public anyway — the D-014 registry-
+    authentication ratchet, an account co-signer / recovery key, or the
+    key behind a D-012 ZK-bound stealth address.
+  - **commit**: `key = keccak256("pq-stealth/sphincs-c13/commit/v0" || pk || opener)`,
+    `sig = pk || opener || c13sig` (3,752 B),
+    `opener = SHA-256("pq-stealth/sphincs-c13/open/v0" || ss)` (a
+    derivative of the shared secret, never `ss` itself, so opening leaks
+    no view-tag material). This is the form that gives a hash-based key a
+    **sender-derivable** stealth address: the sender knows `pk` (a
+    hash-based-spend meta-address would carry the 32-B key) and `ss`, so
+    it can form the commitment → account initcode → CREATE2 address.
+- **Measured (anvil, `npm run e2e-7913-sphincs`, 2026-08-27).** Verifier
+  deploy 310,750 gas; raw C13 `verify` ≈ **188,092** tx-level (upstream's
+  Sepolia figure: 188,278 — the vendored bytecode behaves as documented);
+  ERC-7913 raw-key wrapper ≈ 194,768; commit form ≈ 196,973; account
+  deploy 620,894 (initcode ≈ 2,984 B). Against the ML-DSA ERC-7913 route
+  (D-014, ≈ 14.97 M): **≈ 77× cheaper per verify**, and no PKContract
+  (the 5.3 M one-time key deploy disappears — the key is 32 bytes in the
+  signer string). Signature 3,688 B vs 3,309 B (+11 %); signer 52 B vs 40 B.
+- **The finding that governs placement.** Hash-based keys have no key
+  homomorphism, so the sender cannot derive a per-payment public key
+  (D-016; `hash-based-key-exchange.md` row B). The commit form recovers
+  sender-side address derivation, but a spend *opens* the commitment on
+  chain: `pk` is the recipient's registered key, so from the first spend
+  every **spent** address of that recipient is linkable to the recipient
+  (unspent addresses stay unlinkable — `ss` is 256 bits of KEM output and
+  the commitment hides). Blinded ML-DSA has no such identifying event.
+  So SPHINCS- is the right spend signer for (a) registry authentication,
+  (b) co-signer / recovery, (c) the key *behind* a D-012 ZK ownership
+  proof — where a keccak/hash-preimage STARK is what makes the spend side
+  lattice-free end to end — and (d) a documented **linkable-on-spend
+  option** for users who take ≈ 77× cheaper spends over spend-time
+  unlinkability. It is not a replacement for construction A as the
+  default. The ERC draft's informative spend section now says this.
+- **Conventions and reproducibility.** Byte conventions live in
+  `js-client/src/sphincs.ts` and `python/scripts/sphincs_c13_7913_demo.py`
+  (fixture generator: a real ML-KEM-768 exchange with fixed seeds, the
+  recipient's C13 seed material = `SHA-256("pq-stealth/sphincs-c13/keygen/v0" || spend_seed)`
+  fed to upstream's Rust `signer-c13 keygen` (0.2 s) and `sign-with`;
+  the R / counter grinds are deterministic in `sk_seed`, verified
+  byte-identical on re-run). The e2e re-derives opener and commitment in
+  TypeScript, asserts equality with the fixture and with the contract's
+  `commitment()`, and runs the negative cases (wrong hash, tampered `R`,
+  tampered auth path, short sig, wrong root, wrong key length, wrong
+  opener, cross-form signatures) expecting `0xffffffff`, never a revert.
+- **Caveats carried.** One C13 key across all of a recipient's stealth
+  addresses draws on one 2^22 budget — a wallet MUST count signatures;
+  the bare ERC-7913 `verify` has no ctx (as in D-014, PoP binding goes in
+  the hash); H_msg takes the 32-byte hash directly (no envelope); the
+  Verity proof is of the Solidity/Yul model, not of solc's output.
+
+Follow-ups: a meta-address version carrying the 32-B C13 key (hash-based-
+spend variant); link the Lean side — Verified-zkEVM/VCVio main ships a
+pure-Lean C13 (`HashSig/SLHDSA/C13`) with a KAT against this very verifier,
+which would let `lean/` state the spend-side assumption as a hash-only
+EUF-CMA term; decide whether the linkable-on-spend option is offered in
+the ERC beyond the informative paragraph.
+
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured
@@ -505,3 +592,6 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
 - Cost report: **L2 pricing + ~5.6 kB meta-address story DONE (D-011)**;
   DKSAP is the single EC baseline (Curvy dropped, D-011).
 - NTT-domain + negacyclic + centered-range version of the ownership circuit.
+- Hash-based spend (D-018): remove spend-time linkability by binding the
+  SPHINCS- key through the D-012 ZK ownership proof instead of an opened
+  commitment; meta-address variant carrying the 32-B C13 key.
