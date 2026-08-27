@@ -246,6 +246,12 @@ adversaries), `MLKEMInstance` (bridge to VCVio's concrete ML-KEM),
 `AnonymityFromSPR` (SPR games + full decomposition capstone),
 `Ownership` (spend forgery as VCVio `SIS.Problem`, honest-witness validity).
 
+**Update (2026-08-27).** Added `Soundness.UniformCoordinate` with `card_fiber_eval'`
+and `probOutput_map_get_uniformSample_vector`: a coordinate projection of a uniform
+vector is uniform, giving a generic `1/|α|` view-tag fallback when the tag is a direct
+function of a vector-shaped shared secret. `Axioms.lean` now freezes **118**
+`#print axioms` blocks. Full `lake build` remains green and sorry-free.
+
 **Update (2026-08-26).** The game layer expanded from the original five
 modules to 18 content modules plus the root and `Axioms.lean`. The full
 `lake build` remains green and sorry-free. `PqStealth/Axioms.lean` now
@@ -382,7 +388,72 @@ and the argument for a structured assumption in discovery is closed.
 
 Follow-ups: one Rationale sentence in the ERC citing Barak–Mahmoody so "why not
 hashes" stays closed; permit out-of-band `cs` for tag chains; decide whether
-to offer the hybrid set. Full analysis: `docs/research/hash-based-key-exchange.md`.
+to offer the hybrid set (→ resolved in D-017: yes, and it is X-Wing, not
+ML-KEM‖HQC). Full analysis: `docs/research/hash-based-key-exchange.md`.
+
+## D-017 — Optional PQ/T hybrid parameter set: X-Wing replaces NTRU/HQC as the named hedge; default stays ML-KEM-768 — **LOCKED**
+
+Question (2026-08-27): should the ERC offer a hybrid (PQ/T) discovery-KEM
+parameter set against a *classical* break of Module-LWE, and which one?
+Decision (user, 2026-08-27): **yes, as optional** — X-Wing
+(X25519 + ML-KEM-768, bit-identical to CFRG's MLKEM768-X25519). The default
+set is unchanged.
+
+- **Best-value second assumption, measured** (`benchmarks/xwing_bench.py`,
+  validated against the official draft test vectors byte-identically):
+  hybrid decaps 48 µs (ML-KEM 17.2 + native X25519 30.2 + SHA3-256 0.6) →
+  3.84 s per 80k scan — a 2.8× tax that is still *faster than every
+  non-MLWE family we measured*, including the previous NTRU hedge
+  (NTRU-HPS-2048-677: 4.19 s). Footprint: pk 1,216 B (+32), ct 1,120 B
+  (+32, announce ≈ +1.8% gas at the EIP-7623 floor), decapsulation key =
+  one 32-byte seed. The classical leg dominates the hybrid's scan cost —
+  X25519 is ~1.8× the ML-KEM decapsulation.
+- **Honest security scope (the reason the pitch must be worded carefully).**
+  For parallel hybrids, ciphertext ANONYMITY is an AND of the components
+  (both ciphertexts are visible), unlike IND-CCA's OR — stated explicitly
+  in Bao–Pan, "Anonymity of X-Wing and its Variants" (PKC 2026, eprint
+  2026/396), the first anonymity analysis of X-Wing. The X25519 ciphertext
+  is an ephemeral public key — unconditionally weakly anonymous, an
+  anonymity free-rider — so X-Wing's anonymity *equals ML-KEM's, full
+  stop*. Consequence for us: the hybrid hedges the **shared-secret-hiding
+  terms** of the Lean decomposition (view tag + derived stealth address
+  become "MLWE OR strong-DH", per X-Wing's IND-CCA theorems, eprint
+  2024/039) but **not the SPR/anonymity term** — announcement↔meta-address
+  unlinkability keeps its single point of failure in ML-KEM ciphertext
+  anonymity. Not "DKSAP-grade privacy if lattices fall." Against the HNDL
+  quantum adversary the hybrid is exactly neutral (Shor kills the X25519
+  leg; degrades to the default scheme).
+- **Why X-Wing and not ML-KEM‖HQC** (corrects D-016's closing suggestion):
+  the QSF combiner shape requires the PQ leg to be C2PRI (ciphertext
+  second-preimage resistant), which **HQC fails** (Starfighters, eprint
+  2025/1397; Krämer et al. 2025/1416) — HQC cannot be the second leg of an
+  X-Wing-style combiner, on top of its 138× scan tax. NTRU keeps only a
+  footprint edge and has no combiner spec, no anonymity analysis, and
+  slower scans.
+- **Standards/deployment footing**: draft-connolly-cfrg-xwing-kem-10 (not
+  an RFC), but bit-identical MLKEM768-X25519 sits in
+  draft-irtf-cfrg-concrete-hybrid-kems and draft-ietf-hpke-pq (IANA HPKE
+  KEM 0x647a); Apple CryptoKit ships it (iOS/macOS 26); BoringSSL, CIRCL,
+  filippo.io, RustCrypto, libcrux implement it; NIST SP 800-227 (final,
+  2025-09) blesses the combiner shape. Not in liboqs/OpenSSL — irrelevant
+  to us; both our stacks compose it from parts we already carry.
+- **Normative consequences imported into the ERC**: hybrid meta-address
+  version `0x02` with the 1,216-B X-Wing encapsulation key;
+  `ephemeralPubKey` = 1,120-B X-Wing ciphertext; the decapsulation key
+  MUST be stored/exchanged only as the 32-byte seed (X-Wing's
+  MAL-BIND-K-{PK,CT} properties fail for expanded keys — Schmieg, eprint
+  2024/523); the ML-KEM encapsulation-key check MUST run (X-Wing draft
+  §Encapsulation). Everything downstream of `ss` (blinding derivation,
+  view tag, scanning) is unchanged.
+- OR-anonymity hybrids exist (nested/obfuscated combiner, Günther et al.
+  CRYPTO 2025, eprint 2025/408: Elligator/Kemeleon encodings) but are
+  research-grade with no spec — documented, not offered.
+
+Follow-ups: add the hybrid vectors to the conformance set when the set is
+implemented; Lean instantiation note — an SPR simulator for the X25519
+component must sample a random *curve point*, not uniform bytes (curve
+membership is distinguishable at ~1/2). Full analysis:
+`docs/research/xwing-hybrid-kem.md`.
 
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 

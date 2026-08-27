@@ -361,6 +361,12 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-! ## Detection soundness (`Soundness`) -/
 
+/-- info: 'PqStealth.card_fiber_eval'' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.card_fiber_eval'
+
+/-- info: 'PqStealth.probOutput_map_get_uniformSample_vector' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probOutput_map_get_uniformSample_vector
+
 /-- info: 'PqStealth.dksap_falsePositiveRate_eq' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.dksap_falsePositiveRate_eq
 

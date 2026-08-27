@@ -195,6 +195,100 @@ theorem falsePositiveRate_ofKEMFull_le_of_decaps_uniform (ε : ℝ) (hε : 0 ≤
 
 end KEMSoundness
 
+/-! ## A coordinate of a uniform vector is uniform
+
+The fiber of `v ↦ v.get i` over `x` has one free slot at `i` and `n - 1` arbitrary
+slots, so it has cardinality `|α| ^ (n - 1)`; dividing by the `|α| ^ n` vectors
+leaves exactly `1 / |α|`. This discharges the `hUnif` hypothesis pattern of the
+view-tag theorems below whenever the shared secret `K` is sampled as a vector and
+the tag is a coordinate projection of it. In-tree view tags are instead
+hash-derived (`ConstructionA.viewTag : K → Tag`), so the pending instantiation of
+`soundWithin_ofKEMFull_oneByteTag` to concrete bytes is not made here. -/
+
+section UniformCoordinate
+
+variable {α : Type} [Fintype α] [DecidableEq α] [SampleableType α]
+
+/-- The equivalence underlying `instFintypeVector`, named so the fiber of a
+coordinate projection can be transferred from `Vector α n` to `Fin n → α`. -/
+noncomputable def vectorEquivPi (n : ℕ) : Vector α n ≃ (Fin n → α) where
+  toFun := fun v i => v.get i
+  invFun := Vector.ofFn
+  left_inv := fun v => Vector.ext fun i hi => by simp [Vector.ofFn, Vector.get]
+  right_inv := fun f => funext fun i => by simp [Vector.get, Vector.ofFn]
+
+/-- The fiber of the evaluation `f ↦ f i` under `x` — equivalently, functions on
+`{j // j ≠ i}` — has cardinality `|α| ^ (n - 1)`. -/
+theorem card_fiber_eval' {α : Type} [Fintype α] [DecidableEq α] [Nonempty α] {n : ℕ}
+    (i : Fin n) (x : α) :
+    Fintype.card { f : Fin n → α // x = f i } = Fintype.card α ^ (n - 1) := by
+  classical
+  let e : { f : Fin n → α // x = f i } ≃ ({ j : Fin n // j ≠ i } → α) :=
+  { toFun := fun f j => f.1 j.1
+    invFun := fun g =>
+      ⟨fun j => if h : j = i then x else g ⟨j, h⟩, by simp⟩
+    left_inv := fun f => by
+      apply Subtype.ext; funext j
+      dsimp only
+      split_ifs with h
+      · subst h; simp only [f.2]
+      · rfl
+    right_inv := fun g => by
+      funext j
+      dsimp only
+      split_ifs with h
+      · exact (j.2 h).elim
+      · exact congrArg g (Subtype.ext rfl) }
+  rw [Fintype.card_congr e, Fintype.card_fun, Fintype.card_subtype_compl (· = i),
+    Fintype.card_fin, Fintype.card_subtype_eq i]
+
+/-- **A coordinate projection of a uniform vector is uniform.** Under
+`vectorEquivPi` the fiber of the coordinate projection over `x` has cardinality
+`|α| ^ (n - 1)` (`card_fiber_eval'`); dividing by the `|α| ^ n` vectors leaves
+`1 / |α|`. -/
+theorem probOutput_map_get_uniformSample_vector {n : ℕ} (i : Fin n) (x : α) :
+    Pr[= x | (fun v : Vector α n => v.get i) <$> ($ᵗ (Vector α n))]
+      = (Fintype.card α : ENNReal)⁻¹ := by
+  classical
+  rw [probOutput_map_eq_sum_fintype_ite]
+  simp only [probOutput_uniformSample]
+  rw [← Finset.sum_filter]
+  rw [Finset.sum_const, nsmul_eq_mul]
+  -- The filtered count is the fiber cardinality `|α| ^ (n - 1)`.
+  have hfilt : (Finset.univ.filter (fun v : Vector α n => x = v.get i)).card
+      = Fintype.card α ^ (n - 1) := by
+    have hcard_eq : (Finset.univ.filter (fun v : Vector α n => x = v.get i)).card
+        = (Finset.univ.filter (fun f : Fin n → α => x = f i)).card := by
+      apply Finset.card_equiv (vectorEquivPi n)
+      intro v
+      simp [vectorEquivPi, Finset.mem_filter, Finset.mem_univ, true_and]
+    rw [hcard_eq]
+    rw [← @Fintype.card_of_subtype (Fin n → α) (fun f => x = f i)
+        (Finset.univ.filter (fun f : Fin n → α => x = f i))
+        (fun f => by simp only [Finset.mem_filter, Finset.mem_univ, true_and])]
+    exact card_fiber_eval' i x
+  rw [hfilt, Nat.cast_pow]
+  -- The total count `|α| ^ n`; cast through and cancel one factor.
+  have hC0 : (Fintype.card α : ENNReal) ≠ 0 := by
+    exact_mod_cast Fintype.card_ne_zero
+  have hCtop : (Fintype.card α : ENNReal) ≠ (⊤ : ENNReal) := ENNReal.natCast_ne_top _
+  have hcard : (Fintype.card (Vector α n) : ENNReal) = (Fintype.card α : ENNReal) ^ n := by
+    have h1 : Fintype.card (Vector α n) = Fintype.card (Fin n → α) :=
+      Fintype.card_congr (vectorEquivPi n)
+    rw [h1, Fintype.card_fun, Fintype.card_fin, Nat.cast_pow]
+  have hCn : (Fintype.card α : ENNReal) ^ n
+      = (Fintype.card α : ENNReal) ^ (n - 1) * (Fintype.card α : ENNReal) := by
+    have hn : NeZero n := Fin.neZero i
+    rw [← pow_succ, Nat.sub_add_cancel hn.pos]
+  have hCpow0 : (Fintype.card α : ENNReal) ^ (n - 1) ≠ 0 := ENNReal.pow_ne_zero hC0 (n - 1)
+  have hCpowtop : (Fintype.card α : ENNReal) ^ (n - 1) ≠ (⊤ : ENNReal) := ENNReal.pow_ne_top hCtop
+  -- Algebra: C^(n-1) * (C^(n-1) * C)⁻¹ = C⁻¹.
+  rw [hcard, hCn]
+  rw [ENNReal.mul_inv (Or.inl hCpow0) (Or.inr hC0)]
+  rw [ENNReal.mul_inv_cancel_left hCpow0 hCpowtop]
+
+end UniformCoordinate
+
 /-! ## The view tag
 
 `auxGen k pk = (viewTag k, …)`: the announcement leads with a short tag derived
