@@ -1,12 +1,9 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { visit } from 'unist-util-visit'
+// Static import so the bundler inlines the index into dist/server/vocs.config.js.
+// (A runtime fs read relative to import.meta.url breaks under `vocs preview`,
+// where the bundled config lives in dist/server/ and the path no longer exists.)
+import rawIndex from '../src/generated/theoremIndex.json' with { type: 'json' }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const INDEX_PATH = path.resolve(__dirname, '../src/generated/theoremIndex.json')
-
-const rawIndex = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf-8'))
 const index = new Map(Object.entries(rawIndex))
 
 /**
