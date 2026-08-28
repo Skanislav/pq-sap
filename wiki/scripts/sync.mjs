@@ -49,6 +49,12 @@ const SECTIONS = [
     },
   },
   {
+    text: 'Proofs by module',
+    glob: 'lean/docs-proofs',
+    route: 'lean/proofs',
+    titles: {},
+  },
+  {
     text: 'Proofs (Lean 4 / VCVio)',
     items: [
       ['lean/README.md', 'lean/index', 'Overview'],

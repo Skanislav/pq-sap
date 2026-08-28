@@ -1,5 +1,7 @@
+import lean4 from '@shikijs/langs/lean4'
 import { defineConfig } from 'vocs/config'
 import { generatedSidebar } from './src/sidebar.gen'
+import leanLinks from './scripts/remark-lean-links.mjs'
 
 const repo = 'https://github.com/Skanislav/pq-sap'
 
@@ -8,6 +10,8 @@ export default defineConfig({
   description:
     'Post-quantum stealth addresses as an ERC-5564 scheme extension: spec, decisions, research, Lean proofs and reference implementations.',
   renderStrategy: 'full-static',
+  codeHighlight: { langs: [lean4] },
+  markdown: { remarkPlugins: [leanLinks] },
   sidebar: [
     { text: 'Welcome', link: '/' },
     ...generatedSidebar.map((section) => ({ ...section, items: [...section.items] })),

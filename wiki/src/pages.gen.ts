@@ -26,6 +26,7 @@ type Page =
   | { path: '/research/hash-based-key-exchange'; render: 'static' }
   | { path: '/research/hash-migration-blake2-binius'; render: 'static' }
   | { path: '/research/poseidon2-stark-discovery'; render: 'static' }
+  | { path: '/research/xwing-hybrid-kem'; render: 'static' }
   | { path: '/spec/classical-spend-hybrid'; render: 'static' }
   | { path: '/spec/decisions'; render: 'static' }
   | { path: '/spec/erc-draft'; render: 'static' }
