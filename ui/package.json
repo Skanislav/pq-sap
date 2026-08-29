@@ -1,0 +1,39 @@
+{
+  "name": "pq-stealth-ui",
+  "version": "0.0.1",
+  "description": "Demo UI for the PQ stealth address scheme (ERC-5564 scheme 2)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "chain": "node scripts/dev-chain.mjs",
+    "signer": "node scripts/signer-service.mjs",
+    "deploy:sepolia": "node --env-file-if-exists=.env scripts/deploy-sepolia.mjs",
+    "check-keygen": "node scripts/check-keygen.ts",
+    "e2e": "node scripts/e2e-smoke.ts",
+    "e2e:sepolia-fork": "node scripts/e2e-sepolia-fork.ts",
+    "e2e:sepolia-live": "node scripts/e2e-sepolia-live.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@noble/post-quantum": "^0.6.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "viem": "^2.55.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b"
+}

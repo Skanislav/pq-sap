@@ -148,7 +148,8 @@ export function power2roundT1(c: number): number {
   return (c - r0) >> D;
 }
 
-function bitPack(values: Poly, bits: number): Uint8Array {
+/** Pack fixed-width little-endian-bit values (bits <= 23 → safe in i32). */
+export function bitPack(values: Poly, bits: number): Uint8Array {
   const out = new Uint8Array(Math.ceil((values.length * bits) / 8));
   let acc = 0, accBits = 0, pos = 0;
   for (const v of values) {

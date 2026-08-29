@@ -10,3 +10,6 @@ python/.venv/
 
 # compiled presentation (docs/presentation/build.sh regenerates it)
 docs/presentation/SUMMARY.html
+
+# envs
+.env
