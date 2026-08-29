@@ -24,9 +24,7 @@ const BRANCH = 'main'
 const SECTIONS = [
   {
     text: 'Overview',
-    items: [
-      ['plan.md', 'overview/plan', 'Project plan'],
-    ],
+    items: [['plan.md', 'overview/plan', 'Project plan']],
   },
   {
     text: 'Specification',
@@ -56,9 +54,7 @@ const SECTIONS = [
   },
   {
     text: 'Proofs (Lean 4 / VCVio)',
-    items: [
-      ['lean/README.md', 'lean/index', 'Overview'],
-    ],
+    items: [['lean/README.md', 'lean/index', 'Overview']],
     glob: 'lean/docs',
     route: 'lean',
     titles: {
@@ -96,7 +92,9 @@ function collect() {
     if (section.glob) {
       const dir = join(ROOT, section.glob)
       // index.md first so a section's landing page heads its sidebar group.
-      const names = readdirSync(dir).filter((f) => f.endsWith('.md')).sort()
+      const names = readdirSync(dir)
+        .filter((f) => f.endsWith('.md'))
+        .sort()
       for (const name of [...names.filter((n) => n === 'index.md'), ...names.filter((n) => n !== 'index.md')]) {
         const source = posix.join(section.glob, name)
         const route = posix.join(section.route, name.replace(/\.md$/, ''))
@@ -122,7 +120,7 @@ function firstH1(body) {
 }
 
 /** Route for a page path: 'lean/index' -> '/lean', 'spec/decisions' -> '/spec/decisions'. */
-const href = (route) => '/' + route.replace(/\/index$/, '')
+const href = (route) => `/${route.replace(/\/index$/, '')}`
 
 function rewriteLinks(body, source, bySource) {
   const sourceDir = posix.dirname(source)
@@ -176,7 +174,7 @@ function mdxSafe(body) {
     out.push(
       line
         .split(/(`+[^`]*?`+)/)
-        .map((seg, i) => (i % 2 ? seg : seg.replace(/[<{}]/g, (c) => '\\' + c)))
+        .map((seg, i) => (i % 2 ? seg : seg.replace(/[<{}]/g, (c) => `\\${c}`)))
         .join(''),
     )
   }
@@ -200,7 +198,10 @@ function render(entry, bySource) {
   // Put the banner right after the first H1 when the doc starts with one.
   const h1 = rewritten.match(/^\s*(#\s+.+?)\r?\n/)
   const page = h1
-    ? rewritten.slice(0, h1[0].length) + '\n' + banner(entry.source) + rewritten.slice(h1[0].length).replace(/^\s*\n/, '')
+    ? rewritten.slice(0, h1[0].length) +
+      '\n' +
+      banner(entry.source) +
+      rewritten.slice(h1[0].length).replace(/^\s*\n/, '')
     : banner(entry.source) + rewritten
 
   return frontmatter + page
