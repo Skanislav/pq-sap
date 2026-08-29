@@ -135,9 +135,12 @@ jobs:
           cache: pnpm
           cache-dependency-path: wiki/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # sync (runs lean/scripts/gen_browser.py, stdlib python3) emits the
+      # generated sources typecheck imports (src/generated, src/sidebar.gen) —
+      # must run before typecheck, not only in the build prebuild.
+      - run: pnpm sync
       - run: pnpm lint
       - run: pnpm typecheck
-      # prebuild runs `pnpm sync`, which runs lean/scripts/gen_browser.py (stdlib python3)
       - run: pnpm build
 
   noir:
