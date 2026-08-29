@@ -33,6 +33,18 @@ interface SentReceipt {
   announceTx: string
 }
 
+// Recovery bundle kept between the (mined) pay and the announce: the ML-KEM
+// encapsulation is randomized, so a fresh send targets a *different* address —
+// re-sending after an announce failure would strand the already-paid funds.
+// Holding these lets the user retry just the announce for the same address.
+interface PendingAnnounce {
+  stealthAddress: string
+  cipherText: Hex
+  viewTag: Hex
+  amountEth: string
+  payTx: string
+}
+
 export function SendTab({
   cfg,
   wallet,
@@ -49,6 +61,7 @@ export function SendTab({
   const [step, setStep] = useState<Step>('idle')
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState<SentReceipt | null>(null)
+  const [pendingAnnounce, setPendingAnnounce] = useState<PendingAnnounce | null>(null)
 
   const metaCheck = useMemo(() => {
     const trimmed = metaHex.trim()
@@ -86,8 +99,49 @@ export function SendTab({
               ? `Switch to ${cfg.label}`
               : 'Send & announce'
 
+  // Re-emit only the ERC-5564 announcement for an already-paid stealth address.
+  // Shared by the happy path and the retry button so both announce the exact
+  // same (address, ciphertext, view tag).
+  const announceStealth = async (r: PendingAnnounce): Promise<string> => {
+    const walletClient = wallet.clientFor(cfg)
+    if (!walletClient?.account) throw new Error('Wallet not ready.')
+    const publicClient = publicClientFor(cfg)
+    const announceTx = await walletClient.writeContract({
+      account: walletClient.account,
+      chain: cfg.chain,
+      address: cfg.announcer,
+      abi: ANNOUNCER_ABI,
+      functionName: 'announce',
+      args: [SCHEME_ID, getAddress(r.stealthAddress), r.cipherText, r.viewTag],
+    })
+    await publicClient.waitForTransactionReceipt({ hash: announceTx })
+    return announceTx
+  }
+
+  const retryAnnounce = async () => {
+    if (!pendingAnnounce) return
+    setError(null)
+    try {
+      setStep('announce')
+      const announceTx = await announceStealth(pendingAnnounce)
+      setSent({
+        stealthAddress: pendingAnnounce.stealthAddress,
+        viewTag: pendingAnnounce.viewTag,
+        amountEth: pendingAnnounce.amountEth,
+        payTx: pendingAnnounce.payTx,
+        announceTx,
+      })
+      setPendingAnnounce(null)
+    } catch (e) {
+      setError(parseTxError(e))
+    } finally {
+      setStep('idle')
+    }
+  }
+
   const run = async () => {
     setError(null)
+    setPendingAnnounce(null)
     if (gate === 'connect') {
       try {
         wallet.setMode('injected')
@@ -133,24 +187,22 @@ export function SendTab({
       })
       await publicClient.waitForTransactionReceipt({ hash: payTx })
 
-      setStep('announce')
-      const announceTx = await walletClient.writeContract({
-        account: walletClient.account,
-        chain: cfg.chain,
-        address: cfg.announcer,
-        abi: ANNOUNCER_ABI,
-        functionName: 'announce',
-        args: [SCHEME_ID, stealthAddress, toHex(cipherText) as Hex, viewTag as Hex],
-      })
-      await publicClient.waitForTransactionReceipt({ hash: announceTx })
-
-      setSent({
+      // pay is mined — preserve the announce inputs so a failed announce stays
+      // retryable without re-encapsulating (which pays a new address and would
+      // strand these funds). pendingAnnounce != null ⇒ "paid, announce pending".
+      const recovery: PendingAnnounce = {
         stealthAddress,
-        viewTag,
+        cipherText: toHex(cipherText) as Hex,
+        viewTag: viewTag as Hex,
         amountEth: formatEther(amountWei),
         payTx,
-        announceTx,
-      })
+      }
+      setPendingAnnounce(recovery)
+
+      setStep('announce')
+      const announceTx = await announceStealth(recovery)
+      setSent({ stealthAddress, viewTag, amountEth: formatEther(amountWei), payTx, announceTx })
+      setPendingAnnounce(null)
     } catch (e) {
       setError(parseTxError(e))
     } finally {
@@ -201,6 +253,22 @@ export function SendTab({
       </div>
 
       {error && <Note kind="error">{error}</Note>}
+
+      {pendingAnnounce && !sent && (
+        <Note kind="warn">
+          <div>
+            Payment of <strong>{pendingAnnounce.amountEth} ETH</strong> to{' '}
+            <AddressChip address={pendingAnnounce.stealthAddress} explorer={cfg.explorer} /> is confirmed (
+            {txLink(pendingAnnounce.payTx, cfg)}), but the announcement didn't go through. Retry the announcement —
+            don't resend, which pays a different address and would strand these funds.
+          </div>
+          <div className="row">
+            <button type="button" disabled={step !== 'idle'} onClick={retryAnnounce}>
+              {step === 'announce' ? 'Announcing…' : 'Retry announcement'}
+            </button>
+          </div>
+        </Note>
+      )}
 
       {sent && (
         <Note kind="ok">

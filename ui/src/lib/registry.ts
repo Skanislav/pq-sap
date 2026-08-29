@@ -5,7 +5,7 @@
 
 import { type Address, type Hex, type PublicClient, parseAbi, parseEventLogs, type WalletClient } from 'viem'
 import type { ChainConfig } from './chain.ts'
-import { type ClassicalMeta, type CompactMeta, decodeCompactMeta } from './classical.ts'
+import type { ClassicalMeta, CompactMeta } from './classical.ts'
 import { fromHex, toHex } from './hex.ts'
 
 export const REGISTRY_ABI = parseAbi([
@@ -31,16 +31,6 @@ export async function resolveCompactMeta(
   if (kemEk.length !== 1184)
     throw new Error(`registry index ${compact.index} holds a ${kemEk.length}-byte key, expected 1,184 (ML-KEM-768 ek)`)
   return { spendPub: compact.spendPub, kemEk }
-}
-
-/** Decode + resolve in one step (what a sender does with a pasted compact meta). */
-export async function resolveCompactMetaBytes(
-  publicClient: PublicClient,
-  registry: Address,
-  bytes: Uint8Array,
-): Promise<{ meta: ClassicalMeta; compact: CompactMeta }> {
-  const compact = decodeCompactMeta(bytes)
-  return { meta: await resolveCompactMeta(publicClient, registry, compact), compact }
 }
 
 /** Register a viewing key; returns its permanent index. */

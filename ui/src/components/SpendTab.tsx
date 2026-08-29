@@ -233,6 +233,9 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
     try {
       const publicClient = publicClientFor(cfg)
       const meta = decodeClassicalMeta(keys.metaAddress)
+      // self-pay demo helper: you fund your OWN stealth address, so a failed
+      // announce only strands your own test ETH (unlike SendTab's third-party
+      // send, which guards this with a retry — see PendingAnnounce there).
       const { cipherText, sharedSecret } = ml_kem768.encapsulate(meta.kemEk)
       const P = deriveStealthPubkey(meta.spendPub, sharedSecret)
       const addr = getAddress(toHex(ethAddressOfPoint(P)))
@@ -505,6 +508,8 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
     setBusy('receive')
     try {
       const publicClient = publicClientFor(cfg)
+      // local-dev self-pay demo helper (anvil, throwaway ETH); the real
+      // third-party send path (SendTab) is the one that needs the announce retry.
       const { cipherText, sharedSecret } = ml_kem512.encapsulate(demoKem.publicKey)
       const ssHex = toHex(sharedSecret)
       const derived = await deriveSpendable(dep.signerService, ssHex)
@@ -856,14 +861,17 @@ function HybridSepoliaSpend({
     try {
       const publicClient = publicClientFor(cfg)
       const { announcements } = await fetchAnnouncements(cfg, publicClient, setScanInfo)
-      const found: HybridHit[] = []
-      for (const ann of announcements) {
-        if (toHex(ann.stealthAddress) !== account.toLowerCase()) continue
+      // Every hit is the same fixed demo account, so its balance/code are
+      // identical across announcements — fetch them once, not per hit.
+      const mine = announcements.filter((ann) => toHex(ann.stealthAddress) === account.toLowerCase())
+      let found: HybridHit[] = []
+      if (mine.length > 0) {
         const [balance, code] = await Promise.all([
           publicClient.getBalance({ address: account }),
           publicClient.getCode({ address: account }),
         ])
-        found.push({ ann, account, balance, deployed: (code?.length ?? 0) > 2 })
+        const deployed = (code?.length ?? 0) > 2
+        found = mine.map((ann) => ({ ann, account, balance, deployed }))
       }
       setHits(found)
       setScanInfo(`${announcements.length} announcements scanned`)

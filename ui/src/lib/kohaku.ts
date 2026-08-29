@@ -20,10 +20,3 @@ export const KOHAKU_SEPOLIA = {
   // ZKNOX_MLDSA_K1_FACTORY_V0_0_10 — hybrid (ecdsa_k1 + mldsa) account factory
   mldsaK1Factory: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e' as Address,
 } as const
-
-/** Same hybrid factory address is deployed on these chains too (see kohaku). */
-export const KOHAKU_FACTORY_BY_CHAIN: Record<number, Address> = {
-  11155111: KOHAKU_SEPOLIA.mldsaK1Factory, // Sepolia
-  421614: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e', // Arbitrum Sepolia
-  84532: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e', // Base Sepolia
-}
