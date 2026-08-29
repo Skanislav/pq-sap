@@ -47,12 +47,11 @@ import os
 import statistics
 import time
 
-from kyber_py.ml_kem import ML_KEM_768
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
 )
-
+from kyber_py.ml_kem import ML_KEM_768
 from onchain_cost import (
     G_TX,
     TOTAL_COST_FLOOR_PER_TOKEN,
