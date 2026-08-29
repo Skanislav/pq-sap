@@ -6,9 +6,9 @@
   "scripts": {
     "sync": "node scripts/sync.mjs",
     "presync": "python3 ../lean/scripts/gen_browser.py",
-    "predev": "node scripts/sync.mjs",
+    "predev": "pnpm sync",
     "dev": "vocs dev",
-    "prebuild": "node scripts/sync.mjs",
+    "prebuild": "pnpm sync",
     "build": "vocs build",
     "preview": "vocs preview"
   },

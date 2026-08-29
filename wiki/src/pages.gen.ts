@@ -18,6 +18,26 @@ type Page =
   | { path: '/lean'; render: 'static' }
   | { path: '/lean/lean-study-notes'; render: 'static' }
   | { path: '/lean/msis-reshaping'; render: 'static' }
+  | { path: '/lean/proofs/anonymityfromspr'; render: 'static' }
+  | { path: '/lean/proofs/blinding'; render: 'static' }
+  | { path: '/lean/proofs/blindingrom'; render: 'static' }
+  | { path: '/lean/proofs/constructiona'; render: 'static' }
+  | { path: '/lean/proofs/controls'; render: 'static' }
+  | { path: '/lean/proofs/demo'; render: 'static' }
+  | { path: '/lean/proofs/dksap'; render: 'static' }
+  | { path: '/lean/proofs/dksaporacle'; render: 'static' }
+  | { path: '/lean/proofs/games'; render: 'static' }
+  | { path: '/lean/proofs/invariants'; render: 'static' }
+  | { path: '/lean/proofs/kemanonymity'; render: 'static' }
+  | { path: '/lean/proofs/mlkem'; render: 'static' }
+  | { path: '/lean/proofs/multirecipient'; render: 'static' }
+  | { path: '/lean/proofs/multiunlink'; render: 'static' }
+  | { path: '/lean/proofs/ownership'; render: 'static' }
+  | { path: '/lean/proofs/reorder'; render: 'static' }
+  | { path: '/lean/proofs/romuptobad'; render: 'static' }
+  | { path: '/lean/proofs/sharedsecrethiding'; render: 'static' }
+  | { path: '/lean/proofs/soundness'; render: 'static' }
+  | { path: '/lean/proofs/sprtwohop'; render: 'static' }
   | { path: '/lean/spr-two-hop'; render: 'static' }
   | { path: '/lean/vcvio-pin'; render: 'static' }
   | { path: '/lean/vcvio-upstream'; render: 'static' }

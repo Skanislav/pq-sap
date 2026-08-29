@@ -6,6 +6,7 @@ public declarations with docstrings, splits statements and tactic proofs,
 and emits:
 
   lean/docs-proofs/<module>.md      -- one page per module
+  lean/docs-proofs/index.md         -- landing page listing every module
   wiki/src/generated/theoremIndex.json -- index used by the linker plugin
 
 No Lean toolchain is required; this is a stdlib-only Python script.
@@ -273,6 +274,50 @@ def render_module_page(
     return "\n".join(out_lines).rstrip() + "\n"
 
 
+def module_summary(module: str, intro, decls: list[dict], axiom_map: dict) -> dict:
+    """One row of the landing page: declaration count, sorry status, first sentence."""
+    text = intro if isinstance(intro, str) else "\n".join(intro)
+    first_para = text.strip().split("\n\n")[0].replace("\n", " ").strip()
+    m = re.match(r"(.+?[.!?])(\s|$)", first_para)
+    blurb = m.group(1) if m else first_para
+    if len(blurb) > 160:
+        blurb = blurb[:160].rsplit(" ", 1)[0].rstrip(" ,;:-–—") + " …"
+    checked = sorry = 0
+    for decl in decls:
+        badge = axiom_map.get(decl["name"].split(".")[-1])
+        if badge is None:
+            continue
+        checked += 1
+        if not badge[1]:
+            sorry += 1
+    if checked == 0:
+        status = "—"
+    elif sorry == 0:
+        status = "sorry-free ✓"
+    else:
+        status = f"uses `sorry` ✗ ({sorry})"
+    return {"module": module, "count": len(decls), "status": status, "blurb": blurb}
+
+
+def render_index_page(summaries: list[dict]) -> str:
+    total = sum(s["count"] for s in summaries)
+    out = [
+        "# Lean proof browser",
+        "",
+        f"{len(summaries)} modules, {total} public declarations from `lean/PqStealth/*.lean`, "
+        "one page per module. Every page shows each declaration's docstring, statement, "
+        "axiom badge, a collapsible tactic proof and a GitHub permalink. Inline "
+        "theorem names anywhere on this site link here.",
+        "",
+        "| Module | Declarations | Axioms | Summary |",
+        "|---|---:|---|---|",
+    ]
+    for s in summaries:
+        blurb = s["blurb"].replace("|", "\\|")
+        out.append(f"| [{s['module']}]({s['module'].lower()}.md) | {s['count']} | {s['status']} | {blurb} |")
+    return "\n".join(out) + "\n"
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -280,6 +325,7 @@ def main() -> int:
     axiom_map = load_axiom_map()
 
     index: dict[str, dict] = {}
+    summaries: list[dict] = []
 
     for path in sorted(PQSTEALTH.glob("*.lean")):
         if path.name in ("Axioms.lean", "PqStealth.lean"):
@@ -292,6 +338,7 @@ def main() -> int:
 
         page = render_module_page(module, intro, sections, decls, axiom_map)
         (OUT_DIR / f"{module.lower()}.md").write_text(page)
+        summaries.append(module_summary(module, intro, decls, axiom_map))
 
         for decl in decls:
             name = decl["name"]
@@ -306,6 +353,7 @@ def main() -> int:
             if "." in name and name not in index:
                 index[name] = entry
 
+    (OUT_DIR / "index.md").write_text(render_index_page(summaries))
     INDEX_PATH.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
 
     print(f"gen-browser: wrote {len(list(OUT_DIR.glob('*.md')))} pages to {OUT_DIR}")
