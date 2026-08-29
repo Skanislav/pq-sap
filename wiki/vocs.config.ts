@@ -1,7 +1,7 @@
 import lean4 from '@shikijs/langs/lean4'
 import { defineConfig } from 'vocs/config'
+import leanLinks from './scripts/remark-lean-links.ts'
 import { generatedSidebar } from './src/sidebar.gen'
-import leanLinks from './scripts/remark-lean-links.mjs'
 
 const repo = 'https://github.com/Skanislav/pq-sap'
 

@@ -11,6 +11,7 @@ and emits:
 
 No Lean toolchain is required; this is a stdlib-only Python script.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,8 +31,7 @@ BRANCH = "main"
 # used in a few declaration names (e.g. card_fiber_eval', evalDist_pull₆).
 IDENT_RE = r"[A-Za-z_][\w.'\u1D09\u2083\u2084\u2085\u2086]*"
 DECL_KEYWORDS = (
-    "theorem|lemma|def|abbrev|structure|class|instance|"
-    "inductive|opaque|axiom|example"
+    "theorem|lemma|def|abbrev|structure|class|instance|inductive|opaque|axiom|example"
 )
 DECL_PAT = re.compile(
     rf"^(?:@[\[\]\w\s,\.\(\)]+\s+)?"
@@ -60,7 +60,9 @@ def clean_comment(raw: str) -> str:
     return textwrap.dedent(body).strip()
 
 
-def extract_intro_and_sections(lines: list[str]) -> tuple[str | None, list[tuple[int, str]]]:
+def extract_intro_and_sections(
+    lines: list[str],
+) -> tuple[str | None, list[tuple[int, str]]]:
     """Find the module-level `/-!` intro and any `/-! ## Section -/` headings."""
     intro: str | None = None
     sections: list[tuple[int, str]] = []
@@ -281,7 +283,7 @@ def module_summary(module: str, intro, decls: list[dict], axiom_map: dict) -> di
     m = re.match(r"(.+?[.!?])(\s|$)", first_para)
     blurb = m.group(1) if m else first_para
     if len(blurb) > 160:
-        blurb = blurb[:160].rsplit(" ", 1)[0].rstrip(" ,;:-–—") + " …"
+        blurb = blurb[:160].rsplit(" ", 1)[0].rstrip(" ,;:-\u2013\u2014") + " \u2026"
     checked = sorry = 0
     for decl in decls:
         badge = axiom_map.get(decl["name"].split(".")[-1])
@@ -304,8 +306,9 @@ def render_index_page(summaries: list[dict]) -> str:
     out = [
         "# Lean proof browser",
         "",
-        f"{len(summaries)} modules, {total} public declarations from `lean/PqStealth/*.lean`, "
-        "one page per module. Every page shows each declaration's docstring, statement, "
+        f"{len(summaries)} modules, {total} public declarations from "
+        "`lean/PqStealth/*.lean`, one page per module. Every page shows each "
+        "declaration's docstring, statement, "
         "axiom badge, a collapsible tactic proof and a GitHub permalink. Inline "
         "theorem names anywhere on this site link here.",
         "",
@@ -314,7 +317,8 @@ def render_index_page(summaries: list[dict]) -> str:
     ]
     for s in summaries:
         blurb = s["blurb"].replace("|", "\\|")
-        out.append(f"| [{s['module']}]({s['module'].lower()}.md) | {s['count']} | {s['status']} | {blurb} |")
+        link = f"[{s['module']}]({s['module'].lower()}.md)"
+        out.append(f"| {link} | {s['count']} | {s['status']} | {blurb} |")
     return "\n".join(out) + "\n"
 
 
@@ -349,7 +353,7 @@ def main() -> int:
                 "module": module,
             }
             index[short] = entry
-            # Also index dotted names so e.g. `ProbComp.boolDistAdvantage_congr` can link.
+            # Also index dotted names, e.g. `ProbComp.boolDistAdvantage_congr`.
             if "." in name and name not in index:
                 index[name] = entry
 

@@ -115,6 +115,27 @@ jobs:
       - run: npm run e2e:fork
 
   # ------------------------------------------------------------------ noir
+  wiki:
+    name: wiki (biome, typecheck, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: wiki
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: wiki/.nvmrc
+          cache: pnpm
+          cache-dependency-path: wiki/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      # prebuild runs `pnpm sync`, which runs lean/scripts/gen_browser.py (stdlib python3)
+      - run: pnpm build
+
   noir:
     name: noir (ownership circuit, toy params)
     runs-on: ubuntu-latest
