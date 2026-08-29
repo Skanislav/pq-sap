@@ -3,32 +3,31 @@
  * Sepolia (canonical ERC-5564 singleton announcer).
  */
 
-import { createPublicClient, http, type Address, type PublicClient } from 'viem';
-import { foundry, sepolia } from 'viem/chains';
+import { type Address, createPublicClient, http, type PublicClient } from 'viem'
+import { foundry, sepolia } from 'viem/chains'
 
-import { SEPOLIA } from '../../../js-client/src/sepolia.ts';
+import { SEPOLIA } from '../../../js-client/src/sepolia.ts'
 
-export { SCHEME_ID } from '../../../js-client/src/sepolia.ts';
+export { SCHEME_ID } from '../../../js-client/src/sepolia.ts'
 
 export interface ChainConfig {
-  key: 'anvil' | 'sepolia';
-  label: string;
-  chain: typeof foundry | typeof sepolia;
-  rpcUrl: string;
-  announcer: Address;
-  explorer: string | null;
+  key: 'anvil' | 'sepolia'
+  label: string
+  chain: typeof foundry | typeof sepolia
+  rpcUrl: string
+  announcer: Address
+  explorer: string | null
   /** first block worth scanning (announcer deploy height) */
-  scanFromBlock: bigint;
+  scanFromBlock: bigint
   /** max getLogs span per request on this RPC */
-  logChunk: bigint | null;
+  logChunk: bigint | null
 }
 
 /** Deterministic CREATE address: anvil account 0, nonce 0 (dev-chain.mjs deploys first). */
-export const ANVIL_ANNOUNCER: Address = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+export const ANVIL_ANNOUNCER: Address = '0x5FbDB2315678afecb367f032d93F642f64180aa3'
 
 /** anvil's first default funded account — dev signer for the local demo. */
-export const ANVIL_DEV_KEY =
-  '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const;
+export const ANVIL_DEV_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' as const
 
 export const CHAINS: Record<'anvil' | 'sepolia', ChainConfig> = {
   anvil: {
@@ -52,8 +51,8 @@ export const CHAINS: Record<'anvil' | 'sepolia', ChainConfig> = {
     scanFromBlock: -50_000n, // negative = relative to latest
     logChunk: 10_000n,
   },
-};
+}
 
 export function publicClientFor(cfg: ChainConfig): PublicClient {
-  return createPublicClient({ chain: cfg.chain, transport: http(cfg.rpcUrl) });
+  return createPublicClient({ chain: cfg.chain, transport: http(cfg.rpcUrl) })
 }

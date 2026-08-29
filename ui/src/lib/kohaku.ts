@@ -9,7 +9,7 @@
  * fork-replay test (e2e-sepolia-fork-spend) spends against.
  */
 
-import type { Address } from 'viem';
+import type { Address } from 'viem'
 
 export const KOHAKU_SEPOLIA = {
   chainId: 11155111,
@@ -19,11 +19,11 @@ export const KOHAKU_SEPOLIA = {
   mldsaVerifier: '0x092c5d82069de997E34Ce2505CA7D5042f3721ef' as Address,
   // ZKNOX_MLDSA_K1_FACTORY_V0_0_10 — hybrid (ecdsa_k1 + mldsa) account factory
   mldsaK1Factory: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e' as Address,
-} as const;
+} as const
 
 /** Same hybrid factory address is deployed on these chains too (see kohaku). */
 export const KOHAKU_FACTORY_BY_CHAIN: Record<number, Address> = {
-  11155111: KOHAKU_SEPOLIA.mldsaK1Factory,     // Sepolia
+  11155111: KOHAKU_SEPOLIA.mldsaK1Factory, // Sepolia
   421614: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e', // Arbitrum Sepolia
-  84532: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e',  // Base Sepolia
-};
+  84532: '0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e', // Base Sepolia
+}
