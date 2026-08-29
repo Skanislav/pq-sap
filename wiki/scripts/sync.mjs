@@ -95,7 +95,9 @@ function collect() {
     for (const [source, route, label] of section.items ?? []) entries.push({ source, route, label })
     if (section.glob) {
       const dir = join(ROOT, section.glob)
-      for (const name of readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
+      // index.md first so a section's landing page heads its sidebar group.
+      const names = readdirSync(dir).filter((f) => f.endsWith('.md')).sort()
+      for (const name of [...names.filter((n) => n === 'index.md'), ...names.filter((n) => n !== 'index.md')]) {
         const source = posix.join(section.glob, name)
         const route = posix.join(section.route, name.replace(/\.md$/, ''))
         entries.push({ source, route, label: section.titles?.[name] })
