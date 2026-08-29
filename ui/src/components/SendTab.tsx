@@ -1,0 +1,195 @@
+/**
+ * Sender flow: paste a recipient meta-address, encapsulate a fresh
+ * ML-KEM shared secret, derive the one-time stealth address, then
+ * (1) pay it and (2) announce on the ERC-5564 announcer.
+ */
+
+import { useMemo, useState } from 'react';
+import { formatEther, getAddress, parseEther, type Hex } from 'viem';
+import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
+
+import {
+  decodeMetaAddress, deriveStealthPk, stealthAddressOf, computeViewTag,
+  META_ADDRESS_BYTES,
+} from '../../../js-client/src/scheme.ts';
+import { ANNOUNCER_ABI } from '../../../js-client/src/sepolia.ts';
+import { SCHEME_ID, publicClientFor, type ChainConfig } from '../lib/chain.ts';
+import { fromHex, toHex } from '../lib/hex.ts';
+import { parseTxError } from '../lib/errors.ts';
+import { usd } from '../lib/useEthUsd.ts';
+import type { Wallet } from '../lib/useWallet.ts';
+import { AddressChip, Note } from './bits.tsx';
+
+type Step = 'idle' | 'derive' | 'pay' | 'announce';
+
+interface SentReceipt {
+  stealthAddress: string;
+  viewTag: string;
+  amountEth: string;
+  payTx: string;
+  announceTx: string;
+}
+
+export function SendTab({ cfg, wallet, ethUsd, myMetaAddress }: {
+  cfg: ChainConfig;
+  wallet: Wallet;
+  ethUsd: number | null;
+  myMetaAddress: string | null;
+}) {
+  const [metaHex, setMetaHex] = useState('');
+  const [amount, setAmount] = useState('0.1');
+  const [step, setStep] = useState<Step>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<SentReceipt | null>(null);
+
+  const metaCheck = useMemo(() => {
+    const trimmed = metaHex.trim();
+    if (!trimmed) return null;
+    try {
+      const bytes = fromHex(trimmed);
+      decodeMetaAddress(bytes); // validates length + version
+      return { ok: true as const, bytes };
+    } catch (e) {
+      return { ok: false as const, message: e instanceof Error ? e.message : String(e) };
+    }
+  }, [metaHex]);
+
+  const amountWei = useMemo(() => {
+    try { return parseEther(amount as `${number}`); } catch { return null; }
+  }, [amount]);
+
+  const gate = wallet.gate(cfg);
+  const ready = gate === 'ready' && metaCheck?.ok && amountWei != null && amountWei > 0n;
+
+  const buttonLabel =
+    step === 'derive' ? 'Deriving stealth address…' :
+    step === 'pay' ? 'Sending payment (1/2)…' :
+    step === 'announce' ? 'Announcing (2/2)…' :
+    gate === 'connect' ? 'Connect wallet' :
+    gate === 'switch' ? `Switch to ${cfg.label}` :
+    'Send & announce';
+
+  const run = async () => {
+    setError(null);
+    if (gate === 'connect') {
+      try {
+        wallet.setMode('injected');
+        await wallet.connect();
+      } catch (e) { setError(parseTxError(e)); }
+      return;
+    }
+    if (gate === 'switch') {
+      try { await wallet.switchChain(cfg); } catch (e) { setError(parseTxError(e)); }
+      return;
+    }
+    if (!metaCheck?.ok || amountWei == null) return;
+
+    const walletClient = wallet.clientFor(cfg);
+    if (!walletClient?.account) { setError('Wallet not ready.'); return; }
+    const publicClient = publicClientFor(cfg);
+
+    try {
+      setSent(null);
+      setStep('derive');
+      // fresh encapsulation → shared secret → one-time stealth address
+      const meta = decodeMetaAddress(metaCheck.bytes);
+      const { cipherText, sharedSecret } = ml_kem768.encapsulate(meta.kemEk);
+      const stealthPk = deriveStealthPk(meta.rho, meta.t, sharedSecret);
+      const stealthAddress = getAddress(toHex(stealthAddressOf(stealthPk)));
+      const viewTag = toHex(computeViewTag(sharedSecret));
+
+      setStep('pay');
+      const payTx = await walletClient.sendTransaction({
+        account: walletClient.account, chain: cfg.chain,
+        to: stealthAddress, value: amountWei,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: payTx });
+
+      setStep('announce');
+      const announceTx = await walletClient.writeContract({
+        account: walletClient.account, chain: cfg.chain,
+        address: cfg.announcer, abi: ANNOUNCER_ABI, functionName: 'announce',
+        args: [SCHEME_ID, stealthAddress, toHex(cipherText) as Hex, viewTag as Hex],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: announceTx });
+
+      setSent({
+        stealthAddress, viewTag,
+        amountEth: formatEther(amountWei), payTx, announceTx,
+      });
+    } catch (e) {
+      setError(parseTxError(e));
+    } finally {
+      setStep('idle');
+    }
+  };
+
+  const amountNum = Number(amount);
+
+  return (
+    <section>
+      <h2>Pay to a stealth meta-address</h2>
+      <p className="lede">
+        Every payment encapsulates a fresh ML-KEM-768 secret, so each one lands on a
+        brand-new address only the recipient can find. Two transactions: the payment
+        itself, then the ERC-5564 announcement (scheme {SCHEME_ID.toString()}).
+      </p>
+
+      <label className="field">
+        <span>Recipient meta-address ({META_ADDRESS_BYTES} bytes hex)</span>
+        <textarea
+          rows={4} spellCheck={false} placeholder="0x01…"
+          value={metaHex} onChange={(e) => setMetaHex(e.target.value)}
+        />
+      </label>
+      {myMetaAddress && (
+        <button className="ghost" type="button" onClick={() => setMetaHex(myMetaAddress)}>
+          Use my own meta-address (self-payment demo)
+        </button>
+      )}
+      {metaCheck && !metaCheck.ok && <Note kind="error">{metaCheck.message}</Note>}
+
+      <label className="field narrow">
+        <span>
+          Amount (ETH)
+          {Number.isFinite(amountNum) && amountNum > 0 ? usd(amountNum, ethUsd) : ''}
+        </span>
+        <input
+          type="text" inputMode="decimal" value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </label>
+
+      <div className="row">
+        <button
+          disabled={step !== 'idle' || (gate === 'ready' && !ready)}
+          onClick={run}
+        >
+          {buttonLabel}
+        </button>
+      </div>
+
+      {error && <Note kind="error">{error}</Note>}
+
+      {sent && (
+        <Note kind="ok">
+          <div>
+            Paid <strong>{sent.amountEth} ETH{usd(Number(sent.amountEth), ethUsd)}</strong> to
+            stealth address <AddressChip address={sent.stealthAddress} explorer={cfg.explorer} />
+            {' '}(view tag <code>{sent.viewTag}</code>)
+          </div>
+          <div className="fine">
+            payment {txLink(sent.payTx, cfg)} · announcement {txLink(sent.announceTx, cfg)}
+          </div>
+        </Note>
+      )}
+    </section>
+  );
+}
+
+function txLink(hash: string, cfg: ChainConfig) {
+  const short = `${hash.slice(0, 10)}…`;
+  return cfg.explorer
+    ? <a href={`${cfg.explorer}/tx/${hash}`} target="_blank" rel="noreferrer">{short}</a>
+    : <code>{short}</code>;
+}
