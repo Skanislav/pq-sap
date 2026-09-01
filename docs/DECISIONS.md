@@ -264,7 +264,12 @@ under any headline theorem's dependency cone turns the axiom mismatch into
 a compile error. A full module map and the iteration queue live in
 `docs/lean-iterations.md`.
 
-## D-014 — Spend and registry authentication standardize on ERC-7913 signers — **LOCKED**
+## D-014 — Spend and registry authentication standardize on ERC-7913 signers — **LOCKED (interim; re-scoped by D-020)**
+
+*Scope update (2026-08-31):* with EIP-8141 frame transactions SFI'd for
+Hegotá, ERC-7913 is the **interim** spend/registry encoding (pre-Hegotá
+chains and L2s without type `0x06`), not the destination — see D-020. The
+measurements and the EIP-3860 finding below stand.
 
 ERC-7913 (Signature Verifiers, Final 2025) represents a signer as the byte
 string `verifier || key` and checks it via
@@ -461,6 +466,10 @@ Question (2026-08-27, user): implement the Verity Labs SPHINCS- verifier
 (https://veritylabs.dev/research/sphincs-minus-verifier) for spending.
 Done (branch `worktree-sphincs-minus`): what was vendored, what it costs,
 and where a hash-based key can honestly sit in this scheme.
+*(Scope update 2026-08-31, D-020: the ERC-7913 wrapper is the interim
+carrier; under EIP-8141 the same C13 verifier is called from the account's
+VERIFY frame code. The commitment construction and the linkability finding
+are carrier-independent and stand.)*
 
 - **What was vendored.** `lfglabs-dev/SPHINCS-` `src/SPHINCs-C13Asm.sol`
   @ `2a40d0a` — byte-identical, sha256 recorded in
@@ -558,6 +567,72 @@ pure-Lean C13 (`HashSig/SLHDSA/C13`) with a KAT against this very verifier,
 which would let `lean/` state the spend-side assumption as a hash-only
 EUF-CMA term; decide whether the linkable-on-spend option is offered in
 the ERC beyond the informative paragraph.
+
+## D-020 — Spend targets EIP-8141 frame transactions; ERC-7913/ERC-4337 become the interim route — **LOCKED**
+
+Decision (2026-08-31, user): stop designing the spend path around ERC-7913
+signer contracts and ERC-4337 accounts as the destination. EIP-8141
+("Frame Transactions", tx type `0x06`) was moved from CFI to **SFI for
+Hegotá** on ACDE #244 (2026-08-27), so protocol-native account abstraction
+is the scheduled substrate and the spend design is expressed against it.
+(D-019 is allocated on the tagchain branch — SHAKE256 tag chains.)
+
+**What EIP-8141 gives this scheme natively.** A frame transaction splits
+into VERIFY frames (read-only validation run as the sender) and EXECUTE
+frames; the account is literally an address with code, and validation is
+arbitrary EVM code ending in `APPROVE` (opcode `0xaa`). The pieces that map
+onto our stack:
+
+- **Signature carriage.** The `ARBITRARY (0x0)` signature scheme carries
+  the PQ signature in the transaction's `signatures` array (100 gas
+  intrinsic; raw bytes are EVM-introspectable via `SIGDATACOPY` *only* for
+  arbitrary-scheme entries). The account's VERIFY code calls the same
+  vendored verifiers we already measure — `SPHINCs-C13Asm` or
+  ETHDILITHIUM — directly. The ERC-7913 `verifier || key` indirection
+  stops being load-bearing; the verifiers survive as libraries.
+- **Counterfactual receive.** The mempool-recognized validation prefix
+  `[deploy, self_verify]` deploys the account at `tx.sender` in the same
+  transaction (deterministic factory, e.g. the EIP-7997 predeploy) — the
+  announced stealth address is the counterfactual frame-tx account
+  address. This replaces the CREATE2 + EntryPoint + bundler dance;
+  `ENTRY_POINT (0xaa)` is a protocol constant, not deployed code.
+- **Native sponsorship.** `[deploy, only_verify, pay]` is a recognized
+  prefix: a paymaster frame pays gas so the stealth account spends only
+  the value it holds. This natively removes both the AA21-prefund problem
+  and the privacy leak of funding gas from a linkable EOA — the whole
+  reason the Pimlico integration exists.
+
+**What survives from D-014/D-018.** The EIP-3860 lesson stands (keys never
+go in initcode; the deploy frame stays small, key or pointer in account
+state). The D-018 commit-signer construction and its linkable-on-spend
+trade-off are unchanged — they are about key derivation, not the account
+standard. ERC-7913/4337 remain the *interim* route: chains before Hegotá,
+and L2s that do not adopt type `0x06`. D-014 is re-scoped accordingly.
+
+**The new hard constraint — validation gas.** Public-mempool admission
+simulates the validation prefix under `MAX_VERIFY_GAS = 100,000` execution
+gas (500,000 state gas), with storage reads limited to the sender.
+Measured against that budget: C13 verify is 188,092 gas tx-level (≈166k
+net of intrinsic + calldata) — **even the cheapest PQ verifier we have
+does not fit the default mempool prefix**, and ML-DSA at ~15 M is out by
+two orders of magnitude. Protocol-validated schemes exist for SECP256K1
+(2,800 gas) and P256 (6,700 gas) but no PQ scheme has an identifier.
+Consequences: (a) near-term PQ frame-tx spends ride builder/private
+inclusion, not the public mempool; (b) **WG feedback item the user can
+bring**: a protocol-validated PQ signature id (SLH-DSA/ML-DSA) or a
+raised/negotiable verify budget is what makes PQ stealth spends
+first-class citizens of the `0x06` mempool. Also to check against the
+final spec: whether `EXTCODECOPY` of an immutable key blob at another
+address (the SSTORE2/PKContract pattern) is admissible in the validation
+prefix, or whether key material must live in the sender's own code/storage.
+
+**Repo impact.** `docs/erc-draft.md` spend sections reframed: frame-tx
+account model is the target, ERC-7913 demoted to the interim expression
+(still informative, `requires` unchanged). The 4337 contracts, EntryPoint
+wiring, bundler/Pimlico paths in `js-client/` and `ui/` are kept as the
+working interim demo, not extended further. Open: a `Stealth8141Account`
+sketch (VERIFY code calling C13/ML-DSA + APPROVE) once client devnets
+expose type `0x06`.
 
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
