@@ -56,10 +56,16 @@ export default function App() {
         </div>
       </header>
 
-      {wallet.mode === 'dev' && chainKey !== 'anvil' && (
+      {wallet.mode === 'dev' && chainKey !== 'anvil' && chainKey !== 'frames' && (
         <Note kind="warn">
           The anvil dev account only works on the local chain — switch the signer to a browser wallet to use {cfg.label}
           .
+        </Note>
+      )}
+      {chainKey === 'frames' && tab !== 'frames' && (
+        <Note kind="info">
+          The Frames testnet only carries type-0x06 frame transactions — browser wallets and viem can't sign those, so
+          use the <strong>Frame tx</strong> tab, which signs with an in-page testnet key.
         </Note>
       )}
 
