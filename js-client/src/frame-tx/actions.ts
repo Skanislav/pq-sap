@@ -65,6 +65,38 @@ export async function secp256k1FrameSignature(
   return { scheme: SIG_SCHEME.SECP256K1, signer, msg: '0x', signature: `0x${v}${rr}${ss}` };
 }
 
+// --- generic single-signer frame tx -----------------------------------------
+
+export interface FramesTxParams {
+  chainId: bigint;
+  nonce: bigint;
+  sender: Address;
+  frames: Frame[];
+  /** the secp256k1 key that signs as `sender` (one outer signature). */
+  privateKey: Hex;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+}
+
+/**
+ * Assemble arbitrary frames, sign a single secp256k1 outer signature as
+ * `sender`, and return the signed FrameTx + its `0x06` raw bytes. The caller's
+ * frame list should begin with a `VERIFY(sender, BOTH)` frame so the EOA sender
+ * is approved for execution and payment.
+ */
+export async function buildFramesTx(p: FramesTxParams): Promise<{ tx: FrameTx; raw: Hex; sigHash: Hex }> {
+  const unsigned: FrameTx = {
+    chainId: p.chainId, nonce: p.nonce, sender: p.sender, frames: p.frames,
+    signatures: [secp256k1Placeholder(p.sender)],
+    maxPriorityFeePerGas: p.maxPriorityFeePerGas, maxFeePerGas: p.maxFeePerGas,
+    maxFeePerBlobGas: 0n, blobVersionedHashes: [],
+  };
+  const sigHash = frameTxSigHash(unsigned);
+  const sig = await secp256k1FrameSignature(sigHash, p.sender, p.privateKey);
+  const tx: FrameTx = { ...unsigned, signatures: [sig] };
+  return { tx, raw: serializeFrameTx(tx), sigHash };
+}
+
 // --- EOA transfer (the rex-compatible pattern) -------------------------------
 
 export interface EoaTransferParams {
@@ -86,23 +118,55 @@ export interface EoaTransferParams {
  * transfer, returning the signed FrameTx and its `0x06` raw bytes ready for
  * `eth_sendRawTransaction`.
  */
-export async function buildEoaTransfer(p: EoaTransferParams): Promise<{ tx: FrameTx; raw: Hex; sigHash: Hex }> {
+export function buildEoaTransfer(p: EoaTransferParams): Promise<{ tx: FrameTx; raw: Hex; sigHash: Hex }> {
   const frameGas = p.frameGas ?? 100_000n;
   const frameStateGas = p.frameStateGas ?? 250_000n;
-  const frames: Frame[] = [
-    verifyFrame({ target: p.sender, flags: APPROVE_SCOPE.BOTH, executionGas: frameGas, stateGas: frameStateGas }),
-    senderFrame({ target: p.to, executionGas: frameGas, stateGas: frameStateGas, value: p.value, data: p.data ?? '0x' }),
-  ];
-  const unsigned: FrameTx = {
-    chainId: p.chainId, nonce: p.nonce, sender: p.sender, frames,
-    signatures: [secp256k1Placeholder(p.sender)],
-    maxPriorityFeePerGas: p.maxPriorityFeePerGas, maxFeePerGas: p.maxFeePerGas,
-    maxFeePerBlobGas: 0n, blobVersionedHashes: [],
-  };
-  const sigHash = frameTxSigHash(unsigned);
-  const sig = await secp256k1FrameSignature(sigHash, p.sender, p.privateKey);
-  const tx: FrameTx = { ...unsigned, signatures: [sig] };
-  return { tx, raw: serializeFrameTx(tx), sigHash };
+  return buildFramesTx({
+    chainId: p.chainId, nonce: p.nonce, sender: p.sender, privateKey: p.privateKey,
+    maxFeePerGas: p.maxFeePerGas, maxPriorityFeePerGas: p.maxPriorityFeePerGas,
+    frames: [
+      verifyFrame({ target: p.sender, flags: APPROVE_SCOPE.BOTH, executionGas: frameGas, stateGas: frameStateGas }),
+      senderFrame({ target: p.to, executionGas: frameGas, stateGas: frameStateGas, value: p.value, data: p.data ?? '0x' }),
+    ],
+  });
+}
+
+export interface AnnounceTransferParams {
+  chainId: bigint;
+  nonce: bigint;
+  sender: Address;
+  /** the derived stealth address to pay. */
+  stealthAddress: Address;
+  value: bigint;
+  /** the ERC-5564 announcer, and the pre-encoded `announce(...)` calldata. */
+  announcer: Address;
+  announceData: Hex;
+  privateKey: Hex;
+  frameGas?: bigint;
+  frameStateGas?: bigint;
+  /** the DEFAULT frame that runs `announce` may need more execution gas. */
+  announceGas?: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+}
+
+/**
+ * One atomic frame tx that pays a stealth address AND emits its ERC-5564
+ * announcement: `[VERIFY(sender, BOTH), SENDER(stealth, value), DEFAULT(announcer, announce…)]`.
+ * The DEFAULT frame runs as ENTRY_POINT and calls the announcer.
+ */
+export function buildAnnounceTransfer(p: AnnounceTransferParams): Promise<{ tx: FrameTx; raw: Hex; sigHash: Hex }> {
+  const frameGas = p.frameGas ?? 100_000n;
+  const frameStateGas = p.frameStateGas ?? 250_000n;
+  return buildFramesTx({
+    chainId: p.chainId, nonce: p.nonce, sender: p.sender, privateKey: p.privateKey,
+    maxFeePerGas: p.maxFeePerGas, maxPriorityFeePerGas: p.maxPriorityFeePerGas,
+    frames: [
+      verifyFrame({ target: p.sender, flags: APPROVE_SCOPE.BOTH, executionGas: frameGas, stateGas: frameStateGas }),
+      senderFrame({ target: p.stealthAddress, executionGas: frameGas, stateGas: frameStateGas, value: p.value }),
+      defaultFrame({ target: p.announcer, executionGas: p.announceGas ?? 200_000n, stateGas: frameStateGas, data: p.announceData }),
+    ],
+  });
 }
 
 // --- submission --------------------------------------------------------------

@@ -67,11 +67,12 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     label: 'Frames testnet (EIP-8141)',
     chain: framesTestnet,
     rpcUrl: 'https://rpc1.frames.ethrex.xyz',
-    // canonical ERC-5564 singleton address (not necessarily deployed here yet)
-    announcer: SEPOLIA.erc5564Announcer,
+    // minimal ERC-5564 announcer we deployed on this testnet (canonical
+    // singleton isn't present); redeploy + update if the chain is reset.
+    announcer: '0x9fcf7d13d10dedf17d0f24c62f0cf4ed462f65b7',
     explorer: 'https://dora.frames.ethrex.xyz',
     frames: true,
-    scanFromBlock: 0n,
+    scanFromBlock: 58_891n, // announcer deploy block
     logChunk: 10_000n,
   },
   sepolia: {
