@@ -35,26 +35,36 @@ export const FACTORY_ABI = parseAbi([
   'function createAccount(uint256[][][] aHat, bytes tr, uint256[][] t1) returns (address)',
 ])
 
-/** Written by ui/scripts/dev-chain.mjs (anvil) or deploy-sepolia.mjs;
- *  served from /dev-deployment.json / /sepolia-deployment.json. */
+/** `Stealth8141Account` (frame-tx PQ route): the spend entry point a DEFAULT
+ *  frame calls; `sigIndex` names the ARBITRARY (ML-DSA) signature in tx.signatures. */
+export const ACCOUNT_8141_ABI = parseAbi([
+  'function executeFrame(uint256 sigIndex, address to, uint256 value, bytes data)',
+  'function signer() view returns (bytes)',
+])
+
+/** Written by ui/scripts/dev-chain.mjs (anvil), deploy-sepolia.mjs, or
+ *  deploy-frames.mjs; served from /{dev,sepolia,frames}-deployment.json. */
 export interface DevDeployment {
-  /** which account model the PQ route uses on this chain */
-  mode: 'stealth7913' | 'zknox-hybrid'
+  /** which account model the PQ route uses on this chain:
+   *  stealth7913 = ERC-4337 + ERC-7913 (local), zknox-hybrid = kohaku (Sepolia),
+   *  stealth8141 = EIP-8141 frame tx, sponsored + ML-DSA-authorized (frames testnet) */
+  mode: 'stealth7913' | 'zknox-hybrid' | 'stealth8141'
   chainId: number
   announcer: Address
-  entryPoint: Address
+  /** null for stealth8141 — there is no EntryPoint contract, the protocol is the entry point */
+  entryPoint: Address | null
   verifier: Address
   factory: Address
+  /** stealth8141 only: the Yul TXPARAM/SIGPARAM helper the account reads the frame tx through */
+  frameCtx?: Address
   registry: Address | null
   signerService: string
   demo?: { zeta: Hex; kemD: Hex; kemZ: Hex }
 }
 
 export async function fetchDeployment(chainKey: 'anvil' | 'sepolia' | 'frames'): Promise<DevDeployment | null> {
-  // The 4337 spend path has no deployment on the frames testnet (spending there
-  // is a native frame transaction, see the Frame tx tab).
-  if (chainKey === 'frames') return null
-  const file = chainKey === 'anvil' ? '/dev-deployment.json' : '/sepolia-deployment.json'
+  const file =
+    chainKey === 'anvil' ? '/dev-deployment.json' : chainKey === 'frames' ? '/frames-deployment.json' : '/sepolia-deployment.json'
   try {
     const r = await fetch(file, { cache: 'no-store' })
     if (!r.ok) return null

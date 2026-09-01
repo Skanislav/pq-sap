@@ -169,6 +169,67 @@ export function buildAnnounceTransfer(p: AnnounceTransferParams): Promise<{ tx: 
   });
 }
 
+// --- sponsored PQ-authorized tx (Stealth8141Account) --------------------------
+
+/** Index of the PQ (ARBITRARY) signature in a sponsored tx: 0 is the sponsor's. */
+export const SPONSORED_PQ_SIG_INDEX = 1n;
+
+export interface SponsoredPqTxParams {
+  chainId: bigint;
+  nonce: bigint;
+  /** the EOA that is `tx.sender` and payer (APPROVE BOTH via its secp256k1 sig). */
+  sponsor: Address;
+  sponsorPrivateKey: Hex;
+  /**
+   * The execution frames that follow the sponsor's VERIFY frame — e.g. a
+   * DEFAULT frame calling `Stealth8141Account.executeFrame(1, to, value, data)`,
+   * optionally preceded by a DEFAULT frame that deploys the account.
+   */
+  frames: Frame[];
+  /**
+   * Produces the post-quantum signature over the tx's sig_hash (the digest the
+   * account reads back with TXPARAM 0x08). Called once, after the tx shape is
+   * final; the returned bytes become the ARBITRARY signature at index 1.
+   */
+  pqSign: (sigHash: Hex) => Promise<Hex>;
+  frameGas?: bigint;
+  frameStateGas?: bigint;
+  maxFeePerGas: bigint;
+  maxPriorityFeePerGas: bigint;
+}
+
+/**
+ * Sponsored, PQ-authorized frame tx:
+ *   frames     = [VERIFY(sponsor, BOTH), ...p.frames]
+ *   signatures = [SECP256K1(sponsor), ARBITRARY(pq)]
+ * The validation prefix is just the sponsor's protocol-checked signature, so
+ * the (multi-million-gas) PQ verification in the execution frames is outside
+ * the public mempool's MAX_VERIFY_GAS bound. Both signatures have an empty
+ * `msg`, so both sign the same sig_hash, which elides their bytes — the PQ
+ * signature can be produced from the placeholder shape and filled in.
+ */
+export async function buildSponsoredPqTx(p: SponsoredPqTxParams): Promise<{ tx: FrameTx; raw: Hex; sigHash: Hex }> {
+  const frameGas = p.frameGas ?? 100_000n;
+  const frameStateGas = p.frameStateGas ?? 250_000n;
+  const unsigned: FrameTx = {
+    chainId: p.chainId, nonce: p.nonce, sender: p.sponsor,
+    frames: [
+      verifyFrame({ target: p.sponsor, flags: APPROVE_SCOPE.BOTH, executionGas: frameGas, stateGas: frameStateGas }),
+      ...p.frames,
+    ],
+    signatures: [secp256k1Placeholder(p.sponsor), arbitrarySignature('0x')],
+    maxPriorityFeePerGas: p.maxPriorityFeePerGas, maxFeePerGas: p.maxFeePerGas,
+    maxFeePerBlobGas: 0n, blobVersionedHashes: [],
+  };
+  const sigHash = frameTxSigHash(unsigned);
+  const [sponsorSig, pqSig] = await Promise.all([
+    secp256k1FrameSignature(sigHash, p.sponsor, p.sponsorPrivateKey),
+    p.pqSign(sigHash),
+  ]);
+  const tx: FrameTx = { ...unsigned, signatures: [sponsorSig, arbitrarySignature(pqSig)] };
+  return { tx, raw: serializeFrameTx(tx), sigHash };
+}
+
 // --- submission --------------------------------------------------------------
 
 /** POST a JSON-RPC method to an EIP-8141 node. */

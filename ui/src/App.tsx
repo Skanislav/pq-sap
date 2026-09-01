@@ -62,10 +62,12 @@ export default function App() {
           .
         </Note>
       )}
-      {chainKey === 'frames' && tab !== 'frames' && (
+      {chainKey === 'frames' && (tab === 'send' || tab === 'spend') && (
         <Note kind="info">
-          The Frames testnet only carries type-0x06 frame transactions — browser wallets and viem can't sign those, so
-          use the <strong>Frame tx</strong> tab, which signs with an in-page testnet key.
+          The Frames testnet only carries type-0x06 frame transactions, which browser wallets can't sign. On this
+          network the <strong>Spend</strong> tab signs with an in-page throwaway wallet: the PQ route is a sponsored,
+          ML-DSA-authorized frame tx, and the classical route has a "Use frame transactions" toggle. The{' '}
+          <strong>Frame tx</strong> tab is the plain-transfer playground.
         </Note>
       )}
 

@@ -77,78 +77,19 @@ function ensureFunded(balance: bigint, value: bigint, prefund: bigint): void {
   )
 }
 
-import {
-  buildAnnounceTransfer,
-  buildEoaTransfer,
-  rpc as frameRpc,
-  sendRawFrameTx,
-} from '../../../js-client/src/frame-tx/actions.ts'
+import { buildAnnounceTransfer, buildEoaTransfer, rpc as frameRpc } from '../../../js-client/src/frame-tx/actions.ts'
 import { fetchAnnouncements, type OnchainAnnouncement } from '../lib/announcements.ts'
 import { parseTxError } from '../lib/errors.ts'
 import { fromHex, toHex } from '../lib/hex.ts'
 import { clearClassicalSeeds, loadClassicalSeeds, saveClassicalSeeds } from '../lib/storage.ts'
-import { type ThrowawayWallet, useThrowawayWallet } from '../lib/throwaway.ts'
+import { broadcastFrameTx } from '../lib/frames.ts'
+import { KOHAKU_SEPOLIA } from '../lib/kohaku.ts'
+import { useThrowawayWallet } from '../lib/throwaway.ts'
 import { usd } from '../lib/useEthUsd.ts'
 import type { Wallet } from '../lib/useWallet.ts'
-import { AddressChip, CopyButton, HexBlob, Note } from './bits.tsx'
-
-/** Broadcast a raw 0x06 frame tx and wait for its receipt. */
-async function broadcastFrameTx(rpcUrl: string, raw: Hex): Promise<{ hash: Hex; status: string; gasUsed: bigint }> {
-  const hash = await sendRawFrameTx(rpcUrl, raw)
-  let r: { status: Hex; gasUsed: Hex } | null = null
-  for (let i = 0; i < 40 && !r; i++) {
-    r = await frameRpc(rpcUrl, 'eth_getTransactionReceipt', [hash])
-    if (!r) await new Promise((x) => setTimeout(x, 1500))
-  }
-  if (!r) throw new Error('frame tx receipt timeout')
-  return { hash, status: r.status === '0x1' ? 'success' : 'reverted', gasUsed: BigInt(r.gasUsed) }
-}
-
-/** Compact throwaway-wallet strip for the frames spend path. */
-function FramesFunder({ tw, balance, explorer }: { tw: ThrowawayWallet; balance: bigint | null; explorer: string | null }) {
-  if (!tw.address)
-    return (
-      <div className="panel">
-        <p className="fine" style={{ margin: 0 }}>
-          Frame transactions are signed by a throwaway in-page wallet (browser wallets can't sign type <code>0x06</code>
-          ). Generate one, then fund it at the faucet.
-        </p>
-        <div className="row">
-          <button type="button" onClick={tw.generate}>
-            Generate throwaway wallet
-          </button>
-        </div>
-      </div>
-    )
-  const funded = balance !== null && balance > 0n
-  return (
-    <div className="panel">
-      <div className="kv">
-        <span className="addr">
-          <AddressChip address={tw.address} explorer={explorer} /> <CopyButton text={tw.address} />
-        </span>
-        <span className={funded ? 'val' : 'val dim'}>{balance === null ? '…' : `${formatEther(balance)} ETH`}</span>
-      </div>
-      {!funded && (
-        <Note kind="warn">
-          Fund this wallet: copy the address, open the{' '}
-          <a href="https://faucet.frames.ethrex.xyz/" target="_blank" rel="noreferrer">
-            frames faucet ↗
-          </a>
-          , paste it and request test ETH.
-        </Note>
-      )}
-      <div className="row">
-        <button type="button" className="secondary" onClick={tw.generate}>
-          New wallet
-        </button>
-        <button type="button" className="ghost" onClick={tw.clear}>
-          Forget
-        </button>
-      </div>
-    </div>
-  )
-}
+import { AddressChip, HexBlob, Note } from './bits.tsx'
+import { FramesFunder } from './FramesFunder.tsx'
+import { FramesPqSpend } from './FramesPqSpend.tsx'
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false
@@ -644,6 +585,7 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
   if (dep === 'loading') return <p className="fine">Loading deployment…</p>
   if (dep && dep.mode === 'zknox-hybrid')
     return <HybridSepoliaSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} dep={dep} />
+  if (dep && dep.mode === 'stealth8141') return <FramesPqSpend cfg={cfg} dep={dep} ethUsd={ethUsd} />
   if (!dep) {
     return (
       <div>
@@ -656,14 +598,18 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
             </>
           ) : (
             <>
-              No {cfg.label} deployment found. Deploy the contracts (<code>npm run deploy:sepolia</code>) and run the
-              signer service (<code>npm run signer</code>) first; both write the deployment file this tab reads.
+              No {cfg.label} deployment found. Deploy the contracts (
+              <code>npm run {cfg.key === 'frames' ? 'deploy:frames' : 'deploy:sepolia'}</code>) and run the signer
+              service (<code>npm run signer</code>) first; the deploy writes the deployment file this tab reads.
             </>
           )}
         </Note>
       </div>
     )
   }
+  // the local 4337 route always has an EntryPoint (deployed by dev-chain.mjs)
+  if (!dep.entryPoint) return <Note kind="error">Deployment file has no EntryPoint address.</Note>
+  const entryPoint = dep.entryPoint
 
   const receive = async () => {
     setError(null)
@@ -791,10 +737,10 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
       }
 
       patch({ step: 'Building userOp…' })
-      const op = await buildSpendUserOp(publicClient, dep.entryPoint, hit.account, dest, value)
+      const op = await buildSpendUserOp(publicClient, entryPoint, hit.account, dest, value)
       ensureFunded(await publicClient.getBalance({ address: hit.account }), value, requiredPrefund(op))
       const userOpHash = await publicClient.readContract({
-        address: dep.entryPoint,
+        address: entryPoint,
         abi: ENTRYPOINT_ABI,
         functionName: 'getUserOpHash',
         args: [op],
@@ -808,7 +754,7 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
       const opsTx = await walletClient.writeContract({
         account: walletClient.account,
         chain: cfg.chain,
-        address: dep.entryPoint,
+        address: entryPoint,
         abi: ENTRYPOINT_ABI,
         functionName: 'handleOps',
         args: [[op], walletClient.account.address],
@@ -833,7 +779,7 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
         Level-2 (ZKNOX Dilithium2) demo profile — the parameter set of the deployed verifier. The announced stealth
         address is the counterfactual CREATE2 address of a <code>Stealth7913Account4337</code> whose 40-byte signer is{' '}
         <code>verifier ‖ PKContract</code>; blinded signing runs in the local Python service. EntryPoint{' '}
-        {txLink(dep.entryPoint, cfg)}, factory {txLink(dep.factory, cfg)}.
+        {txLink(entryPoint, cfg)}, factory {txLink(dep.factory, cfg)}.
       </p>
       <div className="row">
         <label className="field narrow" style={{ margin: 0 }}>
@@ -919,6 +865,8 @@ function HybridSepoliaSpend({
   ethUsd: number | null
   dep: DevDeployment
 }) {
+  // the kohaku accounts use the canonical ERC-4337 v0.7 EntryPoint
+  const entryPoint = dep.entryPoint ?? KOHAKU_SEPOLIA.entryPoint
   const [demo, setDemo] = useState<{ publicKeyData: Hex; kemCt: Hex; viewTag: Hex } | null>(null)
   const [account, setAccount] = useState<Address | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -1096,7 +1044,7 @@ function HybridSepoliaSpend({
         // only the value it sends. Pimlico also bundles the op.
         ensureFunded(await publicClient.getBalance({ address: hit.account }), value, 0n)
         const nonce = await publicClient.readContract({
-          address: dep.entryPoint,
+          address: entryPoint,
           abi: HYBRID_ENTRYPOINT_ABI,
           functionName: 'getNonce',
           args: [hit.account, 0n],
@@ -1128,10 +1076,10 @@ function HybridSepoliaSpend({
       }
 
       patch({ step: 'Building userOp…' })
-      const op = await buildHybridUserOp(publicClient, dep.entryPoint, hit.account, dest, value)
+      const op = await buildHybridUserOp(publicClient, entryPoint, hit.account, dest, value)
       ensureFunded(await publicClient.getBalance({ address: hit.account }), value, requiredPrefundHybrid(op))
       const userOpHash = await publicClient.readContract({
-        address: dep.entryPoint,
+        address: entryPoint,
         abi: HYBRID_ENTRYPOINT_ABI,
         functionName: 'getUserOpHash',
         args: [op],
@@ -1144,7 +1092,7 @@ function HybridSepoliaSpend({
       const opsTx = await walletClient.writeContract({
         account: walletClient.account,
         chain: cfg.chain,
-        address: dep.entryPoint,
+        address: entryPoint,
         abi: HYBRID_ENTRYPOINT_ABI,
         functionName: 'handleOps',
         args: [[op], walletClient.account.address],
