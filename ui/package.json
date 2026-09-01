@@ -9,9 +9,13 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc",
+    "test": "node --test test/*.test.ts",
     "chain": "node scripts/dev-chain.mjs",
     "signer": "node scripts/signer-service.mjs",
     "deploy:sepolia": "node --env-file-if-exists=.env scripts/deploy-sepolia.mjs",
+    "deploy:frames": "node --env-file-if-exists=.env scripts/deploy-frames.mjs",
+    "e2e:frames-pq": "node scripts/e2e-frames-pq.ts",
+    "probe:frames": "node scripts/probe-frames.ts",
     "check-keygen": "node scripts/check-keygen.ts",
     "e2e": "node scripts/e2e-smoke.ts",
     "e2e:sepolia-fork": "node scripts/e2e-sepolia-fork.ts",
@@ -35,5 +39,9 @@
   "engines": {
     "node": ">=22.12"
   },
-  "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b"
+  "packageManager": "pnpm@10.0.0+sha512.b8fef5494bd3fe4cbd4edabd0745df2ee5be3e4b0b8b08fa643aa3e4c6702ccc0f00d68fa8a8c9858a735a0032485a44990ed2810526c875e416f001b17df12b",
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
+  }
 }

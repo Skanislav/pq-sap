@@ -1,0 +1,20 @@
+{
+  "mode": "stealth8141",
+  "chainId": 81410,
+  "announcer": "0x9fCF7D13d10dEdF17d0f24C62f0cf4ED462f65b7",
+  "entryPoint": null,
+  "verifier": "0x086f77C5686dfe3F2f8FE487C5f8d357952C8556",
+  "factory": "0xB965D10739e19a9158e7f713720B0145D996E370",
+  "frameCtx": "0x1ADB9959EB142bE128E6dfEcc8D571f07cd66DeE",
+  "registry": null,
+  "signerService": "http://127.0.0.1:8546",
+  "demo": {
+    "zeta": "0xd1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+    "kemD": "0xd2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "kemZ": "0xd3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3"
+  },
+  "deployedAt": {
+    "block": 59160,
+    "by": "0x8943545177806ED17B9F23F0a21ee5948eCaa776"
+  }
+}

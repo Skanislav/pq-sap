@@ -1,0 +1,23 @@
+SPHINCs-C13Asm.sol — vendored verbatim (byte-identical) from
+
+  repo     https://github.com/lfglabs-dev/SPHINCS-
+  path     src/SPHINCs-C13Asm.sol
+  commit   2a40d0a3351e8709094c699974a6d849c191bc08  (2026-06-15, "Merge pull request #10 … discharge-c13-layer1-bridges")
+  sha256   ecae966ed14830523ec8b097034acad54dd3d978c82bac4d81ca953bdd315ec5
+  license  MIT (SPDX header in the file; the upstream repo carries no LICENSE file)
+
+This is the commit the Verity Labs write-up pins
+(https://veritylabs.dev/research/sphincs-minus-verifier — the page prints the
+hash with a typo in its tail, "…4fe52744c595d7824ed197c6679baef"; the repo's
+HEAD is the object above). The proof artifacts live upstream under
+verity/SphincsMinusVerifiers/ (Model.lean → verifyBytes → verifyParsed;
+`c13_refines_spec` in Proofs.lean, axioms: propext, Classical.choice,
+Quot.sound plus the residual assembly bridges listed in AXIOMS.md).
+
+Do not edit the file. To re-verify:
+  curl -sL https://raw.githubusercontent.com/lfglabs-dev/SPHINCS-/2a40d0a3351e8709094c699974a6d849c191bc08/src/SPHINCs-C13Asm.sol | shasum -a 256
+
+Parameters (from the file header): W+C F+C, n=16, h=22, d=2, a=19, k=7, w=8,
+l=43, target_sum=208, signature 3,688 bytes, keccak256, FIPS 205 §11.2.2
+uncompressed 32-byte ADRS. Signature-count cap 2^22 per key. Upstream status:
+research prototype, not audited, not production-safe.

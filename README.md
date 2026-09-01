@@ -12,6 +12,9 @@ against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
   derived from the shared secret. The sender computes the recipient's
   one-time address without learning any secret, exactly as in the secp256k1
   scheme, and the resulting signatures verify under stock FIPS 204 verifiers.
+  A hash-based alternative — SPHINCS- C13 behind ERC-7913 signers, ~77×
+  cheaper to verify on-chain but linkable to the recipient at spend time —
+  is implemented and measured in `js-client/` (D-018).
 
 ## Layout
 
