@@ -1,0 +1,41 @@
+# EIP-8141 frame-transaction devnet — two EL clients, one CL each.
+#
+# Both admission behaviours in ONE enclave:
+#   - nethermind runs with a raised MAX_VERIFY_GAS so a PQ VERIFY frame
+#     (C13 ~188k, ML-DSA ~8-15M) is admitted and included;
+#   - ethrex runs the spec default (100k), so it is our "public mempool"
+#     reference that REJECTS the same PQ spend at ingress.
+# Cross-client consensus is still checked on every included block (both
+# import the block nethermind proposes).
+#
+# frames_enabled activates the Bogota (Heze) fork on the EL at
+# heze_fork_epoch while keeping it off on the CL (FOCIL-separation hack);
+# it also auto-enables because the image tags contain "frames".
+#
+# Images: ethpandaops/{nethermind,ethrex}:frames-devnet-0 (arm64 available).
+
+participants:
+  - el_type: nethermind
+    el_image: ethpandaops/nethermind:frames-devnet-0
+    el_extra_params:
+      - --TxPool.FrameTxMaxVerifyGas=16000000
+    cl_type: lighthouse
+    validator_count: 32
+  - el_type: ethrex
+    el_image: ethpandaops/ethrex:frames-devnet-0
+    cl_type: lighthouse
+    validator_count: 32
+
+network_params:
+  frames_enabled: true
+  heze_fork_epoch: 0
+  seconds_per_slot: 4
+  # Headroom for an ML-DSA VERIFY frame (~8-15M) plus a deploy frame.
+  gas_limit: 60000000
+  # Fund the js-client submitter (viem PrivateKey for this addr lives in
+  # js-client/.env as DEVNET_PRIVATE_KEY; the pk below is a well-known test
+  # key, safe to publish — it holds value only on this throwaway enclave).
+  prefunded_accounts: '{"0x8943545177806ED17B9F23F0a21ee5948eCaa776": {"balance": "1000ETH"}}'
+
+# Keep the enclave lean for laptop iteration: no explorers/observability.
+additional_services: []
