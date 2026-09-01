@@ -1,0 +1,10 @@
+{
+  "mode": "zknox-hybrid",
+  "chainId": 11155111,
+  "announcer": "0x55649E01B5Df198D18D95b5cc5051630cfD45564",
+  "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+  "verifier": "0x092c5d82069de997E34Ce2505CA7D5042f3721ef",
+  "factory": "0xF45104FCfBB9233cEa6D516d71ba57F6961B8C2e",
+  "registry": null,
+  "signerService": "http://127.0.0.1:8546"
+}

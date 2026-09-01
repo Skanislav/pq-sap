@@ -25,6 +25,7 @@ against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Dated ADR log of design decisions |
 | [`python/`](python/) | Executable Python spec, reference library, test vectors, benchmarks |
 | [`js-client/`](js-client/) | TypeScript scanning client that reproduces the vectors byte for byte |
+| [`ui/`](ui/) | Demo web UI (Vite + React): receive, scan, and spend (EOA + ERC-4337 routes) |
 | [`lean/`](lean/) | Machine-checked Lean 4 / VCVio core (blinding identity, bounds, security games) |
 | [`wiki/`](wiki/) | Mirrored documentation site source |
 
