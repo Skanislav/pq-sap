@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.ts",
     "chain": "node scripts/dev-chain.mjs",
     "signer": "node scripts/signer-service.mjs",
     "deploy:sepolia": "node --env-file-if-exists=.env scripts/deploy-sepolia.mjs",
