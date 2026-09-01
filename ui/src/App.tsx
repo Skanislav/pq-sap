@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { AddressChip, Note } from './components/bits.tsx'
+import { FramesTab } from './components/FramesTab.tsx'
 import { RecipientTab } from './components/RecipientTab.tsx'
 import { ScanTab } from './components/ScanTab.tsx'
 import { SendTab } from './components/SendTab.tsx'
 import { SpendTab } from './components/SpendTab.tsx'
-import { CHAINS, type ChainConfig } from './lib/chain.ts'
+import { CHAINS, type ChainConfig, type ChainKey } from './lib/chain.ts'
 import { toHex } from './lib/hex.ts'
 import type { RecipientKeys } from './lib/keygen.ts'
 import { useEthUsd } from './lib/useEthUsd.ts'
 import { useWallet } from './lib/useWallet.ts'
 
-type Tab = 'recipient' | 'send' | 'scan' | 'spend'
+type Tab = 'recipient' | 'send' | 'scan' | 'spend' | 'frames'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('recipient')
-  const [chainKey, setChainKey] = useState<'anvil' | 'sepolia'>('anvil')
+  const [chainKey, setChainKey] = useState<ChainKey>('anvil')
   const [keys, setKeys] = useState<RecipientKeys | null>(null)
   const wallet = useWallet()
   const ethUsd = useEthUsd()
@@ -28,11 +29,7 @@ export default function App() {
           <p className="tagline">ERC-5564 scheme 2 — ML-KEM-768 discovery + ML-DSA-65 key blinding</p>
         </div>
         <div className="walletbox">
-          <select
-            value={chainKey}
-            aria-label="Network"
-            onChange={(e) => setChainKey(e.target.value as 'anvil' | 'sepolia')}
-          >
+          <select value={chainKey} aria-label="Network" onChange={(e) => setChainKey(e.target.value as ChainKey)}>
             {Object.values(CHAINS).map((c) => (
               <option key={c.key} value={c.key}>
                 {c.label}
@@ -67,12 +64,24 @@ export default function App() {
       )}
 
       <nav className="tabs">
-        {(['recipient', 'send', 'scan', 'spend'] as const).map((t) => (
+        {(['recipient', 'send', 'scan', 'spend', 'frames'] as const).map((t) => (
           <button type="button" key={t} className={t === tab ? 'tab active' : 'tab'} onClick={() => setTab(t)}>
-            {t === 'recipient' ? '1 · Recipient' : t === 'send' ? '2 · Send' : t === 'scan' ? '3 · Scan' : '4 · Spend'}
+            {t === 'recipient'
+              ? '1 · Recipient'
+              : t === 'send'
+                ? '2 · Send'
+                : t === 'scan'
+                  ? '3 · Scan'
+                  : t === 'spend'
+                    ? '4 · Spend'
+                    : '5 · Frame tx'}
           </button>
         ))}
       </nav>
+
+      {tab === 'frames' && chainKey !== 'frames' && (
+        <Note kind="info">Frame transactions live only on the Frames testnet — switch the Network selector above.</Note>
+      )}
 
       <main>
         {tab === 'recipient' && <RecipientTab keys={keys} setKeys={setKeys} />}
@@ -81,6 +90,7 @@ export default function App() {
         )}
         {tab === 'scan' && <ScanTab cfg={cfg} keys={keys} ethUsd={ethUsd} />}
         {tab === 'spend' && <SpendTab cfg={cfg} wallet={wallet} ethUsd={ethUsd} />}
+        {tab === 'frames' && <FramesTab cfg={CHAINS.frames} />}
       </main>
 
       <footer>

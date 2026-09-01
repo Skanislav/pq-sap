@@ -50,7 +50,10 @@ export interface DevDeployment {
   demo?: { zeta: Hex; kemD: Hex; kemZ: Hex }
 }
 
-export async function fetchDeployment(chainKey: 'anvil' | 'sepolia'): Promise<DevDeployment | null> {
+export async function fetchDeployment(chainKey: 'anvil' | 'sepolia' | 'frames'): Promise<DevDeployment | null> {
+  // The 4337 spend path has no deployment on the frames testnet (spending there
+  // is a native frame transaction, see the Frame tx tab).
+  if (chainKey === 'frames') return null
   const file = chainKey === 'anvil' ? '/dev-deployment.json' : '/sepolia-deployment.json'
   try {
     const r = await fetch(file, { cache: 'no-store' })
