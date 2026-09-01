@@ -7,8 +7,10 @@ classical_7913_demo.py (secp256k1). Here the spend key is a SPHINCS- C13 key
 -- the Verity Labs machine-checked hash-based verifier -- and the ERC-7913
 signer comes in two forms, both covered by this fixture:
 
-  SphincsC13Signer7913        key = pk (32 B)                       sig = 3,688 B
-  SphincsC13CommitSigner7913  key = keccak(DOMAIN || pk || opener)   sig = pk || opener || c13sig
+  SphincsC13Signer7913        key = pk (32 B)
+                              sig = c13sig (3,688 B)
+  SphincsC13CommitSigner7913  key = keccak(DOMAIN || pk || opener)
+                              sig = pk || opener || c13sig
 
 The commit form is the one that gives a hash-based key a sender-derivable
 stealth address: the sender knows pk (meta-address) and derives `opener` from
@@ -88,16 +90,22 @@ def keccak256(b: bytes) -> bytes:
 def create_address(sender: bytes, nonce: int) -> bytes:
     """CREATE address = keccak256(rlp([sender, nonce]))[12:], nonce < 128."""
     assert len(sender) == 20 and 0 <= nonce < 128
-    return keccak256(b"\xd6\x94" + sender + (b"\x80" if nonce == 0 else bytes([nonce])))[12:]
+    nonce_rlp = b"\x80" if nonce == 0 else bytes([nonce])
+    return keccak256(b"\xd6\x94" + sender + nonce_rlp)[12:]
 
 
 def word(x: int | bytes) -> bytes:
     return x.rjust(32, b"\x00") if isinstance(x, bytes) else x.to_bytes(32, "big")
 
 
-def withdraw_digest(vault: bytes, owner: bytes, to: bytes, amount: int, nonce: int) -> bytes:
-    """PointerSigVault.withdrawDigest = keccak256(abi.encode(chainid, vault, owner, to, amount, nonce))."""
-    return keccak256(word(CHAIN_ID) + word(vault) + word(owner) + word(to) + word(amount) + word(nonce))
+def withdraw_digest(
+    vault: bytes, owner: bytes, to: bytes, amount: int, nonce: int,
+) -> bytes:
+    """PointerSigVault.withdrawDigest =
+    keccak256(abi.encode(chainid, vault, owner, to, amount, nonce))."""
+    return keccak256(
+        word(CHAIN_ID) + word(vault) + word(owner)
+        + word(to) + word(amount) + word(nonce))
 
 
 def run_signer(signer: str, *args: str) -> str:
@@ -118,16 +126,19 @@ def build(signer: str) -> dict:
     seed_material = hashlib.sha256(KEYGEN_DOMAIN + SPEND_SEED).digest()
     keys = json.loads(run_signer(signer, "keygen", hx(seed_material)))
     pk_seed = bytes.fromhex(keys["seed"][2:])
-    sk_seed = bytes.fromhex(keys["sk_seed"][2:])
     pk_root = bytes.fromhex(keys["root"][2:])
     assert len(pk_seed) == len(pk_root) == 32
-    assert pk_seed[16:] == bytes(16) and pk_root[16:] == bytes(16), "n = 16: halves top-aligned"
+    assert len(bytes.fromhex(keys["sk_seed"][2:])) == 32
+    assert pk_seed[16:] == bytes(16) and pk_root[16:] == bytes(16), \
+        "n = 16: halves top-aligned"
     pk = pk_seed[:16] + pk_root[:16]                       # the 32-byte ERC-7913 key
 
     # --- sign the challenge
     sig = bytes.fromhex(run_signer(
-        signer, "sign-with", keys["seed"], keys["sk_seed"], keys["root"], hx(CHALLENGE))[2:])
-    assert len(sig) == C13["sig_len"], f"C13 sig must be {C13['sig_len']} B, got {len(sig)}"
+        signer, "sign-with", keys["seed"], keys["sk_seed"], keys["root"],
+        hx(CHALLENGE))[2:])
+    assert len(sig) == C13["sig_len"], \
+        f"C13 sig must be {C13['sig_len']} B, got {len(sig)}"
 
     # --- commit form: opener from ss (never ss itself), commitment on-chain
     opener = hashlib.sha256(OPEN_DOMAIN + ss).digest()
@@ -153,7 +164,8 @@ def build(signer: str) -> dict:
         owner = keccak256(word)[12:]
         digest = withdraw_digest(vault, owner, WITHDRAW_TO, WITHDRAW_AMOUNT, 0)
         vsig = bytes.fromhex(run_signer(
-            signer, "sign-with", keys["seed"], keys["sk_seed"], keys["root"], hx(digest))[2:])
+            signer, "sign-with", keys["seed"], keys["sk_seed"], keys["root"],
+            hx(digest))[2:])
         assert len(vsig) == C13["sig_len"]
         pointer[form] = {
             "r": hx(word),
@@ -194,8 +206,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--signer", default=os.environ.get("SIGNER_C13"),
                     help="path to the signer-c13 binary (or env SIGNER_C13)")
-    ap.add_argument("-o", "--outfile",
-                    default=pathlib.Path(__file__).parent / "sphincs_c13_7913_demo.json")
+    ap.add_argument(
+        "-o", "--outfile",
+        default=pathlib.Path(__file__).parent / "sphincs_c13_7913_demo.json")
     args = ap.parse_args()
     if not args.signer:
         ap.error("--signer (or SIGNER_C13) is required")
