@@ -41,7 +41,6 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
 
-  // Poll network status + the throwaway wallet's balance.
   const refresh = useCallback(async () => {
     try {
       const bn = await rpc<Hex>(rpcUrl, 'eth_blockNumber', [])
@@ -122,95 +121,97 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
   const funded = balance !== null && balance > 0n
 
   return (
-    <section className="tabpanel">
-      <h2>Frame transaction playground (EIP-8141, type 0x06)</h2>
-      <p className="fine">
-        A native account-abstraction transaction: instead of one ECDSA signature, an ordered list of{' '}
-        <strong>frames</strong>. The transfer below is two frames — a <code>VERIFY</code> frame that approves execution
-        and payment for the sender, then a <code>SENDER</code> frame that moves the value.
+    <section>
+      <h2>Frame transaction</h2>
+      <p className="lede">
+        EIP-8141 (type <code>0x06</code>) native account abstraction: instead of one ECDSA signature, an ordered list of{' '}
+        <strong>frames</strong>. The transfer here is two — a <code>VERIFY</code> frame that approves execution and
+        payment for the sender, then a <code>SENDER</code> frame that moves the value.
       </p>
 
-      <div className="statusrow">
+      <div className="metastrip">
         <span>
-          Network: <strong>{cfg.label}</strong> (chain {cfg.chain.id})
+          <strong>{cfg.label}</strong> · chain {cfg.chain.id}
         </span>
-        <span>Block: {block === null ? '…' : block.toString()}</span>
+        <span>block {block === null ? '…' : block.toString()}</span>
       </div>
 
-      {/* Throwaway wallet */}
+      <h3>Throwaway wallet</h3>
       {!wallet.address ? (
-        <div className="result">
-          <Note kind="info">
-            Generate a throwaway testnet wallet to play with frame transactions. It lives only in this browser and holds
-            nothing but faucet funds.
-          </Note>
-          <button type="button" onClick={wallet.generate}>
-            Generate throwaway wallet
-          </button>
+        <div className="panel">
+          <p className="fine" style={{ margin: 0 }}>
+            A random testnet wallet, kept only in this browser — it holds nothing but faucet funds. Browser wallets
+            can't sign type <code>0x06</code>, so the demo signs with this key.
+          </p>
+          <div className="row">
+            <button type="button" onClick={wallet.generate}>
+              Generate wallet
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="result">
-          <div className="statusrow">
-            <span>
-              Your wallet <AddressChip address={wallet.address} explorer={cfg.explorer} />{' '}
-              <CopyButton text={wallet.address} label="copy address" />
+        <div className="panel">
+          <div className="kv">
+            <span className="addr">
+              <AddressChip address={wallet.address} explorer={cfg.explorer} /> <CopyButton text={wallet.address} />
             </span>
-            <span>Balance: {balance === null ? '…' : `${formatEther(balance)} ETH`}</span>
+            <span className={funded ? 'val' : 'val dim'}>{balance === null ? '…' : `${formatEther(balance)} ETH`}</span>
           </div>
-          {!funded ? (
+          {funded ? (
+            <Note kind="ok">Funded — send a frame transaction below.</Note>
+          ) : (
             <Note kind="warn">
-              Fund this wallet before sending: copy the address above, open the{' '}
+              Fund this wallet first: copy the address, open the{' '}
               <a href={FAUCET_URL} target="_blank" rel="noreferrer">
                 frames faucet ↗
               </a>
-              , paste it, and request test ETH. The balance updates here automatically once it arrives.
+              , paste it and request test ETH. The balance updates here automatically.
             </Note>
-          ) : (
-            <Note kind="ok">Funded — you can send frame transactions below.</Note>
           )}
-          <div className="form">
-            <button type="button" onClick={wallet.generate}>
+          <div className="row">
+            <button type="button" className="secondary" onClick={wallet.generate}>
               New wallet
             </button>
-            <button type="button" onClick={wallet.clear}>
+            <button type="button" className="ghost" onClick={wallet.clear}>
               Forget
             </button>
           </div>
         </div>
       )}
 
-      {/* Send a frame tx */}
-      <div className="form">
-        <label>
-          Recipient
-          <input value={to} onChange={(e) => setTo(e.target.value.trim())} spellCheck={false} />
-        </label>
-        <label>
-          Amount (ETH)
-          <input value={amount} onChange={(e) => setAmount(e.target.value.trim())} inputMode="decimal" />
-        </label>
+      <h3>Send</h3>
+      <label className="field">
+        <span>Recipient</span>
+        <input value={to} onChange={(e) => setTo(e.target.value.trim())} spellCheck={false} placeholder="0x…" />
+      </label>
+      <label className="field narrow">
+        <span>Amount (ETH)</span>
+        <input value={amount} onChange={(e) => setAmount(e.target.value.trim())} inputMode="decimal" />
+      </label>
+      <div className="row">
         <button type="button" onClick={() => void send()} disabled={busy || !funded}>
           {busy ? 'Sending frame tx…' : 'Send frame transaction'}
         </button>
+        {!funded && wallet.address && <span className="fine">fund the wallet to enable sending</span>}
       </div>
 
       {error && <Note kind="error">{error}</Note>}
 
       {result && (
-        <div className="result">
+        <div className="panel">
           <Note kind={result.status === 'success' ? 'ok' : result.status ? 'error' : 'info'}>
             {result.status
               ? `Mined in block ${result.blockNumber} — type ${result.txType}, ${result.status}, gasUsed ${result.gasUsed}`
               : 'Broadcast — waiting for the receipt…'}
           </Note>
-          <div className="statusrow">
-            <span>Transaction</span>
+          <div className="kv">
+            <span className="fine">transaction</span>
             <a href={explorerTx(result.hash)} target="_blank" rel="noreferrer">
-              {result.hash.slice(0, 18)}… ↗
+              {result.hash.slice(0, 20)}… ↗
             </a>
           </div>
-          <HexBlob label="sig_hash (what the secp256k1 signature signs)" value={result.sigHash} />
-          <HexBlob label="raw 0x06 transaction" value={result.raw} />
+          <HexBlob label="sig_hash" value={result.sigHash} />
+          <HexBlob label="raw 0x06 tx" value={result.raw} />
         </div>
       )}
     </section>
