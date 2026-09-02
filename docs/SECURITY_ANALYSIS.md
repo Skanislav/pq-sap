@@ -63,7 +63,19 @@ The generic theorem is `PqStealth.sprAdv_le_mlwe` and the ML-KEM-768 instance is
 
 ### 1.2a Widened signing mask acceptance
 
-The generic coefficient-independence theorem is `MLDSA.widened_z_accepted_independent` and the ML-DSA-65 concrete acceptance theorem is `MLDSA.mldsa65_widened_z_accept_prob` (`WidenedSigning.lean`).
+The widened identification scheme (`MLDSA.widenedIdentificationScheme`, `WidenedSigning.lean`) draws
+the mask `y` uniformly from the FIPS 204 cube `[-(γ₁-1), γ₁]` (`sampleMaskCube`) and widens both
+response gates to `‖z‖∞ < γ₁ - β'` and `‖r₀‖∞ < γ₂ - β'` with `β' = 2·β`. Its key relation
+`widenedValidKeyPair` requires the public-key identity `t₁·2^d + t₀ = A·s₁ + s₂` and each secret
+vector to be a sum of two `η`-short vectors, which the blinded key `(s₁+s', s₂+e')` satisfies
+(`widenedValidKeyPair_blinded`). Under `Primitives.Laws` the scheme is complete
+(`MLDSA.widened_ids_complete`).
+
+The accepted-`z` probability is exact and independent of the secret: for any shift `‖δ‖∞ ≤ β'`,
+a cube-uniform mask passes the `z` gate with probability `((2·(γ₁-β')-1)/(2·γ₁))^(l·256)`
+(`MLDSA.cube_shift_accept_prob`, instantiated at `δ = c·s₁` as
+`MLDSA.widened_z_accepted_independent`). The ML-DSA-65 value is
+`MLDSA.mldsa65_widened_z_accept_prob`. All of these are sorry-free and guarded in `Axioms.lean`.
 
 ### 1.3 Blinding and ROM query bound
 
@@ -186,8 +198,12 @@ These exclusions are stated in `docs/SECURITY_ANALYSIS.md`, `docs/TECHNICAL_SPEC
 
 ## 8. Widened ML-DSA statement list
 
-Formal capstones in `lean/PqStealth/WidenedSigning.lean`:
+Formal capstones in `lean/PqStealth/WidenedSigning.lean` (all sorry-free):
+- `MLDSA.sampleInBall_smul_widened_bound` — `‖c·(a+b)‖∞ ≤ 2·β` for `η`-short `a`, `b`.
+- `MLDSA.widenedValidKeyPair_blinded` — the blinded key satisfies the widened key relation.
+- `MLDSA.cube_shift_accept_prob` — cube-mask acceptance probability for any `β'`-short shift.
 - `MLDSA.widened_z_accepted_independent` — acceptance probability and independence of `z`.
 - `MLDSA.mldsa65_widened_z_accept_prob` — concrete ML-DSA-65 probability `(1047791/1048576)^1280`.
-- `MLDSA.widened_ids_hvzk` — widened IDS HVZK bound `zetaWide`.
-- `MLDSA.widened_ids_complete` — widened IDS completeness.
+- `MLDSA.widened_ids_complete` — widened IDS completeness under `Primitives.Laws`.
+- `MLDSA.widened_ids_hvzk` — widened IDS HVZK at `zetaWide = widenedHvzkDistance`; this bound is
+  currently the trivial `1`, so the theorem fixes the statement shape only.

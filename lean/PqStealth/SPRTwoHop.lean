@@ -552,14 +552,17 @@ section Mlkem768Closed
 
 variable (adv768 : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
   (Ciphertext mlkem768 mlkem768Encoding))
-  (sim768 : ProbComp (Ciphertext mlkem768 mlkem768Encoding))
 
-/-- **ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages.** -/
+/-- **ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages**, against the
+uniform-ciphertext-bytes simulator `mlkem768UniformCiphertext` (the same
+simulator as `mlkem768_sprAdv_le_two_hop_decomposition`). -/
 theorem mlkem768_sprAdv_le_mlwe (b : Bool)
     (epsilonPrim epsilonEnc epsilonRestore : ℝ)
     (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b ≤ epsilonPrim)
-    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonEnc)
-    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonRestore) :
+    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768UniformCiphertext b ≤ epsilonEnc)
+    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768UniformCiphertext b ≤ epsilonRestore) :
     mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
       epsilonPrim
         + LearningWithErrors.advantage mlkem768KeyHopProblem
@@ -567,8 +570,9 @@ theorem mlkem768_sprAdv_le_mlwe (b : Bool)
         + LearningWithErrors.advantage mlkem768CtHopProblem
             (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
         + epsilonEnc
-        + epsilonRestore := by
-  sorry
+        + epsilonRestore :=
+  sprAdv_le_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+    mlkem768UniformCiphertext b epsilonPrim epsilonEnc epsilonRestore hPrim hEnc hRestore
 
 end Mlkem768Closed
 

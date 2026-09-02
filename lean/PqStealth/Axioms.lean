@@ -444,4 +444,29 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb
 
+/-! ## Widened ML-DSA signing for blinded keys (`WidenedSigning`) -/
+
+/-- info: 'MLDSA.sampleInBall_smul_widened_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.sampleInBall_smul_widened_bound
+
+/-- info: 'MLDSA.widenedValidKeyPair_blinded' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widenedValidKeyPair_blinded
+
+/-- info: 'MLDSA.wApprox_eq_of_keyIdentity' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.wApprox_eq_of_keyIdentity
+
+/-- info: 'MLDSA.cube_shift_accept_prob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.cube_shift_accept_prob
+
+/-- info: 'MLDSA.widened_z_accepted_independent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_z_accepted_independent
+
+/-- info: 'MLDSA.mldsa65_widened_z_accept_prob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.mldsa65_widened_z_accept_prob
+
+/-- info: 'MLDSA.widened_ids_complete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_ids_complete
+
+/-- info: 'MLDSA.widened_ids_hvzk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_ids_hvzk
 

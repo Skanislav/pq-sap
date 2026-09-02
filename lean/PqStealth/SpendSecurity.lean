@@ -71,7 +71,11 @@ theorem relatedSpendAdvantage_le_mul
       (q : ℝ) * ((epsilonBlindExpand + MaskIdealizationAdv + blindedSpendMLWE + blindedSTMSIS).toReal
         + (CmaToNmaLossNN qS qH eps pAbort zetaWide delta hp).1
         + (TruncationLossNN qS pAbort maxAttempts).1) := by
-  sorry
+  unfold relatedSpendAdvantage
+  exact mul_nonneg (Nat.cast_nonneg q)
+    (add_nonneg
+      (add_nonneg ENNReal.toReal_nonneg (CmaToNmaLossNN qS qH eps pAbort zetaWide delta hp).2)
+      (TruncationLossNN qS pAbort maxAttempts).2)
 
 end ConstructionA
 
