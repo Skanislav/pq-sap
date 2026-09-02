@@ -16,8 +16,10 @@ No claim is unconditional unless the statement says so.
 - `qS` — number of signing-oracle queries in the related-key game.
 - `epsilonBlindExpand` — bound on `ConstructionA.ExpandIsIdeal` (joint view tag / blinding pair).
 - `Adv_blindMLWE` — seeded decision-MLWE advantage against the blinding sampler.
-- `betaAddr` — point-mass bound for one address-point guess; for ML-DSA-65 instantiated as
-  `((2^d : ℝ≥0∞) / MLDSA.modulus) ^ (6 * 256)` when the encoding proof is available.
+- `betaAddr` — point-mass bound for one address-point guess (`BlindPointMassBound`); for ML-DSA
+  proven as `((2^d : ℝ≥0∞) / MLDSA.modulus) ^ (k * 256)` (`blindPointMassBound_mldsa`, ML-DSA-65:
+  `blindPointMassBound_mldsa65`) when the primitive's `power2Round` is the concrete coefficient-wise
+  `Power2Round` and `pack rho` is injective.
 - `epsilonPrim` — primitive-idealization loss in the SPR decomposition (ROM/PRF assumption).
 - `epsilonEnc` — encoding-regularity loss in the SPR decomposition.
 - `Adv_keyHop_b`, `Adv_ctHop_b` — seeded-MLWE advantages for the two SPR hops.

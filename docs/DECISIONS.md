@@ -261,6 +261,16 @@ freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
 
 **Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-018 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/SECURITY_ANALYSIS.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
 
+**Update (2026-09-02).** All of those obligations are discharged; `lean/PqStealth/` is sorry-free
+again and every new theorem is guarded. Along the way several of the frozen statements turned out
+to be false or vacuous and were corrected rather than proven: the widened-signing mask was ring-uniform
+(now a FIPS 204 cube sampler), the widened key relation lacked the public-key identity and the `r₀`
+gate was too narrow for a `2η`-short `s₂`, the key-restoration game identities were swapped, the
+related-key spend game was a unit stub with advantage `0` (now a real search-witness game with a
+proven `q`-fold offset-subtraction reduction), the ROM bad-query bound had no query bound on the
+adversary, and the ML-DSA point-mass bound was unprovable for an opaque `Prims`. See
+`docs/SECURITY_ANALYSIS.md` for the current statements and their hypotheses.
+
 `BlindingROM`, `ROMUpToBad`, `SharedSecretHiding`, `AnonymityFromSPR`,
 `MLKEM`, `SPRTwoHop`, `Ownership`, `Soundness`, `DKSAPOracle`, `Controls`,
 `Demo`, and the renamed theorems). The build is the guard: a `sorry`

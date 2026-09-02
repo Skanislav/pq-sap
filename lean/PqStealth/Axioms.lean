@@ -476,6 +476,23 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound
 
+/-! ## The ML-DSA address-point mass (`BlindingEntropy`) -/
+
+/-- info: 'PqStealth.ConstructionA.power2RoundCoeff_decomp' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.power2RoundCoeff_decomp
+
+/-- info: 'PqStealth.ConstructionA.power2RoundCoeff_low_range' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.power2RoundCoeff_low_range
+
+/-- info: 'PqStealth.ConstructionA.card_power2Round_fiber_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.card_power2Round_fiber_le
+
+/-- info: 'PqStealth.ConstructionA.blindPointMassBound_mldsa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindPointMassBound_mldsa
+
+/-- info: 'PqStealth.ConstructionA.blindPointMassBound_mldsa65' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindPointMassBound_mldsa65
+
 /-! ## Widened ML-DSA signing for blinded keys (`WidenedSigning`) -/
 
 /-- info: 'MLDSA.sampleInBall_smul_widened_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -120,19 +120,171 @@ theorem blindingAdvantageRO_le_queryBound
           (blindBadProb_le_queryBound P tg rho t adv qH hq beta hB hβ false)
     _ = 2 * ((qH : ℝ≥0∞) * beta).toReal := by ring
 
+/-! ## The ML-DSA point mass
+
+`pack rho (power2Round (u + t))` over a uniform mask `u`: with the concrete coefficient-wise
+`Power2Round` (each high value has exactly `2^d` preimages, `card_power2Round_fiber_le`) and an
+injective `pack`, the point mass is `(2^d / q)^(k·256)`. The translation by `t` is a bijection of
+the mask space, so the bound does not depend on `t`, i.e. on the recipient. -/
+
 /-- The ML-DSA point-mass value: each of the `k·256` coefficients of the `Power2Round` high
 part has at most `2^d` preimages among the `q` residues. -/
 noncomputable def mlDsaAddressPointBeta (k : ℕ) : ℝ≥0∞ :=
   ((2 ^ droppedBits : ℝ≥0∞) / modulus) ^ (k * ringDegree)
 
-variable (prims65 : Primitives mldsa65)
+/-! ### The concrete `Power2Round` fiber -/
 
-theorem blindPointMassBound_mldsa65
-    [SampleableType Rq]
-    (P : Prims Rq (MLDSA.Bytes 32) WireBytes (Vector prims65.Power2High mldsa65.k)
-      Tag Addr K mldsa65.k mldsa65.l) :
-    BlindPointMassBound P (mlDsaAddressPointBeta mldsa65.k) := by
-  sorry
+/-- `power2RoundCoeff` decomposes its input: `2^d · r₁ + r₀ = r` in `Coeff`. -/
+theorem power2RoundCoeff_decomp (r : Coeff) :
+    (power2Scale : Coeff) * ((power2RoundCoeff r).1 : Coeff) + ((power2RoundCoeff r).2 : Coeff) = r := by
+  have hdam : (power2Scale : Coeff) * ((r.val / power2Scale : ℕ) : Coeff)
+      + ((r.val % power2Scale : ℕ) : Coeff) = r := by
+    rw [← Nat.cast_mul, ← Nat.cast_add]
+    nth_rewrite 3 [← ZMod.natCast_zmod_val r]
+    congr 1
+    exact Nat.div_add_mod r.val power2Scale
+  simp only [power2RoundCoeff]
+  split_ifs with h
+  · push_cast
+    exact hdam
+  · simp only [Nat.cast_add, Nat.cast_one, Int.cast_sub, Int.cast_natCast]
+    linear_combination hdam
+
+/-- The low part of `power2RoundCoeff` lies in `(-2^(d-1), 2^(d-1)]`: exactly `2^d` values. -/
+theorem power2RoundCoeff_low_range (r : Coeff) :
+    -4095 ≤ (power2RoundCoeff r).2 ∧ (power2RoundCoeff r).2 ≤ 4096 := by
+  have hS : power2Scale = 8192 := by decide
+  simp only [power2RoundCoeff, hS]
+  have := Nat.mod_lt r.val (show 0 < 8192 by norm_num)
+  split_ifs with h <;> simp only <;> omega
+
+/-- **Fiber bound.** Each high value of `power2RoundCoeff` has at most `2^d` preimages. -/
+theorem card_power2Round_fiber_le (c : Coeff) :
+    (Finset.univ.filter fun r : Coeff => ((power2RoundCoeff r).1 : Coeff) = c).card
+      ≤ 2 ^ droppedBits := by
+  have hd : 2 ^ droppedBits = 8192 := by decide
+  rw [hd]
+  refine (Finset.card_le_card_of_injOn (fun r => ((power2RoundCoeff r).2 + 4095).toNat)
+    (t := Finset.range 8192) ?_ ?_).trans (by rw [Finset.card_range])
+  · intro r _
+    simp only [Finset.coe_range, Set.mem_Iio]
+    have := power2RoundCoeff_low_range r
+    omega
+  · intro r hr r' hr' heq
+    simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_univ, true_and] at hr hr'
+    have hlow : (power2RoundCoeff r).2 = (power2RoundCoeff r').2 := by
+      have := power2RoundCoeff_low_range r
+      have := power2RoundCoeff_low_range r'
+      simp only at heq
+      omega
+    rw [← power2RoundCoeff_decomp r, ← power2RoundCoeff_decomp r', hr, hr', hlow]
+
+/-- `power2RoundHigh` equality, coefficient-wise. -/
+theorem power2RoundHigh_eq_iff (r h : Rq) :
+    power2RoundHigh r = h ↔ ∀ i, ((power2RoundCoeff (r.get i)).1 : Coeff) = h.get i := by
+  constructor
+  · rintro rfl i
+    simp only [power2RoundHigh, Vector.get_eq_getElem, Vector.getElem_ofFn]
+  · intro hi
+    refine Poly.ext_get_eq fun i => ?_
+    rw [← hi i]
+    simp only [power2RoundHigh, Vector.get_eq_getElem, Vector.getElem_ofFn]
+
+/-- `Vector.ofFn` equality, entry-wise. -/
+theorem vector_ofFn_eq_iff {α : Type} {n : ℕ} (f : Fin n → α) (h : Vector α n) :
+    Vector.ofFn f = h ↔ ∀ j, f j = h.get j := by
+  constructor
+  · rintro rfl j
+    simp only [Vector.get_eq_getElem, Vector.getElem_ofFn]
+  · intro hj
+    refine Vector.ext fun j hj' => ?_
+    rw [Vector.getElem_ofFn]
+    exact (hj ⟨j, hj'⟩).trans (Vector.get_eq_getElem _ _)
+
+/-- `Rq` is finite: it is `Vector Coeff 256`. -/
+instance instFintypeRq : Fintype Rq := by
+  change Fintype (Vector Coeff ringDegree)
+  infer_instance
+
+/-- Coordinates of a vector of polynomials. -/
+def coords (k : ℕ) : (Fin k → Rq) ≃ (Fin k → Fin ringDegree → Coeff) where
+  toFun v j i := (v j).get i
+  invFun w j := Vector.ofFn (w j)
+  left_inv v := funext fun j => Poly.ext_get_eq fun i => by
+    simp only [Vector.get_eq_getElem, Vector.getElem_ofFn]
+  right_inv w := funext fun j => funext fun i => by
+    simp only [Vector.get_eq_getElem, Vector.getElem_ofFn]
+
+omit [SampleableType Addr] in
+/-- **ML-DSA address-point mass.** When the primitive's `power2Round` is the concrete
+coefficient-wise `Power2Round` high part and `pack rho` is injective, no wire encoding is hit
+with probability above `(2^d / q)^(k·256)` over a uniform mask. -/
+theorem blindPointMassBound_mldsa [SampleableType Rq]
+    (P : Prims Rq Rho WireBytes (Vector Rq k) Tag Addr K k l)
+    (hP2 : ∀ v : Fin k → Rq,
+      P.power2Round v = Vector.ofFn fun j => MLDSA.Concrete.power2RoundHigh (v j))
+    (hpack : ∀ rho, Function.Injective (P.pack rho)) :
+    BlindPointMassBound P (mlDsaAddressPointBeta k) := by
+  intro rho t x
+  rw [show blindPointSample P rho t =
+      (fun u => P.pack rho (P.power2Round (u + t))) <$> ($ᵗ (Fin k → Rq)) from by
+    simp only [blindPointSample, map_eq_bind_pure_comp, Function.comp_def]
+    rfl, probOutput_map]
+  rcases Classical.em (∃ h, P.pack rho h = x) with hx | hx
+  · obtain ⟨h, rfl⟩ := hx
+    -- the fiber, in coordinates
+    have hcard : (Finset.univ.filter fun u : Fin k → Rq => P.power2Round (u + t) = h).card
+        ≤ (2 ^ droppedBits) ^ (k * ringDegree) := by
+      rw [Finset.card_equiv (Equiv.addRight t)
+        (t := Finset.univ.filter fun v : Fin k → Rq => P.power2Round v = h) (fun u => by
+          simp only [Finset.mem_filter, Finset.mem_univ, true_and, Equiv.coe_addRight]
+          rfl)]
+      rw [Finset.card_equiv (coords k)
+        (t := Fintype.piFinset fun j => Fintype.piFinset fun i =>
+          Finset.univ.filter fun r : Coeff =>
+            ((power2RoundCoeff r).1 : Coeff) = (h.get j).get i) (fun v => ?_)]
+      · rw [Fintype.card_piFinset]
+        simp only [Fintype.card_piFinset]
+        calc ∏ j : Fin k, ∏ i : Fin ringDegree,
+              (Finset.univ.filter fun r : Coeff =>
+                ((power2RoundCoeff r).1 : Coeff) = (h.get j).get i).card
+            ≤ ∏ _j : Fin k, ∏ _i : Fin ringDegree, 2 ^ droppedBits :=
+              Finset.prod_le_prod' fun j _ => Finset.prod_le_prod' fun i _ =>
+                card_power2Round_fiber_le _
+          _ = (2 ^ droppedBits) ^ (k * ringDegree) := by
+              simp only [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
+              rw [← pow_mul, mul_comm]
+      · simp only [Finset.mem_filter, Finset.mem_univ, true_and, Fintype.mem_piFinset, hP2,
+          vector_ofFn_eq_iff, power2RoundHigh_eq_iff]
+        rfl
+    have htot : Fintype.card (Fin k → Rq) = modulus ^ (k * ringDegree) := by
+      rw [Fintype.card_congr (coords k), Fintype.card_pi]
+      simp only [Fintype.card_pi, Finset.prod_const, Finset.card_univ, Fintype.card_fin, ZMod.card]
+      rw [← pow_mul, mul_comm]
+    calc Pr[fun u => P.pack rho (P.power2Round (u + t)) = P.pack rho h | $ᵗ (Fin k → Rq)]
+        ≤ Pr[fun u => P.power2Round (u + t) = h | $ᵗ (Fin k → Rq)] :=
+          probEvent_mono'' fun u hu => hpack rho hu
+      _ = ((Finset.univ.filter fun u : Fin k → Rq => P.power2Round (u + t) = h).card : ℝ≥0∞)
+            / Fintype.card (Fin k → Rq) := probEvent_uniformSample _ _
+      _ ≤ (((2 ^ droppedBits) ^ (k * ringDegree) : ℕ) : ℝ≥0∞)
+            / ((modulus ^ (k * ringDegree) : ℕ) : ℝ≥0∞) := by
+          rw [htot]
+          exact ENNReal.div_le_div_right (by exact_mod_cast hcard) _
+      _ = mlDsaAddressPointBeta k := by
+          rw [mlDsaAddressPointBeta, Nat.cast_pow, Nat.cast_pow, Nat.cast_pow, Nat.cast_ofNat,
+            div_eq_mul_inv, ENNReal.inv_pow, ← mul_pow, ← div_eq_mul_inv]
+  · rw [probEvent_eq_zero fun u _ hu => hx ⟨_, hu⟩]
+    exact zero_le
+
+omit [SampleableType Addr] in
+/-- The ML-DSA-65 instance: `k = 6`, so the point mass is `(2^13 / q)^(6·256)`. -/
+theorem blindPointMassBound_mldsa65 [SampleableType Rq]
+    (P : Prims Rq (MLDSA.Bytes 32) WireBytes (Vector Rq mldsa65.k) Tag Addr K mldsa65.k mldsa65.l)
+    (hP2 : ∀ v : Fin mldsa65.k → Rq,
+      P.power2Round v = Vector.ofFn fun j => MLDSA.Concrete.power2RoundHigh (v j))
+    (hpack : ∀ rho, Function.Injective (P.pack rho)) :
+    BlindPointMassBound P (mlDsaAddressPointBeta mldsa65.k) :=
+  blindPointMassBound_mldsa P hP2 hpack
 
 end ConstructionA
 
