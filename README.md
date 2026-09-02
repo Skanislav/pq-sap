@@ -4,6 +4,9 @@ A post-quantum stealth-address scheme for Ethereum, registered as a new
 [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID and working
 against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
 
+Repository: <https://github.com/Skanislav/pq-sap> ·
+Docs site: <https://skanislav.github.io/pq-sap>
+
 - **Detection** — ML-KEM-768 (FIPS 203). The announcement's ephemeral key is a
   KEM ciphertext; the shared secret drives a one-byte view tag and the address
   derivation. This is the part "harvest now, decrypt later" threatens, so it is

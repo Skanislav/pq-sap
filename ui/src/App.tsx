@@ -30,6 +30,8 @@ const DEFAULT_CHAIN: ChainKey = LOCAL_HOSTS.has(window.location.hostname) ? 'anv
 
 /** Project wiki (spec, decisions, proofs), published from `wiki/` by CI. */
 const DOCS_URL = 'https://skanislav.github.io/pq-sap'
+/** Source repository (spec, reference implementations, this UI). */
+const REPO_URL = 'https://github.com/Skanislav/pq-sap'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('recipient')
@@ -54,6 +56,9 @@ export default function App() {
             </a>
             <a href={`${DOCS_URL}/ai-guide`} target="_blank" rel="noreferrer">
               AI guide ↗
+            </a>
+            <a href={REPO_URL} target="_blank" rel="noreferrer">
+              GitHub ↗
             </a>
           </p>
         </div>
@@ -96,6 +101,10 @@ export default function App() {
           ·{' '}
           <a href={DOCS_URL} target="_blank" rel="noreferrer">
             Docs
+          </a>{' '}
+          ·{' '}
+          <a href={REPO_URL} target="_blank" rel="noreferrer">
+            GitHub
           </a>
         </span>
       </footer>
