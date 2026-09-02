@@ -479,3 +479,35 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'MLDSA.widened_ids_hvzk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_ids_hvzk
 
+/-! ## Related-key spend security (`SpendSecurity`, `ConstructionASecurity`) -/
+
+/-- info: 'PqStealth.ownershipValid_subtractOffset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ownershipValid_subtractOffset
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_sum
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_mul
+
+/-- info: 'PqStealth.relatedSpendAdvantageAt_le_spendForgery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantageAt_le_spendForgery
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_mul_spendForgery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_mul_spendForgery
+
+/-- info: 'PqStealth.cInfNorm_sub_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.cInfNorm_sub_le
+
+/-- info: 'PqStealth.mldsaShort_subtractOffset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mldsaShort_subtractOffset
+
+/-- info: 'PqStealth.mldsa_relatedSpendAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mldsa_relatedSpendAdvantage_le
+
+/-- info: 'PqStealth.CmaToNmaLossNN_val' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.CmaToNmaLossNN_val
+
+/-- info: 'PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone
+

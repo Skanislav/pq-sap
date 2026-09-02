@@ -36,6 +36,7 @@ theorem unlinkAdvantage_full_bound
         + 2 * (epsilonPrim + Adv_keyHop + Adv_ctHop + epsilonEnc + Adv_keyRestore).toReal := by
   sorry
 
+omit [SampleableType R] in
 theorem unlinkAdvantageMulti_full_bound
     [SampleableType K] [DecidableEq Tag] [DecidableEq Addr]
     (kem : KEM KEMpk KEMsk C K)
@@ -47,16 +48,18 @@ theorem unlinkAdvantageMulti_full_bound
   (scheme P Smp kem).unlinkAdvantageMulti_le_mul advM q fun i j =>
     hSingle ((scheme P Smp kem).hybridAdv advM i j)
 
+/-- **Related-key spend capstone at ML-DSA.** A malicious sender who knows all
+`q` blinding offsets forges a spend witness for some derived stealth key with
+probability at most `q` times the master key's ownership-forgery advantage at
+the widened bound `b + η` (`SpendSecurity.lean`). -/
 theorem relatedSpendAdvantage_le_mul_capstone
-    [DecidableEq Bytes] (q maxAttempts qS qH : ℕ)
-    (eps pAbort zetaWide delta : ℝ) (hp : pAbort < 1)
-    (hCMA : CmaToNmaAssumption qS qH eps pAbort zetaWide delta hp)
-    (hUnb : UnboundedSigningAssumption qS maxAttempts ⟨pAbort, hCMA.p_nonneg⟩) :
-    relatedSpendAdvantage q maxAttempts ≤
-      (q : ℝ) * ((epsilonBlindExpand + MaskIdealizationAdv + blindedSpendMLWE + blindedSTMSIS).toReal
-        + (CmaToNmaLossNN qS qH eps pAbort zetaWide delta hp).1
-        + (TruncationLossNN qS pAbort maxAttempts).1) :=
-  relatedSpendAdvantage_le_mul q maxAttempts qS qH eps pAbort zetaWide delta hp hCMA hUnb
+    (keyGen : ProbComp (OwnershipKey Rq k l)) (b eta q : ℕ)
+    (offGen : ProbComp (ShortOffset Rq k l (mldsaShort eta)))
+    (adv : RelatedSpendAdv Rq k l (mldsaShort eta) q) {ε : ℝ≥0∞}
+    (hε : ∀ i, spendForgeryAdvantage keyGen (mldsaShort (b + eta))
+      (relatedSpendReduction keyGen offGen q adv (mldsaShort (b + eta)) i) ≤ ε) :
+    relatedSpendAdvantage keyGen offGen (mldsaShort b) q adv ≤ q * ε :=
+  mldsa_relatedSpendAdvantage_le keyGen b eta q offGen adv hε
 
 end ConstructionA
 

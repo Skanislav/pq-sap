@@ -27,8 +27,10 @@ No claim is unconditional unless the statement says so.
 - `Adv_maskIdealization` — distance between deterministic `expandMask` and independent mask draws.
 - `zetaWide` — `widenedHvzkDistance` for the widened ML-DSA identification scheme.
 - `delta` — commitment-regularity failure bound.
-- `CmaToNmaLossNN` — classical-ROM CMA-to-NMA statistical loss.
-- `TruncationLossNN` — loss from capping the signer at `maxAttempts` retries.
+- `Adv_spendForge(b)` — `spendForgeryAdvantage` at shortness bound `b`: forging an ownership witness
+  for the master stealth key (`Ownership.lean`; equal to a matrix-SIS advantage).
+- `CmaToNmaLossNN` — classical-ROM CMA-to-NMA statistical loss (signature layer; defined, not composed).
+- `TruncationLossNN` — loss from capping the signer at `maxAttempts` retries (signature layer).
 - `UnboundedSigningAssumption` — bridge from the production unbounded loop to the capped game.
 
 ---
@@ -116,31 +118,43 @@ This is `ConstructionA.unlinkAdvantageMulti_full_bound`.
 
 ---
 
-## 3. Related-key spend EUF-CMA
+## 3. Related-key spend security
 
-The related-key game `RelatedSpendExp q maxAttempts` (`SpendSecurity.lean`) gives the adversary
-`q` derived public keys, all from one master `(rho, s1, s2)` but with independent shared secrets
-and blinding offsets `(s', e')`.  The adversary wins by forging a signature under any derived key
-for a message it did not query for that key.
+All of a recipient's stealth keys derive from one master ML-DSA key `(A, t = A·s₁ + s₂)`:
+announcement `i` adds a blinding offset `(s'ᵢ, e'ᵢ)` and the derived key is
+`tᵢ = t + A·s'ᵢ + e'ᵢ`. A malicious sender knows the offsets it created. The related-key game
+(`SpendSecurity.lean`, `relatedSpendRun` / `relatedSpendAdvantage`) therefore gives the adversary the
+master public key and all `q` offsets, and it wins by producing a valid spend witness — a short
+`(s, e)` with `A·s + e = tᵢ` — for any derived key `i`. This is the search-witness model of
+`Ownership.lean`; the signature-of-knowledge layer on top of it is the follow-up noted there (§4).
 
-The spend bound is
+The spend bound is proven, sorry-free:
 
 ```
-Adv_relatedSpend_q ≤ q * (epsilonBlindExpand + Adv_maskIdealization + Adv_wideMLWE + Adv_STMSIS
-                         + CmaToNmaLossNN + TruncationLossNN)
+Adv_relatedSpend_q ≤ Σᵢ Adv_relatedSpend_at(i)            (union bound over the targeted key)
+                   ≤ q * max_i Adv_spendForge(b + η)[reductionᵢ]
 ```
 
-where:
+where `reductionᵢ` (`relatedSpendReduction`) samples the offsets itself, runs the adversary, and
+subtracts offset `i` from the returned witness: a `b`-short witness for `tᵢ` minus an `η`-short
+offset is a `(b + η)`-short witness for `t` (`ownershipValid_subtractOffset`,
+`mldsaShort_subtractOffset`). The theorems are `relatedSpendAdvantage_le_sum`,
+`relatedSpendAdvantage_le_mul`, `relatedSpendAdvantageAt_le_spendForgery`,
+`relatedSpendAdvantage_le_mul_spendForgery`, and at `Rq` with the ML-DSA range check
+`mldsa_relatedSpendAdvantage_le`, re-exported as
+`PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone` (`ConstructionASecurity.lean`).
+`Adv_spendForge` is in turn a matrix-SIS advantage (`mldsa_spendForgeryAdvantage_eq_sis_advantage`).
 
-- `epsilonBlindExpand` idealizes the joint `(viewTag, s', e')` derivation.
-- `Adv_maskIdealization` bounds the deterministic `expandMask` sequence against uniform mask draws.
-- `Adv_wideMLWE` is the MLWE advantage for the blinded key distribution.
-- `Adv_STMSIS` is the SelfTargetMSIS advantage for the widened NMA extractor.
-- `CmaToNmaLossNN` is the classical-ROM statistical loss from `FiatShamirWithAbort.cmaToNmaLoss`.
-- `TruncationLossNN = qS * pAbort ^ maxAttempts` is the loss from capping signer retries.
-- `UnboundedSigningAssumption` bridges the production `while True` signer to the capped game.
+Not yet composed — the signature layer. The deployed spend is a Fiat-Shamir-with-aborts signature
+over the ownership relation, and its EUF-CMA reduction to the game above costs
 
-The theorem is `PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone` (`ConstructionASecurity.lean`).
+- `CmaToNmaLossNN` — the classical-ROM statistical loss `FiatShamirWithAbort.cmaToNmaLoss`, as a
+  nonnegative real under `CmaToNmaAssumption` (`CmaToNmaLossNN_val`);
+- `TruncationLossNN = qS * pAbort ^ maxAttempts` — the loss from capping signer retries;
+- `UnboundedSigningAssumption` — the bridge from the production `while True` signer to the capped game.
+
+These are defined in `SpendSecurity.lean` §6 but nothing consumes them: VCVio's `euf_cma_bound` is a
+placeholder at the pin, and the widened-scheme HVZK distance is still the trivial `1`.
 
 ---
 
@@ -171,8 +185,10 @@ none is claimed to follow from the standard model alone.
    (`keyRestorationAdv`, games `game0/game1_keyRestorationAdv`) plus the key-only ROM/PRF
    idealization `keyIdealization`.
 6. `MaskIdealizationAdv` / `widenedHvzkDistance` — mask and transcript idealization for widened signing.
-7. `CmaToNmaAssumption` — non-negativity and validity of the CMA-to-NMA loss parameters.
-8. `UnboundedSigningAssumption` — bridge from unbounded signer retries to the capped game.
+7. `CmaToNmaAssumption` — sign conditions on the CMA-to-NMA loss parameters (signature layer,
+   not yet composed).
+8. `UnboundedSigningAssumption` — bridge from unbounded signer retries to the capped game
+   (signature layer, not yet composed).
 
 ---
 

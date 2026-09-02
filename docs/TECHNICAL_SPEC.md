@@ -291,8 +291,12 @@ named theorems and explicit assumption records in
 - **SPR → MLWE/ANO-CCA** — `SPRTwoHop.lean` gives `sprAdv_le_mlwe`: three named
   seeded-MLWE advantages plus `epsilonPrim` and `epsilonEnc`; ANO-CCA remains a
   separately labelled literature result (Maram–Xagawa ePrint 2022/1696).
-- **Spend extraction** — `SpendSecurity.lean` and `ConstructionASecurity.lean`
-  give the related-key EUF-CMA bound with `CmaToNmaLossNN` and `TruncationLossNN`.
+- **Related-key spend** — `SpendSecurity.lean` and `ConstructionASecurity.lean`
+  prove the related-key spend bound in the search-witness model: a sender who
+  knows all `q` blinding offsets forges a witness for some derived key with
+  probability at most `q` times the master key's ownership-forgery advantage at
+  bound `b + η`. The signature-layer losses `CmaToNmaLossNN` and
+  `TruncationLossNN` are defined but not yet composed.
 - **Construction A/B decision** — D-018 in `DECISIONS.md` locks Construction A for
   the ERC-5564 sender-address flow and documents Construction B as a separate
   account-transfer protocol.
