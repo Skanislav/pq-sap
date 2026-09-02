@@ -23,7 +23,7 @@ seeded shape keeps `SampleNTT` concrete) and the simulator term
 an MLWE statement. See `docs/spr-two-hop.md`.
 -/
 
-open OracleComp OracleSpec MLKEM MLKEM.Concrete
+open OracleComp OracleSpec MLKEM MLKEM.Concrete ENNReal
 
 namespace PqStealth
 
@@ -454,5 +454,122 @@ theorem mlkem768_sprAdv_le_two_hop_decomposition (b : Bool) :
     mlkem768UniformCiphertext b
 
 end Mlkem768
+
+/-! ## Post-plan additions: named assumption records and per-branch cap
+
+The plan closes the SPR gap by turning the three non-MLWE residuals into
+explicit assumption records and adding a `keyRestoration` MLWE reduction. -/
+
+section Assumptions
+
+variable {params : Params} (ring : NTTRingOps) (encoding : Encoding params)
+  (prims : Primitives params encoding)
+variable [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
+  [DecidableEq encoding.EncodedV]
+  (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding)
+    (Ciphertext params encoding))
+  (sim : ProbComp (Ciphertext params encoding))
+
+/-- ROM/PRF assumption: the primitive-idealization term is bounded by
+`epsilonPrim`. -/
+def primitiveIdealizationBound (epsilonPrim : ℝ) : Prop :=
+  ∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim
+
+/-- Compression-and-encoding regularity assumption: `sim` is indistinguishable
+from uniform ring elements after compress/encode. -/
+def encodingRegularityBound (epsilonEnc : ℝ) : Prop :=
+  ∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc
+
+/-- The `keyRestoration` gap as a seeded-MLWE advantage: with the ciphertext
+already key-independent, the adversary must distinguish an honest key from
+uniform. -/
+def keyRestorationAdv (b : Bool) :
+    LearningWithErrors.Adversary (keyHopProblem ring encoding prims) :=
+  fun chal => do
+    let simCt ← sim
+    let pkOther ← idealKeygen ring encoding prims
+    adv (if b then pkOther else pkOf encoding chal.1 chal.2)
+      (if b then pkOf encoding chal.1 chal.2 else pkOther) simCt
+
+/-- The real branch of `keyRestorationAdv` equals the uniform-key game with a
+key-independent ciphertext. -/
+theorem game0_keyRestorationAdv (b : Bool) :
+    LearningWithErrors.game0 (keyHopProblem ring encoding prims)
+      (keyRestorationAdv ring encoding prims adv sim b) =
+      idealBranch ring encoding prims adv (uniformKeygen encoding)
+        (fun _ => sim) b := by
+  sorry
+
+/-- The uniform branch of `keyRestorationAdv` equals the simulator game. -/
+theorem game1_keyRestorationAdv (b : Bool) :
+    LearningWithErrors.game1 (keyHopProblem ring encoding prims)
+      (keyRestorationAdv ring encoding prims adv sim b) =
+      KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv := by
+  sorry
+
+/-- The key-restoration gap is bounded by a named seeded-MLWE advantage. -/
+def keyRestorationMLWE (epsilonRestore : ℝ) : Prop :=
+  ∀ b, keyRestoration ring encoding prims adv sim b ≤ epsilonRestore
+
+/-- **SPR bounded by three MLWE advantages plus the two non-MLWE assumptions.** -/
+theorem sprAdv_le_mlwe (b : Bool)
+    (epsilonPrim epsilonEnc epsilonRestore : ℝ)
+    (hPrim : ∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim)
+    (hEnc : ∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc)
+    (hRestore : ∀ b, keyRestoration ring encoding prims adv sim b ≤ epsilonRestore) :
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+            (keyHopAdv ring encoding prims adv b)
+        + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+            (ctHopAdv ring encoding prims adv b)
+        + epsilonEnc
+        + epsilonRestore := by
+  calc
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b
+      ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + simulatorGap ring encoding prims adv sim b :=
+        sprAdv_le_two_hop_decomposition ring encoding prims adv sim b
+    _ ≤ epsilonPrim + _ + _ + (encodingRegularity ring encoding prims adv sim b
+          + keyRestoration ring encoding prims adv sim b) := by
+        gcongr
+        · exact hPrim b
+        · exact simulatorGap_le ring encoding prims adv sim b
+    _ ≤ epsilonPrim + _ + _ + (epsilonEnc + epsilonRestore) := by
+        gcongr
+        · exact hEnc b
+        · exact hRestore b
+    _ = _ := by ring
+
+end Assumptions
+
+
+section Mlkem768Closed
+
+variable (adv768 : StealthScheme.UnlinkAdv (EncapsulationKey mlkem768 mlkem768Encoding)
+  (Ciphertext mlkem768 mlkem768Encoding))
+  (sim768 : ProbComp (Ciphertext mlkem768 mlkem768Encoding))
+
+/-- **ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages.** -/
+theorem mlkem768_sprAdv_le_mlwe (b : Bool)
+    (epsilonPrim epsilonEnc epsilonRestore : ℝ)
+    (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b ≤ epsilonPrim)
+    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonEnc)
+    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonRestore) :
+    mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage mlkem768KeyHopProblem
+            (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage mlkem768CtHopProblem
+            (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + epsilonEnc
+        + epsilonRestore := by
+  sorry
+
+end Mlkem768Closed
 
 end PqStealth

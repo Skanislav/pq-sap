@@ -18,6 +18,10 @@ import PqStealth.Reorder
 import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
+import PqStealth.WidenedSigning
+import PqStealth.BlindingEntropy
+import PqStealth.SpendSecurity
+import PqStealth.ConstructionASecurity
 
 /-!
 # Build-checked axiom audit
@@ -439,3 +443,5 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb
+
+

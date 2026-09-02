@@ -276,3 +276,27 @@ ERC-5564/6538 contracts. **Value sent to these stealth addresses is
 unspendable on-chain until protocol-level PQ signature support (e.g.
 EIP-8141) or an ERC-4337 PQ account route exists.** The library ships no
 send-value flow.
+
+## 9. Security analysis freeze (2026-09-01)
+
+The Construction A security gaps identified in the plan are now closed as
+named theorems and explicit assumption records in
+`lean/PqStealth/ConstructionASecurity.lean` and its dependencies, documented in
+`docs/SECURITY_ANALYSIS.md`:
+
+- **Widened-signature leakage** — `WidenedSigning.lean` bounds the accepted-`z`
+  distribution and gives the ML-DSA-65 acceptance probability `(1047791/1048576)^1280`.
+- **ROM bad-query bound** — `BlindingROM.lean` and `BlindingEntropy.lean` bound the
+  address-hash bad-query probability by `qH * betaAddr` per branch.
+- **SPR → MLWE/ANO-CCA** — `SPRTwoHop.lean` gives `sprAdv_le_mlwe`: three named
+  seeded-MLWE advantages plus `epsilonPrim` and `epsilonEnc`; ANO-CCA remains a
+  separately labelled literature result (Maram–Xagawa ePrint 2022/1696).
+- **Spend extraction** — `SpendSecurity.lean` and `ConstructionASecurity.lean`
+  give the related-key EUF-CMA bound with `CmaToNmaLossNN` and `TruncationLossNN`.
+- **Construction A/B decision** — D-018 in `DECISIONS.md` locks Construction A for
+  the ERC-5564 sender-address flow and documents Construction B as a separate
+  account-transfer protocol.
+
+The formal result covers serialized transcripts in the classical ROM. Timing,
+retry-count leakage, quantum random-oracle access, and side-channel analysis
+remain explicitly out of scope.

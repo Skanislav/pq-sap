@@ -188,6 +188,8 @@ compute `pack rho …` and cannot invert `expandA`. -/
 
 section MLWE
 
+open ENNReal
+
 variable [SampleableType R] (sampleTag : ProbComp Tag)
 
 /-- Seeded decision-MLWE: given `(rho, y)`, decide whether
@@ -203,6 +205,23 @@ def blindingProblem : LearningWithErrors.Problem Rho (Fin l → R) (Fin k → R)
 section Reduction
 
 variable [SampleableType K]
+
+/-- Quantitative bound on `ExpandIsIdeal`: the total-variation distance between
+the real joint `(viewTag, s', e')` draw and the ideal independent draw is at
+most `epsilonBlindExpand`.  This is the same `epsilonBlindExpand` used in the
+unlinkability capstone and in the related-spend capstone. -/
+def BlindExpandIdealizationBound (epsilonBlindExpand : ℝ≥0∞) : Prop :=
+  ∀ (D : Tag × (Fin l → R) × (Fin k → R) → ProbComp Bool),
+    ProbComp.boolDistAdvantage
+      (do let kk ← ($ᵗ K)
+          let tg := P.viewTag kk
+          let s' := (P.expandBlind kk).1
+          let e' := (P.expandBlind kk).2
+          D (tg, s', e'))
+      (do let tg ← sampleTag
+          let s' ← Smp.sampleS
+          let e' ← Smp.sampleE
+          D (tg, s', e')) ≤ epsilonBlindExpand.toReal
 
 /-- The random-oracle abstraction the reduction needs, named rather than assumed
 silently: for a uniform shared secret, view tag and blinding pair are jointly

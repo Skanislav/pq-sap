@@ -241,6 +241,7 @@ noncomputable def mlweAdvOfBlindAdvRO (P : Prims R Rho Bytes T1 Tag Addr K k l)
       (hashAddrRO (P.pack chal.1 (P.power2Round (chal.2 + t))) >>=
         fun a => adv (tg, a))).run' ∅
 
+
 end ConstructionA
 
 end PqStealth
