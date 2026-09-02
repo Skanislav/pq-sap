@@ -144,6 +144,29 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+        env:
+          WIKI_BASE_PATH: /pq-sap
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: wiki/dist/public
+
+  # publish the wiki to GitHub Pages (https://skanislav.github.io/pq-sap/) on
+  # every push to main; the artifact comes from the wiki job above
+  wiki-pages:
+    name: wiki (GitHub Pages)
+    needs: wiki
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
 
   noir:
     name: noir (ownership circuit, toy params)

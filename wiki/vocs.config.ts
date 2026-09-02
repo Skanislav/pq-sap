@@ -6,6 +6,9 @@ import { generatedSidebar } from './src/sidebar.gen'
 const repo = 'https://github.com/Skanislav/pq-sap'
 
 export default defineConfig({
+  // GitHub Pages serves the project site under /pq-sap (CI sets WIKI_BASE_PATH);
+  // local dev/preview stay at the root.
+  basePath: process.env.WIKI_BASE_PATH || undefined,
   title: 'PQ Stealth Addresses',
   description:
     'Post-quantum stealth addresses as an ERC-5564 scheme extension: spec, decisions, research, Lean proofs and reference implementations.',
