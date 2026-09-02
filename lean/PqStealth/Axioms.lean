@@ -276,6 +276,15 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.game0_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_keyHopProblem
 
+/-- info: 'PqStealth.game0_keyRestorationAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_keyRestorationAdv
+
+/-- info: 'PqStealth.game1_keyRestorationAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_keyRestorationAdv
+
+/-- info: 'PqStealth.keyRestoration_le_mlwe_add_keyIdealization' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.keyRestoration_le_mlwe_add_keyIdealization
+
 /-- info: 'PqStealth.game1_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_keyHopProblem
 

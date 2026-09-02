@@ -480,9 +480,12 @@ from uniform ring elements after compress/encode. -/
 def encodingRegularityBound (epsilonEnc : ℝ) : Prop :=
   ∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc
 
-/-- The `keyRestoration` gap as a seeded-MLWE advantage: with the ciphertext
-already key-independent, the adversary must distinguish an honest key from
-uniform. -/
+/-- **Key-restoration reduction.** With the ciphertext already key-independent
+(`sim`), plant the MLWE challenge as recipient `b`'s key and generate the other
+recipient's key ideally. Its two games are the ideal-key and uniform-key
+branches with a simulated ciphertext (`game0_keyRestorationAdv`,
+`game1_keyRestorationAdv`); the remaining distance to real ML-KEM key
+generation is `keyIdealization`. -/
 def keyRestorationAdv (b : Bool) :
     LearningWithErrors.Adversary (keyHopProblem ring encoding prims) :=
   fun chal => do
@@ -491,23 +494,66 @@ def keyRestorationAdv (b : Bool) :
     adv (if b then pkOther else pkOf encoding chal.1 chal.2)
       (if b then pkOf encoding chal.1 chal.2 else pkOther) simCt
 
-/-- The real branch of `keyRestorationAdv` equals the uniform-key game with a
-key-independent ciphertext. -/
+omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
+  [DecidableEq encoding.EncodedV] in
+/-- **The real branch of `keyRestorationAdv` IS the ideal-key game with a
+key-independent ciphertext.** MLWE game 0 is the real distribution
+`t̂ = Â·ŝ + ê`, which is `idealKeygen`. -/
 theorem game0_keyRestorationAdv (b : Bool) :
     LearningWithErrors.game0 (keyHopProblem ring encoding prims)
       (keyRestorationAdv ring encoding prims adv sim b) =
-      idealBranch ring encoding prims adv (uniformKeygen encoding)
+      idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
         (fun _ => sim) b := by
-  sorry
+  simp only [LearningWithErrors.game0, LearningWithErrors.distr, keyHopProblem,
+    keyRestorationAdv, idealBranch, idealKeygen, bind_assoc, pure_bind]
 
-/-- The uniform branch of `keyRestorationAdv` equals the simulator game. -/
+omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
+  [DecidableEq encoding.EncodedV] in
+/-- **The uniform branch of `keyRestorationAdv` IS the uniform-key game with a
+key-independent ciphertext.** -/
 theorem game1_keyRestorationAdv (b : Bool) :
     LearningWithErrors.game1 (keyHopProblem ring encoding prims)
       (keyRestorationAdv ring encoding prims adv sim b) =
-      KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv := by
-  sorry
+      idealBranch ring encoding prims adv (uniformKeygen encoding)
+        (fun _ => sim) b := by
+  simp only [LearningWithErrors.game1, LearningWithErrors.uniformDistr, keyHopProblem,
+    keyRestorationAdv, idealBranch, uniformKeygen, bind_assoc, pure_bind]
 
-/-- The key-restoration gap is bounded by a named seeded-MLWE advantage. -/
+/-- The key-only idealization residue: ideal `(rho, Â·ŝ + ê)` keys for both
+recipients against real ML-KEM key generation, with the same key-independent
+ciphertext. Like `primitiveIdealization` this is the ROM/PRF step for
+`G`/`PRF_η`, restricted to key generation; it is not a lattice term. -/
+noncomputable def keyIdealization (b : Bool) : ℝ :=
+  (idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
+      (fun _ => sim) b).boolDistAdvantage
+    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv)
+
+/-- **`keyRestoration` is a seeded-MLWE advantage plus `keyIdealization`.**
+The uniform-key game hops to the ideal-key game through `keyRestorationAdv`'s
+MLWE experiment, and from there to real key generation through the
+idealization residue. -/
+theorem keyRestoration_le_mlwe_add_keyIdealization (b : Bool) :
+    keyRestoration ring encoding prims adv sim b ≤
+      LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+        (keyRestorationAdv ring encoding prims adv sim b)
+        + keyIdealization ring encoding prims adv sim b := by
+  rw [keyRestoration, keyIdealization, LearningWithErrors.advantage_eq_boolDistAdvantage,
+    game0_keyRestorationAdv, game1_keyRestorationAdv]
+  set Gu : ProbComp Bool :=
+    idealBranch ring encoding prims adv (uniformKeygen encoding) (fun _ => sim) b
+  set Gi : ProbComp Bool :=
+    idealBranch ring encoding prims adv (idealKeygen ring encoding prims) (fun _ => sim) b
+  set Gr : ProbComp Bool :=
+    KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv
+  calc ProbComp.boolDistAdvantage Gu Gr
+      ≤ ProbComp.boolDistAdvantage Gu Gi + ProbComp.boolDistAdvantage Gi Gr :=
+        ProbComp.boolDistAdvantage_triangle _ _ _
+    _ = ProbComp.boolDistAdvantage Gi Gu + ProbComp.boolDistAdvantage Gi Gr := by
+        rw [ProbComp.boolDistAdvantage_comm Gu Gi]
+
+/-- The named bound on the whole key-restoration gap; by
+`keyRestoration_le_mlwe_add_keyIdealization` it is met by any bound on the
+MLWE advantage of `keyRestorationAdv` plus the key-only idealization term. -/
 def keyRestorationMLWE (epsilonRestore : ℝ) : Prop :=
   ∀ b, keyRestoration ring encoding prims adv sim b ≤ epsilonRestore
 

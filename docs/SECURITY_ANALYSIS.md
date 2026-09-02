@@ -20,7 +20,10 @@ No claim is unconditional unless the statement says so.
   `((2^d : ℝ≥0∞) / MLDSA.modulus) ^ (6 * 256)` when the encoding proof is available.
 - `epsilonPrim` — primitive-idealization loss in the SPR decomposition (ROM/PRF assumption).
 - `epsilonEnc` — encoding-regularity loss in the SPR decomposition.
-- `Adv_keyHop_b`, `Adv_ctHop_b`, `Adv_keyRestore_b` — seeded-MLWE advantages for the three SPR hops.
+- `Adv_keyHop_b`, `Adv_ctHop_b` — seeded-MLWE advantages for the two SPR hops.
+- `Adv_keyRestore_b` — the key-restoration gap; by `keyRestoration_le_mlwe_add_keyIdealization` it is
+  at most the seeded-MLWE advantage of `keyRestorationAdv` plus `keyIdealization` (the ROM/PRF step
+  for key generation alone).
 - `Adv_maskIdealization` — distance between deterministic `expandMask` and independent mask draws.
 - `zetaWide` — `widenedHvzkDistance` for the widened ML-DSA identification scheme.
 - `delta` — commitment-regularity failure bound.
@@ -164,7 +167,9 @@ none is claimed to follow from the standard model alone.
 2. `BlindPointMassBound` — min-entropy of the address point `pack rho (power2Round (u + t))`.
 3. `primitiveIdealizationBound` — ROM/PRF step in the SPR decomposition.
 4. `encodingRegularityBound` — compress-and-encode regularity for uniform ML-KEM ring elements.
-5. `keyRestorationMLWE` — seeded-MLWE advantage for restoring the honest key distribution.
+5. `keyRestorationMLWE` — named bound on the key-restoration gap, i.e. a seeded-MLWE advantage
+   (`keyRestorationAdv`, games `game0/game1_keyRestorationAdv`) plus the key-only ROM/PRF
+   idealization `keyIdealization`.
 6. `MaskIdealizationAdv` / `widenedHvzkDistance` — mask and transcript idealization for widened signing.
 7. `CmaToNmaAssumption` — non-negativity and validity of the CMA-to-NMA loss parameters.
 8. `UnboundedSigningAssumption` — bridge from unbounded signer retries to the capped game.
