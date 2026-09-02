@@ -91,7 +91,12 @@ auxKeyIndependence ≤ epsilonBlindExpand + Adv_blindMLWE + 2 * qH * betaAddr
 ```
 
 where `BlindPointMassBound` captures the min-entropy of `pack rho (power2Round (u + t))` on a uniform
-mask `u`.  The `PqStealth.ConstructionA.blindBadProb_le_queryBound` theorem gives `blindBadProb b ≤ qH * beta` per branch, and `PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound` yields the `2 * qH * beta` term.
+mask `u`.  The ROM part is proven sorry-free: for an adversary making at most `qH` address-oracle
+queries (`IsQueryBoundP … qH`) and a point-mass bound `beta ≠ ⊤`,
+`PqStealth.ConstructionA.probOutput_blindBadQuery_le` / `blindBadProb_le_queryBound` give
+`blindBadProb b ≤ qH * beta` per branch (tracking flag = point cached, at most `qH` cache keys, union
+bound over the keys — `ROMUpToBad` § query budget), and
+`PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound` yields the `2 * qH * beta` term.
 
 The final single-announcement bound is
 

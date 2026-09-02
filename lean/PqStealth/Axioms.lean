@@ -453,6 +453,29 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb
 
+/-! ## The ROM query bound (`ROMUpToBad` query budget, `BlindingEntropy`) -/
+
+/-- info: 'PqStealth.probEvent_bind_le_const' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_bind_le_const
+
+/-- info: 'PqStealth.probEvent_flag_trackingROImpl_pointPolicy_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_flag_trackingROImpl_pointPolicy_le
+
+/-- info: 'PqStealth.roImpl_run_keys_subset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.roImpl_run_keys_subset
+
+/-- info: 'PqStealth.probEvent_isSome_apply_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_isSome_apply_le
+
+/-- info: 'PqStealth.ConstructionA.probOutput_blindBadQuery_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.probOutput_blindBadQuery_le
+
+/-- info: 'PqStealth.ConstructionA.blindBadProb_le_queryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindBadProb_le_queryBound
+
+/-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound
+
 /-! ## Widened ML-DSA signing for blinded keys (`WidenedSigning`) -/
 
 /-- info: 'MLDSA.sampleInBall_smul_widened_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
