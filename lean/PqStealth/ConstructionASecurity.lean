@@ -17,6 +17,11 @@ variable {R : Type} [CommRing R] [SampleableType R]
   (P : Prims R Rho Bytes T1 Tag Addr K k l)
   (Smp : Samplers R Rho k l)
 
+/-- **Single-announcement unlinkability of Construction A, assembled.** The
+scheme-level decomposition `unlinkAdvantage_scheme_le` with each of its four
+terms replaced by its named bound: shared-secret hiding on both branches
+(IND-CPA), the blinding term (`epsilonBlindExpand + Adv_blindMLWE + 2·qH·β`),
+and KEM anonymity (the SPR chain, counted once per branch). -/
 theorem unlinkAdvantage_full_bound
     [SampleableType K] [DecidableEq Tag] [DecidableEq Addr] [SampleableType Addr]
     (kem : KEM KEMpk KEMsk C K)
@@ -34,7 +39,10 @@ theorem unlinkAdvantage_full_bound
       indCpaTrue + indCpaFalse
         + (epsilonBlindExpand + Adv_blindMLWE + (2 * qH : ENNReal) * beta).toReal
         + 2 * (epsilonPrim + Adv_keyHop + Adv_ctHop + epsilonEnc + Adv_keyRestore).toReal := by
-  sorry
+  have h := unlinkAdvantage_scheme_le P Smp kem adv
+  have h0 : 0 ≤ (epsilonPrim + Adv_keyHop + Adv_ctHop + epsilonEnc + Adv_keyRestore).toReal :=
+    ENNReal.toReal_nonneg
+  linarith
 
 omit [SampleableType R] in
 theorem unlinkAdvantageMulti_full_bound

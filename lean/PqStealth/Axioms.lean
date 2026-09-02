@@ -481,6 +481,12 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-! ## Related-key spend security (`SpendSecurity`, `ConstructionASecurity`) -/
 
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantage_full_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantage_full_bound
+
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantageMulti_full_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantageMulti_full_bound
+
 /-- info: 'PqStealth.ownershipValid_subtractOffset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ownershipValid_subtractOffset
 
