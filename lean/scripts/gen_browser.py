@@ -278,7 +278,7 @@ def render_module_page(
 
 def module_summary(module: str, intro, decls: list[dict], axiom_map: dict) -> dict:
     """One row of the landing page: declaration count, sorry status, first sentence."""
-    text = intro if isinstance(intro, str) else "\n".join(intro)
+    text = intro if isinstance(intro, str) else "\n".join(intro or [])
     first_para = text.strip().split("\n\n")[0].replace("\n", " ").strip()
     m = re.match(r"(.+?[.!?])(\s|$)", first_para)
     blurb = m.group(1) if m else first_para
