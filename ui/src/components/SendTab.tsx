@@ -94,7 +94,9 @@ export function SendTab({
         : step === 'announce'
           ? 'Announcing (2/2)…'
           : gate === 'connect'
-            ? 'Connect wallet'
+            ? wallet.mode === 'throwaway'
+              ? 'Generate in-page wallet'
+              : 'Connect wallet'
             : gate === 'switch'
               ? `Switch to ${cfg.label}`
               : 'Send & announce'
@@ -144,7 +146,6 @@ export function SendTab({
     setPendingAnnounce(null)
     if (gate === 'connect') {
       try {
-        wallet.setMode('injected')
         await wallet.connect()
       } catch (e) {
         setError(parseTxError(e))

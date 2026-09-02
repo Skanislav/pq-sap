@@ -1,20 +1,17 @@
 /**
  * EIP-8141 frame-transaction playground on the public frames testnet (chain
- * 81410). The user generates a throwaway wallet, funds it from the faucet, then
- * builds/signs/broadcasts a real type-0x06 transaction with the js-client
- * frame-tx code — the same bytes verified against `rex`.
- *
- * A throwaway in-page key is required because no browser wallet (and no viem tx
- * layer) can sign type 0x06 yet; the key only ever holds faucet funds.
+ * 81410): build/sign/broadcast a real type-0x06 transfer with the js-client
+ * frame-tx code — the same bytes verified against `rex`. Signed by the in-page
+ * frames wallet managed in the header (no browser wallet can sign 0x06 yet).
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { formatEther, type Hex, isAddress, parseEther } from 'viem'
+import { type Hex, isAddress, parseEther } from 'viem'
 
 import { buildEoaTransfer, rpc, sendRawFrameTx } from '../../../js-client/src/frame-tx/actions.ts'
 import type { ChainConfig } from '../lib/chain.ts'
-import { useThrowawayWallet } from '../lib/throwaway.ts'
-import { AddressChip, CopyButton, HexBlob, Note } from './bits.tsx'
+import type { Wallet } from '../lib/useWallet.ts'
+import { HexBlob, Note } from './bits.tsx'
 
 interface Result {
   sigHash: Hex
@@ -26,16 +23,13 @@ interface Result {
   txType?: string
 }
 
-const FAUCET_URL = 'https://faucet.frames.ethrex.xyz/'
-
-export function FramesTab({ cfg }: { cfg: ChainConfig }) {
+export function FramesTab({ cfg, wallet }: { cfg: ChainConfig; wallet: Wallet }) {
   const rpcUrl = cfg.rpcUrl
   const explorerTx = (h: string) => `${cfg.explorer}/tx/${h}`
-  const wallet = useThrowawayWallet()
+  const tw = wallet.throwaway
 
   const [to, setTo] = useState('0x000000000000000000000000000000000000dEaD')
   const [amount, setAmount] = useState('0.001')
-  const [balance, setBalance] = useState<bigint | null>(null)
   const [block, setBlock] = useState<bigint | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,16 +39,10 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
     try {
       const bn = await rpc<Hex>(rpcUrl, 'eth_blockNumber', [])
       setBlock(BigInt(bn))
-      if (wallet.address) {
-        const bal = await rpc<Hex>(rpcUrl, 'eth_getBalance', [wallet.address, 'latest'])
-        setBalance(BigInt(bal))
-      } else {
-        setBalance(null)
-      }
     } catch {
-      /* RPC down / chain reset — keep last values */
+      /* RPC down / chain reset — keep last value */
     }
-  }, [rpcUrl, wallet.address])
+  }, [rpcUrl])
 
   useEffect(() => {
     refresh()
@@ -65,8 +53,8 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
   const send = async () => {
     setError(null)
     setResult(null)
-    if (!wallet.privateKey || !wallet.address) {
-      setError('Generate a wallet first')
+    if (!tw.privateKey || !tw.address) {
+      setError('Generate the in-page wallet first (header).')
       return
     }
     if (!isAddress(to)) {
@@ -77,17 +65,17 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
     try {
       const [nonceHex, gasPriceHex] = await Promise.all([
         // 'pending' so rapid successive sends don't reuse an in-flight nonce.
-        rpc<Hex>(rpcUrl, 'eth_getTransactionCount', [wallet.address, 'pending']),
+        rpc<Hex>(rpcUrl, 'eth_getTransactionCount', [tw.address, 'pending']),
         rpc<Hex>(rpcUrl, 'eth_gasPrice', []),
       ])
       const gasPrice = BigInt(gasPriceHex)
       const { raw, sigHash } = await buildEoaTransfer({
         chainId: BigInt(cfg.chain.id),
         nonce: BigInt(nonceHex),
-        sender: wallet.address,
+        sender: tw.address,
         to: to as Hex,
         value: parseEther(amount),
-        privateKey: wallet.privateKey,
+        privateKey: tw.privateKey,
         maxFeePerGas: gasPrice * 2n + 1_000_000_000n,
         maxPriorityFeePerGas: 1_000_000_000n,
       })
@@ -109,7 +97,6 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
           gasUsed: BigInt(rcpt.gasUsed),
           txType: rcpt.type,
         })
-        refresh()
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -118,7 +105,7 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
     }
   }
 
-  const funded = balance !== null && balance > 0n
+  const funded = wallet.mode === 'throwaway' && wallet.balance !== null && wallet.balance > 0n
 
   return (
     <section>
@@ -136,49 +123,6 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
         <span>block {block === null ? '…' : block.toString()}</span>
       </div>
 
-      <h3>Throwaway wallet</h3>
-      {!wallet.address ? (
-        <div className="panel">
-          <p className="fine" style={{ margin: 0 }}>
-            A random testnet wallet, kept only in this browser — it holds nothing but faucet funds. Browser wallets
-            can't sign type <code>0x06</code>, so the demo signs with this key.
-          </p>
-          <div className="row">
-            <button type="button" onClick={wallet.generate}>
-              Generate wallet
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="panel">
-          <div className="kv">
-            <span className="addr">
-              <AddressChip address={wallet.address} explorer={cfg.explorer} /> <CopyButton text={wallet.address} />
-            </span>
-            <span className={funded ? 'val' : 'val dim'}>{balance === null ? '…' : `${formatEther(balance)} ETH`}</span>
-          </div>
-          {funded ? (
-            <Note kind="ok">Funded — send a frame transaction below.</Note>
-          ) : (
-            <Note kind="warn">
-              Fund this wallet first: copy the address, open the{' '}
-              <a href={FAUCET_URL} target="_blank" rel="noreferrer">
-                frames faucet ↗
-              </a>
-              , paste it and request test ETH. The balance updates here automatically.
-            </Note>
-          )}
-          <div className="row">
-            <button type="button" className="secondary" onClick={wallet.generate}>
-              New wallet
-            </button>
-            <button type="button" className="ghost" onClick={wallet.clear}>
-              Forget
-            </button>
-          </div>
-        </div>
-      )}
-
       <h3>Send</h3>
       <label className="field">
         <span>Recipient</span>
@@ -192,7 +136,7 @@ export function FramesTab({ cfg }: { cfg: ChainConfig }) {
         <button type="button" onClick={() => void send()} disabled={busy || !funded}>
           {busy ? 'Sending frame tx…' : 'Send frame transaction'}
         </button>
-        {!funded && wallet.address && <span className="fine">fund the wallet to enable sending</span>}
+        {!funded && <span className="fine">generate and fund the in-page wallet (header) to enable sending</span>}
       </div>
 
       {error && <Note kind="error">{error}</Note>}

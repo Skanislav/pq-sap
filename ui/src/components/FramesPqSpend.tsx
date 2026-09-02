@@ -24,6 +24,11 @@
  * execution gas at 2^24 (EIP-7825) and deploying PKContract + account costs
  * ~43M here, so the deploy goes in a type-2 tx (uncapped on this network) and
  * the spend is the frame tx.
+ *
+ * Destinations: any address, the sponsor itself ("self"), or a freshly derived
+ * stealth account of the demo recipient — then a third DEFAULT frame emits the
+ * ERC-5564 announcement in the same tx, so the payment is a stealth-to-stealth
+ * transfer the scanner finds again.
  */
 
 import { ml_kem512 } from '@noble/post-quantum/ml-kem.js'
@@ -41,7 +46,7 @@ import { ANNOUNCER_ABI } from '../../../js-client/src/sepolia.ts'
 import { fetchAnnouncements, type OnchainAnnouncement } from '../lib/announcements.ts'
 import { type ChainConfig, publicClientFor, SCHEME_ID } from '../lib/chain.ts'
 import { parseTxError } from '../lib/errors.ts'
-import { broadcastFrameTx, type FrameReceipt, frameFees, pendingNonce, TX_EXEC_GAS_CAP, useNativeBalance } from '../lib/frames.ts'
+import { broadcastFrameTx, type FrameReceipt, frameFees, pendingNonce, TX_EXEC_GAS_CAP } from '../lib/frames.ts'
 import { fromHex, toHex } from '../lib/hex.ts'
 import {
   ACCOUNT_8141_ABI,
@@ -52,10 +57,9 @@ import {
   signSpendable,
   spendableViewTag,
 } from '../lib/spend4337.ts'
-import { useThrowawayWallet } from '../lib/throwaway.ts'
 import { usd } from '../lib/useEthUsd.ts'
+import type { Wallet } from '../lib/useWallet.ts'
 import { AddressChip, Note } from './bits.tsx'
-import { FramesFunder } from './FramesFunder.tsx'
 
 interface Hit {
   ann: OnchainAnnouncement
@@ -66,9 +70,18 @@ interface Hit {
   deployed: boolean
 }
 
+/** A freshly derived stealth account of the demo recipient, announced on spend. */
+interface FreshStealth {
+  account: Address
+  cipherHex: Hex
+  viewTag: Hex
+}
+
 interface SpendOutcome {
   dest: Address
   amount: string
+  /** the destination was a fresh stealth account, announced in the same tx */
+  announced: boolean
   deploy?: { hash: Hex; gasUsed: bigint } | undefined
   receipt: FrameReceipt
   sigHash: Hex
@@ -80,6 +93,8 @@ interface SpendState {
   dest: string
   amount: string
   step?: string | undefined
+  deriving?: boolean | undefined
+  fresh?: FreshStealth | undefined
   error?: string | undefined
   outcome?: SpendOutcome | undefined
 }
@@ -88,6 +103,8 @@ interface SpendState {
 const SPONSOR_VERIFY_GAS = 100_000n
 const SPEND_FRAME_EXEC_GAS = TX_EXEC_GAS_CAP - SPONSOR_VERIFY_GAS - 77_216n // 16.6M
 const SPEND_FRAME_STATE_GAS = 250_000n
+/** the announce frame (stealth-to-stealth spend) is carved out of the spend frame's budget */
+const ANNOUNCE_FRAME_GAS = 200_000n
 const ACCOUNT_DEPLOY_GAS = 50_000_000n // type-2 tx; ~43M used
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -108,9 +125,20 @@ function TxLink({ hash, explorer }: { hash: string; explorer: string | null }) {
   )
 }
 
-export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: DevDeployment; ethUsd: number | null }) {
-  const sponsor = useThrowawayWallet()
-  const sponsorBalance = useNativeBalance(cfg.rpcUrl, sponsor.address)
+export function FramesPqSpend({
+  cfg,
+  dep,
+  ethUsd,
+  wallet,
+}: {
+  cfg: ChainConfig
+  dep: DevDeployment
+  ethUsd: number | null
+  wallet: Wallet
+}) {
+  // the sponsor is the in-page frames wallet managed in the header
+  const sponsor = wallet.throwaway
+  const sponsorBalance = wallet.mode === 'throwaway' ? wallet.balance : null
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [hits, setHits] = useState<Hit[] | null>(null)
@@ -129,23 +157,33 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
   }, [dep])
 
   const requireSponsor = () => {
-    if (!sponsor.address || !sponsor.privateKey) throw new Error('Generate and fund the sponsor (throwaway) wallet first.')
-    if (sponsorBalance === 0n) throw new Error('The sponsor wallet is empty — fund it at the faucet first.')
+    if (!sponsor.address || !sponsor.privateKey) throw new Error('Generate and fund the in-page wallet first (header).')
+    if (sponsorBalance === 0n) throw new Error('The in-page wallet (the sponsor) is empty — fund it at the faucet first.')
     return { address: sponsor.address, privateKey: sponsor.privateKey }
   }
 
   const accountFor = async (pkArgs: Hit['pkArgs']) =>
     publicClientFor(cfg).readContract({ address: dep.factory, abi: FACTORY_ABI, functionName: 'getAccountAddress', args: pkArgs })
 
+  /** Encapsulate to the demo recipient and derive its next counterfactual stealth account. */
+  const freshStealth = async (): Promise<FreshStealth> => {
+    if (!demoKem) throw new Error('Deployment has no demo recipient seeds.')
+    const { cipherText, sharedSecret } = ml_kem512.encapsulate(demoKem.publicKey)
+    const derived = await deriveSpendable(dep.signerService, toHex(sharedSecret) as Hex)
+    const account = await accountFor(decodePublicKeyData(derived.public_key_data))
+    return { account, cipherHex: toHex(cipherText) as Hex, viewTag: derived.view_tag }
+  }
+
+  const announceCall = (f: FreshStealth) =>
+    encodeFunctionData({ abi: ANNOUNCER_ABI, functionName: 'announce', args: [SCHEME_ID, f.account, f.cipherHex, f.viewTag] })
+
   const receive = async () => {
     setError(null)
     setBusy('receive')
     try {
-      if (!demoKem) throw new Error('Deployment has no demo recipient seeds.')
       const sp = requireSponsor()
-      const { cipherText, sharedSecret } = ml_kem512.encapsulate(demoKem.publicKey)
-      const derived = await deriveSpendable(dep.signerService, toHex(sharedSecret) as Hex)
-      const account = await accountFor(decodePublicKeyData(derived.public_key_data))
+      const fresh = await freshStealth()
+      const account = fresh.account
       const value = parseEther(receiveAmount as `${number}`)
       const [nonce, fees] = await Promise.all([pendingNonce(cfg.rpcUrl, sp.address), frameFees(cfg.rpcUrl)])
       const { raw } = await buildAnnounceTransfer({
@@ -155,11 +193,7 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
         stealthAddress: account,
         value,
         announcer: cfg.announcer,
-        announceData: encodeFunctionData({
-          abi: ANNOUNCER_ABI,
-          functionName: 'announce',
-          args: [SCHEME_ID, account, toHex(cipherText) as Hex, derived.view_tag],
-        }),
+        announceData: announceCall(fresh),
         privateKey: sp.privateKey,
         ...fees,
       })
@@ -211,6 +245,19 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
     }
   }
 
+  const fillFresh = async (hit: Hit) => {
+    const key = hit.ann.txHash
+    const patch = (p: Partial<SpendState>) =>
+      setSpendState((s) => ({ ...s, [key]: { ...(s[key] ?? { dest: '', amount: '' }), ...p } }))
+    patch({ deriving: true, error: undefined })
+    try {
+      const fresh = await freshStealth()
+      patch({ deriving: false, fresh, dest: fresh.account })
+    } catch (e) {
+      patch({ deriving: false, error: parseTxError(e) })
+    }
+  }
+
   const spend = async (hit: Hit) => {
     const key = hit.ann.txHash
     const st = spendState[key] ?? { dest: '', amount: '' }
@@ -220,6 +267,8 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
       const sp = requireSponsor()
       const dest = getAddress(st.dest.trim())
       const value = parseEther(st.amount as `${number}`)
+      // stealth-to-stealth: the tx also announces the destination
+      const fresh = st.fresh && st.fresh.account.toLowerCase() === dest.toLowerCase() ? st.fresh : undefined
       if (value > hit.balance)
         throw new Error(
           `The stealth account holds ${formatEther(hit.balance)} ETH. Gas is paid by the sponsor, so that is all it needs to cover.`,
@@ -264,7 +313,7 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
         frames: [
           defaultFrame({
             target: hit.account,
-            executionGas: SPEND_FRAME_EXEC_GAS,
+            executionGas: SPEND_FRAME_EXEC_GAS - (fresh ? ANNOUNCE_FRAME_GAS : 0n),
             stateGas: SPEND_FRAME_STATE_GAS,
             data: encodeFunctionData({
               abi: ACCOUNT_8141_ABI,
@@ -272,6 +321,16 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
               args: [SPONSORED_PQ_SIG_INDEX, dest, value, '0x'],
             }),
           }),
+          ...(fresh
+            ? [
+                defaultFrame({
+                  target: cfg.announcer,
+                  executionGas: ANNOUNCE_FRAME_GAS,
+                  stateGas: SPEND_FRAME_STATE_GAS,
+                  data: announceCall(fresh),
+                }),
+              ]
+            : []),
         ],
         pqSign: async (h) => {
           patch({ step: `Signing sig_hash ${h.slice(0, 10)}… with the blinded ML-DSA key…` })
@@ -291,7 +350,16 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
       }
       patch({
         step: undefined,
-        outcome: { dest, amount: st.amount, deploy, receipt, sigHash, sigBytes, rawBytes: (raw.length - 2) / 2 },
+        outcome: {
+          dest,
+          amount: st.amount,
+          announced: !!fresh,
+          deploy,
+          receipt,
+          sigHash,
+          sigBytes,
+          rawBytes: (raw.length - 2) / 2,
+        },
       })
       await scan()
     } catch (e) {
@@ -320,12 +388,10 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
         . Blinded signing runs in the local Python signer service.
       </p>
 
-      <FramesFunder
-        tw={sponsor}
-        balance={sponsorBalance}
-        explorer={cfg.explorer}
-        role="The sponsor — a throwaway in-page wallet — pays for every frame transaction here"
-      />
+      <p className="fine">
+        The sponsor that pays every frame transaction here is the in-page wallet in the header
+        {sponsor.address ? '' : ' — generate and fund it first'}.
+      </p>
 
       <div className="row">
         <label className="field narrow" style={{ margin: 0 }}>
@@ -371,23 +437,58 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
               </span>
             </div>
             <div className="row" style={{ margin: '6px 0 0' }}>
-              <input
-                placeholder="destination 0x…"
-                value={st.dest}
-                style={{ flex: 2, minWidth: 220 }}
-                onChange={(e) => set({ dest: e.target.value })}
-              />
-              <input
-                placeholder="amount ETH"
-                inputMode="decimal"
-                value={st.amount}
-                style={{ width: 110 }}
-                onChange={(e) => set({ amount: e.target.value })}
-              />
+              <div className="inputwrap" style={{ flex: 2, minWidth: 260 }}>
+                <input
+                  placeholder="destination 0x…"
+                  value={st.dest}
+                  spellCheck={false}
+                  onChange={(e) => set({ dest: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="ghost"
+                  title="send back to the in-page wallet (the sponsor)"
+                  disabled={!sponsor.address}
+                  onClick={() => sponsor.address && set({ dest: sponsor.address })}
+                >
+                  self
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  title="derive a fresh stealth account of the demo recipient; the spend announces it too"
+                  disabled={!!st.deriving || !demoKem}
+                  onClick={() => void fillFresh(h)}
+                >
+                  {st.deriving ? 'deriving…' : 'new stealth'}
+                </button>
+              </div>
+              <div className="inputwrap" style={{ width: 170 }}>
+                <input
+                  placeholder="amount ETH"
+                  inputMode="decimal"
+                  value={st.amount}
+                  onChange={(e) => set({ amount: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="ghost"
+                  title="the whole balance — gas is paid by the sponsor"
+                  onClick={() => set({ amount: formatEther(h.balance) })}
+                >
+                  max
+                </button>
+              </div>
               <button type="button" disabled={!!st.step || !st.dest.trim() || !st.amount} onClick={() => spend(h)}>
                 {st.step ?? 'Spend (sponsored PQ frame tx)'}
               </button>
             </div>
+            {st.fresh && st.fresh.account.toLowerCase() === st.dest.trim().toLowerCase() && (
+              <p className="fine" style={{ margin: '4px 0 0' }}>
+                Fresh stealth account of the demo recipient — the spend tx also emits its announcement (a third frame),
+                so the next scan finds it as a new payment.
+              </p>
+            )}
             {st.error && <Note kind="error">{st.error}</Note>}
             {st.outcome && <Outcome o={st.outcome} explorer={cfg.explorer} />}
           </div>
@@ -398,12 +499,14 @@ export function FramesPqSpend({ cfg, dep, ethUsd }: { cfg: ChainConfig; dep: Dev
 }
 
 function Outcome({ o, explorer }: { o: SpendOutcome; explorer: string | null }) {
-  const [verify, exec] = [o.receipt.frames[0], o.receipt.frames[1]]
+  const [verify, exec, ann] = [o.receipt.frames[0], o.receipt.frames[1], o.receipt.frames[2]]
   return (
     <div className="panel">
       <Note kind="ok">
-        Spent {o.amount} ETH → {o.dest} in frame tx <TxLink hash={o.receipt.hash} explorer={explorer} /> —{' '}
-        {o.receipt.gasUsed.toLocaleString()} gas, all paid by the sponsor.
+        Spent {o.amount} ETH → {o.dest}
+        {o.announced ? ' (a fresh stealth account, announced in the same tx)' : ''} in frame tx{' '}
+        <TxLink hash={o.receipt.hash} explorer={explorer} /> — {o.receipt.gasUsed.toLocaleString()} gas, all paid by
+        the sponsor.
         {o.deploy && (
           <>
             {' '}
@@ -423,6 +526,12 @@ function Outcome({ o, explorer }: { o: SpendOutcome; explorer: string | null }) 
           frame 1 · DEFAULT(account.executeFrame) · ML-DSA verify ·{' '}
           <strong>{exec ? `${exec.status} · ${exec.gasUsed.toLocaleString()} gas` : '—'}</strong>
         </span>
+        {ann && (
+          <span>
+            frame 2 · DEFAULT(announcer.announce) ·{' '}
+            <strong>{`${ann.status} · ${ann.gasUsed.toLocaleString()} gas`}</strong>
+          </span>
+        )}
       </div>
       <div className="kv">
         <span>

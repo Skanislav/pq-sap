@@ -7,7 +7,7 @@
  * The wallet survives reloads and tab switches, and stays in sync across tabs.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { type Address, type Hex } from 'viem'
 import { generatePrivateKey, privateKeyToAddress } from 'viem/accounts'
 
@@ -76,5 +76,5 @@ export function useThrowawayWallet(): ThrowawayWallet {
   }, [])
 
   const address = privateKey ? privateKeyToAddress(privateKey) : null
-  return { address, privateKey, generate, clear }
+  return useMemo(() => ({ address, privateKey, generate, clear }), [address, privateKey, generate, clear])
 }

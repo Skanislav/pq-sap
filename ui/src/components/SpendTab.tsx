@@ -84,11 +84,9 @@ import { fromHex, toHex } from '../lib/hex.ts'
 import { clearClassicalSeeds, loadClassicalSeeds, saveClassicalSeeds } from '../lib/storage.ts'
 import { broadcastFrameTx } from '../lib/frames.ts'
 import { KOHAKU_SEPOLIA } from '../lib/kohaku.ts'
-import { useThrowawayWallet } from '../lib/throwaway.ts'
 import { usd } from '../lib/useEthUsd.ts'
 import type { Wallet } from '../lib/useWallet.ts'
 import { AddressChip, HexBlob, Note } from './bits.tsx'
-import { FramesFunder } from './FramesFunder.tsx'
 import { FramesPqSpend } from './FramesPqSpend.tsx'
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
@@ -109,18 +107,45 @@ function txLink(hash: string, cfg: ChainConfig) {
   )
 }
 
+type Route = 'classical' | 'pq'
+
 export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; ethUsd: number | null }) {
+  const [route, setRoute] = useState<Route>('pq')
   return (
     <section>
       <h2>Spend received payments</h2>
       <p className="lede">
         Two spend routes: the <strong>classical hybrid</strong> spends from a plain EOA with one ECDSA transaction
-        (ecrecover, ~21k gas, quantum-vulnerable ownership); the <strong>PQ route</strong> spends through an ERC-4337
-        account whose ERC-7913 signer verifies the blinded ML-DSA key on-chain (~15M gas).
+        (ecrecover, ~21k gas, quantum-vulnerable ownership); the <strong>PQ route</strong> spends through a smart
+        account that verifies the blinded ML-DSA key on-chain (~15M gas).
       </p>
-      <ClassicalSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
-      <hr className="split" />
-      <PqSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
+      <div className="segmented" role="tablist" aria-label="Spend route">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={route === 'classical'}
+          className={route === 'classical' ? 'active' : ''}
+          onClick={() => setRoute('classical')}
+        >
+          Classical hybrid · EOA
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={route === 'pq'}
+          className={route === 'pq' ? 'active' : ''}
+          onClick={() => setRoute('pq')}
+        >
+          PQ route · ML-DSA account
+        </button>
+      </div>
+      {/* both stay mounted so scan results and keys survive switching */}
+      <div hidden={route !== 'classical'}>
+        <ClassicalSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
+      </div>
+      <div hidden={route !== 'pq'}>
+        <PqSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
+      </div>
     </section>
   )
 }
@@ -145,11 +170,11 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
   const [receiveAmount, setReceiveAmount] = useState('0.25')
   const [dep, setDep] = useState<DevDeployment | null>(null)
   const [compact, setCompact] = useState<{ index: bigint; bytes: Uint8Array } | null>(null)
-  // Frame-transaction (EIP-8141) mode: available only on a frames network, and
-  // signed by a throwaway in-page wallet (browser wallets can't sign 0x06).
-  const throwaway = useThrowawayWallet()
-  const [useFrames, setUseFrames] = useState(false)
-  const [twBalance, setTwBalance] = useState<bigint | null>(null)
+  // Frame-transaction (EIP-8141) mode: on a frames network, receive and spend
+  // as type-0x06 txs signed by the in-page wallet from the header; off, the
+  // same wallet sends ordinary type-2 txs through wallet.clientFor.
+  const throwaway = wallet.throwaway
+  const [useFrames, setUseFrames] = useState(cfg.frames === true)
   const framesMode = cfg.frames === true && useFrames
   const [spendState, setSpendState] = useState<
     Record<
@@ -179,29 +204,6 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
     setCompact(null)
     fetchDeployment(cfg.key).then((d) => setDep(d))
   }, [cfg.key])
-
-  // Poll the throwaway wallet's balance while in frames mode.
-  useEffect(() => {
-    if (!framesMode || !throwaway.address) {
-      setTwBalance(null)
-      return
-    }
-    let live = true
-    const tick = async () => {
-      try {
-        const b = await frameRpc<Hex>(cfg.rpcUrl, 'eth_getBalance', [throwaway.address, 'latest'])
-        if (live) setTwBalance(BigInt(b))
-      } catch {
-        /* ignore */
-      }
-    }
-    tick()
-    const id = setInterval(tick, 4000)
-    return () => {
-      live = false
-      clearInterval(id)
-    }
-  }, [framesMode, throwaway.address, cfg.rpcUrl])
 
   const registerCompact = async () => {
     if (!keys || !dep?.registry) return
@@ -277,7 +279,7 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
         // One atomic 0x06 tx pays the stealth address AND announces it, funded
         // by the throwaway wallet.
         if (!throwaway.privateKey || !throwaway.address)
-          throw new Error('Generate and fund a throwaway wallet first.')
+          throw new Error('Generate and fund the in-page wallet first (header).')
         const [nonceHex, gpHex] = await Promise.all([
           frameRpc<Hex>(cfg.rpcUrl, 'eth_getTransactionCount', [throwaway.address, 'pending']),
           frameRpc<Hex>(cfg.rpcUrl, 'eth_gasPrice', []),
@@ -439,12 +441,12 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
         <>
           <label className="row" style={{ alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input type="checkbox" checked={useFrames} onChange={(e) => setUseFrames(e.target.checked)} />
-            <span>
+            <span style={{ flex: 1, minWidth: 0 }}>
               Use <strong>frame transactions</strong> (EIP-8141) — receive pays and announces in one atomic{' '}
-              <code>0x06</code> tx, and the spend is a <code>0x06</code> tx from the stealth EOA
+              <code>0x06</code> tx, and the spend is a <code>0x06</code> tx from the stealth EOA. Off, the same in-page
+              wallet sends two ordinary type-2 txs.
             </span>
           </label>
-          {framesMode && <FramesFunder tw={throwaway} balance={twBalance} explorer={cfg.explorer} />}
         </>
       )}
       {keys && (
@@ -585,7 +587,7 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
   if (dep === 'loading') return <p className="fine">Loading deployment…</p>
   if (dep && dep.mode === 'zknox-hybrid')
     return <HybridSepoliaSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} dep={dep} />
-  if (dep && dep.mode === 'stealth8141') return <FramesPqSpend cfg={cfg} dep={dep} ethUsd={ethUsd} />
+  if (dep && dep.mode === 'stealth8141') return <FramesPqSpend cfg={cfg} dep={dep} ethUsd={ethUsd} wallet={wallet} />
   if (!dep) {
     return (
       <div>

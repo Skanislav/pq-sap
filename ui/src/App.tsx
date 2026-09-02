@@ -5,6 +5,7 @@ import { RecipientTab } from './components/RecipientTab.tsx'
 import { ScanTab } from './components/ScanTab.tsx'
 import { SendTab } from './components/SendTab.tsx'
 import { SpendTab } from './components/SpendTab.tsx'
+import { WalletBar, WalletNotes } from './components/WalletBar.tsx'
 import { CHAINS, type ChainConfig, type ChainKey } from './lib/chain.ts'
 import { toHex } from './lib/hex.ts'
 import type { RecipientKeys } from './lib/keygen.ts'
@@ -13,13 +14,21 @@ import { useWallet } from './lib/useWallet.ts'
 
 type Tab = 'recipient' | 'send' | 'scan' | 'spend' | 'frames'
 
+const TAB_LABEL: Record<Tab, string> = {
+  recipient: '1 · Recipient',
+  send: '2 · Send',
+  scan: '3 · Scan',
+  spend: '4 · Spend',
+  frames: '5 · Frame tx',
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('recipient')
   const [chainKey, setChainKey] = useState<ChainKey>('anvil')
   const [keys, setKeys] = useState<RecipientKeys | null>(null)
-  const wallet = useWallet()
-  const ethUsd = useEthUsd()
   const cfg: ChainConfig = CHAINS[chainKey]
+  const wallet = useWallet(cfg)
+  const ethUsd = useEthUsd()
 
   return (
     <div className="app">
@@ -28,66 +37,20 @@ export default function App() {
           <h1>PQ Stealth Addresses</h1>
           <p className="tagline">ERC-5564 scheme 2 — ML-KEM-768 discovery + ML-DSA-65 key blinding</p>
         </div>
-        <div className="walletbox">
-          <select value={chainKey} aria-label="Network" onChange={(e) => setChainKey(e.target.value as ChainKey)}>
-            {Object.values(CHAINS).map((c) => (
-              <option key={c.key} value={c.key}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={wallet.mode}
-            aria-label="Signer"
-            onChange={(e) => wallet.setMode(e.target.value as 'dev' | 'injected')}
-          >
-            <option value="dev">anvil dev account</option>
-            <option value="injected" disabled={!wallet.hasInjected}>
-              browser wallet{wallet.hasInjected ? '' : ' (none found)'}
-            </option>
-          </select>
-          {wallet.mode === 'injected' && !wallet.address ? (
-            <button type="button" disabled={wallet.connecting} onClick={() => wallet.connect().catch(() => {})}>
-              {wallet.connecting ? 'Connecting…' : 'Connect wallet'}
-            </button>
-          ) : wallet.address ? (
-            <AddressChip address={wallet.address} explorer={cfg.explorer} />
-          ) : null}
-        </div>
+        <WalletBar cfg={cfg} chainKey={chainKey} setChainKey={setChainKey} wallet={wallet} />
       </header>
 
-      {wallet.mode === 'dev' && chainKey !== 'anvil' && chainKey !== 'frames' && (
-        <Note kind="warn">
-          The anvil dev account only works on the local chain — switch the signer to a browser wallet to use {cfg.label}
-          .
-        </Note>
-      )}
-      {chainKey === 'frames' && (tab === 'send' || tab === 'spend') && (
-        <Note kind="info">
-          The Frames testnet only carries type-0x06 frame transactions, which browser wallets can't sign. On this
-          network the <strong>Spend</strong> tab signs with an in-page throwaway wallet: the PQ route is a sponsored,
-          ML-DSA-authorized frame tx, and the classical route has a "Use frame transactions" toggle. The{' '}
-          <strong>Frame tx</strong> tab is the plain-transfer playground.
-        </Note>
-      )}
+      <WalletNotes cfg={cfg} wallet={wallet} />
 
       <nav className="tabs">
-        {(['recipient', 'send', 'scan', 'spend', 'frames'] as const).map((t) => (
+        {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
           <button type="button" key={t} className={t === tab ? 'tab active' : 'tab'} onClick={() => setTab(t)}>
-            {t === 'recipient'
-              ? '1 · Recipient'
-              : t === 'send'
-                ? '2 · Send'
-                : t === 'scan'
-                  ? '3 · Scan'
-                  : t === 'spend'
-                    ? '4 · Spend'
-                    : '5 · Frame tx'}
+            {TAB_LABEL[t]}
           </button>
         ))}
       </nav>
 
-      {tab === 'frames' && chainKey !== 'frames' && (
+      {tab === 'frames' && !cfg.frames && (
         <Note kind="info">Frame transactions live only on the Frames testnet — switch the Network selector above.</Note>
       )}
 
@@ -98,7 +61,7 @@ export default function App() {
         )}
         {tab === 'scan' && <ScanTab cfg={cfg} keys={keys} ethUsd={ethUsd} />}
         {tab === 'spend' && <SpendTab cfg={cfg} wallet={wallet} ethUsd={ethUsd} />}
-        {tab === 'frames' && <FramesTab cfg={CHAINS.frames} />}
+        {tab === 'frames' && <FramesTab cfg={CHAINS.frames} wallet={wallet} />}
       </main>
 
       <footer>

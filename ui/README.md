@@ -27,6 +27,18 @@ and the `Stealth7913Factory`; seeds payments for all three profiles; and
 starts the blinded-key signer service on :8546. In the browser: network
 **Local anvil**, signer **anvil dev account**.
 
+The signer is a property of the network and is managed only in the header:
+Local anvil offers the dev account or a browser wallet, Sepolia a browser
+wallet, and the Frames testnet an **in-page throwaway key** (browser wallets
+can't sign type-0x06 frame transactions; the key lives in `localStorage` and
+only ever holds faucet ETH). Every tab — Send, both Spend routes, Frame tx —
+signs with that one wallet. The Spend tab switches between the classical and
+PQ routes; on the frames PQ route a payment can be spent to any address, back
+to the in-page wallet (**self**), or to a freshly derived stealth account
+(**new stealth**, announced in the same frame tx), and **max** fills the whole
+balance since the sponsor pays gas.
+
+
 ## Compact 65-byte meta-address (the "ecrecover trick")
 
 The classical scheme's full meta-address is 1,218 B (version ‖ spend_pub ‖

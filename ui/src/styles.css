@@ -105,6 +105,75 @@ h3 {
   align-items: center;
   flex-wrap: wrap;
 }
+.signerkind {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+/* the active signer: address · balance (· New / Forget for the in-page key) */
+.signer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+.signer .val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* segmented switch (spend route) */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 14px;
+}
+/* specificity beats the global filled-button rule (button:not(.ghost)…) */
+div.segmented > button:not(.ghost):not(.secondary) {
+  border: none;
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--muted);
+  padding: 8px 14px;
+}
+div.segmented > button + button {
+  border-left: 1px solid var(--border);
+}
+div.segmented > button.active:not(.ghost) {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* an input with fill-in helpers attached (self / new stealth / max) */
+.inputwrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  padding: 0 4px 0 0;
+  min-width: 0;
+}
+.inputwrap input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  outline: none;
+}
+.inputwrap button.ghost {
+  white-space: nowrap;
+}
 
 .tabs {
   display: flex;
