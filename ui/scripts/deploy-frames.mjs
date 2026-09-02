@@ -78,7 +78,8 @@ const deployment = {
   factory,
   frameCtx,
   registry: null,
-  signerService: `http://127.0.0.1:${SIGNER_PORT}`,
+  // SIGNER_URL: the hosted signer (npm run deploy:signer); local service otherwise
+  signerService: process.env.SIGNER_URL ?? `http://127.0.0.1:${SIGNER_PORT}`,
   demo: DEMO,
   deployedAt: { block: Number(await publicClient.getBlockNumber()), by: account.address },
 }

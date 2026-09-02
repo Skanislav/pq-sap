@@ -43,7 +43,8 @@ export const ACCOUNT_8141_ABI = parseAbi([
 ])
 
 /** Written by ui/scripts/dev-chain.mjs (anvil), deploy-sepolia.mjs, or
- *  deploy-frames.mjs; served from /{dev,sepolia,frames}-deployment.json. */
+ *  deploy-frames.mjs; served from ui/public as {dev,sepolia,frames}-deployment.json,
+ *  resolved relative to the app's base URL (works under an IPFS gateway path). */
 export interface DevDeployment {
   /** which account model the PQ route uses on this chain:
    *  stealth7913 = ERC-4337 + ERC-7913 (local), zknox-hybrid = kohaku (Sepolia),
@@ -63,12 +64,18 @@ export interface DevDeployment {
 }
 
 export async function fetchDeployment(chainKey: 'anvil' | 'sepolia' | 'frames'): Promise<DevDeployment | null> {
-  const file =
-    chainKey === 'anvil' ? '/dev-deployment.json' : chainKey === 'frames' ? '/frames-deployment.json' : '/sepolia-deployment.json'
+  const name =
+    chainKey === 'anvil' ? 'dev-deployment.json' : chainKey === 'frames' ? 'frames-deployment.json' : 'sepolia-deployment.json'
+  const file = new URL(`${import.meta.env.BASE_URL}${name}`, document.baseURI).href
   try {
     const r = await fetch(file, { cache: 'no-store' })
     if (!r.ok) return null
-    return (await r.json()) as DevDeployment
+    const dep = (await r.json()) as DevDeployment
+    // VITE_SIGNER_URL (build-time) overrides the signer baked into the JSON —
+    // e.g. http://127.0.0.1:8546 to use `npm run signer` instead of the hosted one.
+    const override = import.meta.env.VITE_SIGNER_URL as string | undefined
+    if (override) dep.signerService = override.replace(/\/$/, '')
+    return dep
   } catch {
     return null
   }

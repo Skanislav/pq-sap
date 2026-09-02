@@ -7,7 +7,7 @@
   "factory": "0xB965D10739e19a9158e7f713720B0145D996E370",
   "frameCtx": "0x1ADB9959EB142bE128E6dfEcc8D571f07cd66DeE",
   "registry": null,
-  "signerService": "http://127.0.0.1:8546",
+  "signerService": "https://signer-production-030b.up.railway.app",
   "demo": {
     "zeta": "0xd1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
     "kemD": "0xd2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",

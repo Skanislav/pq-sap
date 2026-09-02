@@ -15,6 +15,7 @@ the python venv (`python/.venv` with kyber-py, eth-abi, polyntt — needed
 only for the PQ spend route).
 
 ```sh
+(cd ../js-client && npm install)   # the UI bundles ../js-client/src, which resolves viem/noble from there
 cd ui
 npm install
 npm run chain    # terminal 1: anvil + deployments + seeded payments + signer service
@@ -37,7 +38,6 @@ PQ routes; on the frames PQ route a payment can be spent to any address, back
 to the in-page wallet (**self**), or to a freshly derived stealth account
 (**new stealth**, announced in the same frame tx), and **max** fills the whole
 balance since the sponsor pays gas.
-
 
 ## Compact 65-byte meta-address (the "ecrecover trick")
 
@@ -64,12 +64,14 @@ live (ethereum/kohaku, examples/pq-account) and reused as-is:
 | ZKNOX MLDSA verifier | `0x092c…21ef` | kohaku (deployed) |
 | ZKNOX mldsa_k1 factory | `0xF451…8C2e` | kohaku (deployed) |
 
-`public/sepolia-deployment.json` (checked in) already points at these, so
-the Sepolia PQ spend works with just the signer service:
+`public/sepolia-deployment.json` (checked in) already points at these and at
+the **hosted signer service** on Railway (`signerService`), so the Sepolia PQ
+spend works with no local process — open the UI on Sepolia with a browser
+wallet. To use a local signer instead:
 
 ```sh
-npm run signer   # blinded-key service (localhost; PQ route only)
-# open the UI on Sepolia with a browser wallet
+npm run signer                                   # blinded-key service on 127.0.0.1:8546
+VITE_SIGNER_URL=http://127.0.0.1:8546 npm run dev  # build-time override of signerService
 ```
 
 On Sepolia the PQ route uses the **deployed ZKNOX hybrid account**
@@ -113,6 +115,56 @@ To exercise the gasless path against **real Sepolia + the real Pimlico API**,
 announces, funds the stealth account with the (tiny) spend value, deploys it
 if needed, then submits the sponsored userOp through Pimlico. Stage 1 is
 idempotent and stage 2 is free/retryable, so re-runs cost almost nothing.
+
+## Publishing the UI to IPFS (Pinata)
+
+The production bundle is fully static (relative asset URLs, `base: './'`),
+so it can be pinned as one folder and served from any IPFS gateway:
+
+```sh
+echo 'PINATA_JWT=eyJ…' >> .env       # API-key JWT (app.pinata.cloud → API Keys, pinFileToIPFS scope)
+npm run build
+npm run deploy:ipfs -- --dry-run   # lists the files that would be uploaded
+npm run deploy:ipfs                # uploads dist/ → prints the folder CID + gateway URLs
+```
+
+The script pins `dist/` through Pinata's `pinFileToIPFS` as a CIDv1
+directory named `pq-stealth-ui-<git sha>` (override with `PINATA_NAME`) and
+prints `ipfs://<cid>` (usable as an ENS contenthash), the public gateway
+URLs, and your dedicated gateway URL if `PINATA_GATEWAY` is set. Old pins
+are never removed automatically.
+
+Everything works from the gateway: key generation, meta-addresses, sending,
+scanning, the classical EOA spend, and the Sepolia PQ route with a browser
+wallet — `public/sepolia-deployment.json` ships inside the bundle and points
+the PQ route at the hosted signer (next section). Only the "Local anvil"
+network needs the dev chain running on the same machine.
+
+## Hosting the signer service (Railway)
+
+The PQ route's blinded-key signer (`scripts/signer-service.mjs` + the Python
+helpers, fixed demo identity) runs as a container on Railway, project
+`pq-stealth-signer`, service `signer`. `signer/Dockerfile` fetches
+ETHDILITHIUM's `pythonref` at the vendored commit (it is gitignored here)
+and installs its requirements plus `kyber-py`.
+
+```sh
+railway login && railway link      # once, from ui/ (project pq-stealth-signer)
+npm run deploy:signer              # stages Dockerfile + python/scripts + signer-service.mjs, `railway up`
+npm run deploy:signer -- --stage-only   # only assemble the build context (to docker build it yourself)
+```
+
+The script uploads a small staging directory (`--path-as-root`) rather than
+the 17 GB checkout, then reads the service's public domain and writes it into
+`public/sepolia-deployment.json` and `public/frames-deployment.json` — both
+hosted-chain PQ routes call the same service (`--keep-local` skips that;
+`deploy:frames` honours `SIGNER_URL` when regenerating its file). The container
+binds `SIGNER_HOST=0.0.0.0` on `$PORT`; the same image runs anywhere with
+`docker run -p 8546:8546`. Health check: `GET /` → `{"ok":true}`.
+
+Honest caveat: a hosted signer holds the (demo) blinded secret and signs on
+request — fine for the fixed demo identity, but the real fix is porting
+blinded ML-DSA signing to the browser so no server exists at all.
 
 ## The two spend routes (Spend tab)
 

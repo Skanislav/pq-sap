@@ -22,12 +22,18 @@ const TAB_LABEL: Record<Tab, string> = {
   frames: '5 · Frame tx',
 }
 
+/** Local anvil only when the page itself is served locally: a hosted page
+ *  (IPFS gateway, Pages) polling 127.0.0.1:8545 trips the browser's
+ *  Local Network Access permission prompt before the user has chosen anything. */
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+const DEFAULT_CHAIN: ChainKey = LOCAL_HOSTS.has(window.location.hostname) ? 'anvil' : 'frames'
+
 /** Project wiki (spec, decisions, proofs), published from `wiki/` by CI. */
 const DOCS_URL = 'https://skanislav.github.io/pq-sap'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('recipient')
-  const [chainKey, setChainKey] = useState<ChainKey>('anvil')
+  const [chainKey, setChainKey] = useState<ChainKey>(DEFAULT_CHAIN)
   const [keys, setKeys] = useState<RecipientKeys | null>(null)
   const cfg: ChainConfig = CHAINS[chainKey]
   const wallet = useWallet(cfg)

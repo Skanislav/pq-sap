@@ -121,11 +121,13 @@ export function startSignerService(port = SIGNER_PORT) {
       }
     })
   })
-  server.listen(port, '127.0.0.1')
+  // SIGNER_HOST=0.0.0.0 when containerised (ui/signer/Dockerfile); loopback otherwise.
+  server.listen(port, process.env.SIGNER_HOST ?? '127.0.0.1')
   return server
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  startSignerService()
-  console.log(`signer service on http://127.0.0.1:${SIGNER_PORT} (python: ${PY}) — Ctrl-C stops it`)
+  const port = Number(process.env.PORT ?? SIGNER_PORT)
+  startSignerService(port)
+  console.log(`signer service on http://${process.env.SIGNER_HOST ?? '127.0.0.1'}:${port} (python: ${PY}) — Ctrl-C stops it`)
 }
