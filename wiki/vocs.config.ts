@@ -17,6 +17,7 @@ export default defineConfig({
   markdown: { remarkPlugins: [leanLinks] },
   sidebar: [
     { text: 'Welcome', link: '/' },
+    { text: 'AI guide (llms.txt)', link: '/ai-guide' },
     ...generatedSidebar.map((section) => ({ ...section, items: [...section.items] })),
     {
       text: 'Elsewhere',
@@ -33,6 +34,7 @@ export default defineConfig({
     { text: 'Spec', link: '/spec/erc-draft' },
     { text: 'Decisions', link: '/spec/decisions' },
     { text: 'Proofs', link: '/lean' },
+    { text: 'AI guide', link: '/ai-guide' },
   ],
   socials: [{ icon: 'github', link: repo }],
 })

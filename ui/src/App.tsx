@@ -22,6 +22,9 @@ const TAB_LABEL: Record<Tab, string> = {
   frames: '5 · Frame tx',
 }
 
+/** Project wiki (spec, decisions, proofs), published from `wiki/` by CI. */
+const DOCS_URL = 'https://skanislav.github.io/pq-sap'
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('recipient')
   const [chainKey, setChainKey] = useState<ChainKey>('anvil')
@@ -36,6 +39,17 @@ export default function App() {
         <div>
           <h1>PQ Stealth Addresses</h1>
           <p className="tagline">ERC-5564 scheme 2 — ML-KEM-768 discovery + ML-DSA-65 key blinding</p>
+          <p className="headerlinks">
+            <a href={DOCS_URL} target="_blank" rel="noreferrer">
+              Docs ↗
+            </a>
+            <a href={`${DOCS_URL}/spec/erc-draft`} target="_blank" rel="noreferrer">
+              ERC draft ↗
+            </a>
+            <a href={`${DOCS_URL}/ai-guide`} target="_blank" rel="noreferrer">
+              AI guide ↗
+            </a>
+          </p>
         </div>
         <WalletBar cfg={cfg} chainKey={chainKey} setChainKey={setChainKey} wallet={wallet} />
       </header>
@@ -68,7 +82,16 @@ export default function App() {
         <span>
           Announcer <AddressChip address={cfg.announcer} explorer={cfg.explorer} /> on {cfg.label}
         </span>
-        <span className="fine">Reference UI — keys are demo-grade browser storage. Spec: docs/erc-draft.md</span>
+        <span className="fine">
+          Reference UI — keys are demo-grade browser storage.{' '}
+          <a href={`${DOCS_URL}/spec/erc-draft`} target="_blank" rel="noreferrer">
+            Spec
+          </a>{' '}
+          ·{' '}
+          <a href={DOCS_URL} target="_blank" rel="noreferrer">
+            Docs
+          </a>
+        </span>
       </footer>
     </div>
   )

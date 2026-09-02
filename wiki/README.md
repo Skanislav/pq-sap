@@ -16,8 +16,8 @@ pnpm preview
 
 Two kinds of pages:
 
-- **Hand-written** — `.mdx` files committed under `src/pages/` (today just the
-  landing page, `src/pages/index.mdx`). Add more the same way.
+- **Hand-written** — `.mdx` files committed under `src/pages/` (the landing
+  page `index.mdx` and the AI guide `ai-guide.mdx`). Add more the same way.
 - **Mirrored** — copies of markdown that lives elsewhere in the repo (`plan.md`,
   `docs/**`, `lean/README.md`, `lean/docs/*`, `python/README.md`, ...).
   `scripts/sync.mjs` regenerates them (it runs before `dev` and `build`, or
@@ -36,3 +36,10 @@ To add a mirrored doc, add it to `SECTIONS` in `scripts/sync.mjs` (files in a
 `glob` directory — `docs/research/`, `lean/docs/` — are picked up
 automatically; give them a short label in `titles`). If you add a new
 top-level route directory, list it in `.gitignore`.
+
+## Markdown for language models
+
+Vocs emits the whole site as markdown alongside the HTML: `llms.txt` (index),
+`llms-full.txt` (everything) and `assets/md/<route>.md` (one page). Nothing to
+configure; the AI guide page (`src/pages/ai-guide.mdx`) documents the endpoints
+for readers.

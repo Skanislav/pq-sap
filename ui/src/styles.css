@@ -78,6 +78,21 @@ h1 {
   color: var(--muted);
   font-size: 0.9rem;
 }
+.headerlinks {
+  display: flex;
+  gap: 14px;
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+}
+.headerlinks a,
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.headerlinks a:hover,
+footer a:hover {
+  text-decoration: underline;
+}
 h2 {
   font-size: 1.15rem;
   margin: 4px 0 6px;

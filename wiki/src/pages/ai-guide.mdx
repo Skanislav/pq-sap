@@ -1,0 +1,85 @@
+---
+title: AI guide (llms.txt)
+description: How to point an AI assistant or coding agent at this documentation — llms.txt, llms-full.txt and per-page markdown endpoints.
+---
+
+# Using this documentation with AI assistants
+
+This site follows the [llms.txt](https://llmstxt.org) convention: everything
+that renders here is also published as plain markdown, so a language model can
+read the specification, the decision log and the proof notes without scraping
+HTML. Point your assistant at the URLs below — nothing else is needed.
+
+## Endpoints
+
+| URL | What it is | Use when |
+| --- | --- | --- |
+| [`/llms.txt`](https://skanislav.github.io/pq-sap/llms.txt) | Index: one line per page with its title and a short description | The model should decide what to fetch (small, a few KB) |
+| [`/llms-full.txt`](https://skanislav.github.io/pq-sap/llms-full.txt) | Every page concatenated into one markdown file | You want the whole corpus in context at once (roughly 800 KB, about 200k tokens) |
+| `/assets/md/<route>.md` | The markdown of a single page | You want one page verbatim, e.g. [`/assets/md/spec/erc-draft.md`](https://skanislav.github.io/pq-sap/assets/md/spec/erc-draft.md) |
+
+Every route on this site has a markdown twin: take the page path, prefix it
+with `/assets/md`, and add `.md`. The landing page is `/assets/md/index.md`.
+
+:::tip[Absolute URLs]
+The site lives under `https://skanislav.github.io/pq-sap/`. Links inside
+`llms.txt` are written relative to the site root (`/spec/erc-draft`), so
+prefix them with that base when you follow them, and add `/assets/md` + `.md`
+to get the markdown rather than the HTML.
+:::
+
+## Recipes
+
+**Chat assistants (Claude, ChatGPT, Gemini …)** — paste the `llms-full.txt`
+URL, or the URL of a single page's markdown, into the conversation and ask
+your question. For a focused task the ERC draft plus the technical spec is
+usually enough:
+
+```text
+https://skanislav.github.io/pq-sap/assets/md/spec/erc-draft.md
+https://skanislav.github.io/pq-sap/assets/md/spec/technical-spec.md
+```
+
+**Coding agents (Claude Code, Cursor, Copilot, Codex …)** — give the agent
+the index and let it fetch what it needs:
+
+```text
+Read https://skanislav.github.io/pq-sap/llms.txt and then the pages you need
+to implement scheme 2 (ML-KEM-768 + blinded ML-DSA-65) in <language>.
+Check your output against the v0 test vectors.
+```
+
+Cursor users can register `https://skanislav.github.io/pq-sap/llms-full.txt`
+as a custom docs source (*Settings → Features → Docs*).
+
+**Shell** — fetch the corpus directly:
+
+```bash
+curl -s https://skanislav.github.io/pq-sap/llms.txt
+curl -s https://skanislav.github.io/pq-sap/llms-full.txt > pq-stealth-docs.md
+curl -s https://skanislav.github.io/pq-sap/assets/md/spec/decisions.md
+```
+
+## What to read for which task
+
+| Task | Pages |
+| --- | --- |
+| Implement the scheme | [ERC draft](/spec/erc-draft), [Technical spec](/spec/technical-spec) |
+| Understand a design choice | [Decisions & findings](/spec/decisions) |
+| Verify an implementation | [Python executable spec](/impl/python) and the [v0 test vectors](https://github.com/Skanislav/pq-sap/tree/main/python/vectors/v0) (JSON, with negative cases) |
+| Reason about security | [Lean 4 / VCVio proofs](/lean) and the per-module [proof browser](/lean/proofs/) |
+| See what is still open | [ERC submission gap analysis](/research/erc-submission-gap-analysis) |
+
+## Ground truth
+
+Most pages here are mirrored from markdown that lives next to the code in the
+[GitHub repository](https://github.com/Skanislav/pq-sap) (`docs/`, `lean/docs/`,
+the per-implementation `README.md` files), and each mirrored page names its
+source in a banner at the top. If an assistant needs the latest state, or the
+test vectors and code themselves, the repository is the source of truth; the
+site is rebuilt from `main` on every push.
+
+Things the markdown cannot convey: the Lean proofs are only as good as their
+axioms (listed on the [proofs overview](/lean)), and the specification is a
+working draft that has not been through ERC review yet. Ask the assistant to
+say which page a claim comes from so you can check it.
