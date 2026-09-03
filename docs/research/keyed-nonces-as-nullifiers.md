@@ -227,11 +227,19 @@ encapsulated it. Meanwhile `nonce_keys` are public payload fields, exposed in-pr
 payer a permanent, publicly checkable oracle: *has my payment been spent yet, and in which
 transaction*.
 
-Under today's design that leak is partly masked — the payer already knows the stealth
-address and can watch it. Under the §4 shared sponsor it is strictly worse than the status
-quo: the whole point of the shared sender is to remove the per-payment link from the
-transaction, and an `ss`-derived key re-attaches it, keyed to the one party we most want
-excluded.
+**How much this costs depends on the variant, and it is worth being exact.** In today's
+construction-A shape the payer already has a spend oracle: they know the stealth address,
+value visibly leaves it, and that stays true under the §4 shared sponsor — mixing the
+`sender` field does not hide the value edge. So an `ss`-derived key gives the payer no
+*information* they could not already get; it only makes the lookup cheaper (a storage read
+keyed to the sponsor, rather than watching an address) and permanent.
+
+It becomes decisive the moment the nonce key is the **only** public per-payment tag —
+which is exactly the direction §5 points at, and exactly what a gas-bank-style draw would
+be. In a pooled or ZK-spend variant the value edge is gone by construction, and an
+`ss`-derived key would put the payer's link straight back, keyed to the one party we most
+want excluded. The rule below costs nothing to follow, so it should be adopted
+unconditionally rather than when the variant that needs it arrives.
 
 **Rule.** The nonce key MUST be derived from a value the sender cannot compute, bound to
 public per-payment data so keys never collide across payments:
