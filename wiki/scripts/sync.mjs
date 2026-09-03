@@ -42,6 +42,7 @@ const SECTIONS = [
     titles: {
       'erc-submission-gap-analysis.md': 'ERC submission gap analysis',
       'hash-based-key-exchange.md': 'Hash-based key exchange vs ML-KEM',
+      'keyed-nonces-as-nullifiers.md': 'Keyed nonces as nullifiers (EIP-8250/8266)',
       'hash-migration-blake2-binius.md': 'Hash policy after Poseidon',
       'poseidon2-stark-discovery.md': 'Poseidon2 + STARK discovery layer',
     },
