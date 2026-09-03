@@ -690,8 +690,14 @@ prize unchanged (meta-address 5,633 B → 1,217 B; KEM decoupled from spend).
 payload fields (`TXPARAM 0x0F`/`0x10`) and consumed slots are permanent public
 state. In a stealth scheme the *sender* computes `ss`, so `k = H(ss)` hands every
 payer a permanent, publicly checkable "has my payment been spent, and where"
-oracle — and under a shared sponsor that re-attaches the very link the shared
-sender exists to remove. Required derivation:
+oracle. Scoped honestly: in today's construction-A shape this is *cheaper*
+lookup, not new information — the payer knows the stealth address and watches
+value leave it, and a shared sponsor mixes the `sender` field without hiding
+that value edge. It becomes decisive where the nonce key is the **only** public
+per-payment tag: the pooled/ZK-spend variant, or any separate entitlement draw
+(a gas-bank draw is exactly this shape). The rule is free, so adopt it
+unconditionally rather than when the variant that needs it arrives. Required
+derivation:
 
 ```
 k = SHAKE256("PQSAP-nonce-key-v1" ‖ K_null ‖ ct)  truncated to 256 bits, k != 0
