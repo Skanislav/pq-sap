@@ -2,3 +2,4 @@
 solady/=lib/ETHDILITHIUM/lib/solady/src/
 ethdilithium/=lib/ETHDILITHIUM/src/
 account-abstraction/=lib/ETHDILITHIUM/lib/account-abstraction/contracts/
+forge-std/=lib/ETHDILITHIUM/lib/forge-std/src/

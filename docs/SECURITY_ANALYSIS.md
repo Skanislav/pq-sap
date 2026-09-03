@@ -167,7 +167,7 @@ placeholder at the pin, and the widened-scheme HVZK distance is still the trivia
 
 ## 4. Construction A / B decision
 
-**D-018 — Construction A retained; Construction B rejected for the ERC-5564 sender-address flow — LOCKED.**
+**D-021 — Construction A retained; Construction B rejected for the ERC-5564 sender-address flow — LOCKED.**
 
 Construction A is normative because the sender computes the destination address from the recipient's
 meta-address and the shared secret.  Construction B would require the recipient to participate in

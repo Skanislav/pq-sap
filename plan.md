@@ -92,7 +92,7 @@ Because the shared secret S itself, not its hash, derives the address here, view
 
 ML-KEM-768 by default, and the spec stays parameter-agile across the 512/768/1024 sets. `VIEW_TAG_BYTES = 1`. One caveat that came out of building the spend path: on-chain you're stuck with whatever verifier is actually deployed, which today means a level-2 Dilithium2 profile, not our level-3 default.
 
-(1) Construction A vs. B — CLOSED by D-018: Construction A is locked for the ERC-5564 sender-address flow; Construction B is documented as a separate account-transfer protocol. (2) target signature scheme for derived keys: ML-DSA family by default, since it matches the deployed verifiers, with SLH-DSA documented as the alternative if we end up on B. (3) which parameter level, given the deployed-verifier reality above. (4) announcement encoding.
+(1) Construction A vs. B — CLOSED by D-021: Construction A is locked for the ERC-5564 sender-address flow; Construction B is documented as a separate account-transfer protocol. (2) target signature scheme for derived keys: ML-DSA family by default, since it matches the deployed verifiers, with SLH-DSA documented as the alternative if we end up on B. (3) which parameter level, given the deployed-verifier reality above. (4) announcement encoding.
 
 ## Roadmap
 
