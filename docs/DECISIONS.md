@@ -777,3 +777,105 @@ scheme's ML-DSA-65 default. (3) Recording the in-flight CRQC race on the
 crafted ECDSA key (mitigation: private inclusion or an atomic
 `EXTCODEHASH` check frame if 8164 folds into 8141) and the "all 8164 accounts"
 anonymity set in the ERC draft.
+
+## D-023 — SPHINCS- C13 verification proven in-circuit; ZK-authorized, key-hiding spend over one frame transaction on the frames testnet — **FINDING / spike (2026-09-03)**
+
+Decision context (user): prove the post-quantum check inside a ZK circuit and
+spend with the proof; SPHINCS- C13 as the statement; pairing-based backend now
+with a designed swap to a hash-based one later; measure on the frames testnet.
+Full write-up: `docs/research/zk-sphincs-frames.md`. Artifacts:
+`noir/sphincs-c13-verify/`, `js-client/contracts/src/frames/{Stealth8141ZkAccount,
+Stealth8141ZkFactory}.sol`, `frames/zk/SphincsC13HonkVerifier.sol`,
+`contracts/test/ZkAccount.t.sol`, `ui/scripts/{deploy-frames-zk.mjs,e2e-frames-zk.ts}`.
+
+**What was built.** A Noir port of the Verity-refined `SPHINCs-C13Asm.sol` (335
+keccak calls; WOTS+C chains flattened to 93 hint-driven steps per layer with the
+digit-sum and per-chain step-count asserted), public inputs `(message,
+commitment)` as 128-bit halves, everything else private — so the D-018 commit
+form's spend-time linkability disappears: no key on chain, ever. An account
+variant whose `executeFrame` verifies the proof carried as the ARBITRARY
+signature over TXPARAM(0x08), with the verifier as a rotatable pointer swapped
+only by the account itself through an authorized spend. A CREATE2 factory keyed
+by the commitment.
+
+**Measured.** keccak ≈ 14.5 k UltraHonk gates per call; circuit 6,382,753 gates
+(2^23); proving 8.4 GB peak, ~4 min wall on a laptop including the one-time
+512 MB CRS fetch; proof 11,456 B (ZK flavour), 4 public inputs; bb Solidity
+verifier 26,318 B runtime plus a 6,577 B external `ZKTranscriptLib`;
+`executeFrame` with proof verification **3,526,632 gas** in forge. The **frames
+testnet accepted the 26.3 kB verifier**, so it does not enforce EIP-170's
+24,576 B (mainnet would need EIP-7907). Live: verifier
+`0xF01ecC1dF1868C3B15f0edC4768812b9c435BBfb`, factory
+`0x303CB317624c74bB20Acbb9E13c8D745C6379826` (`ui/public/frames-zk-deployment.json`).
+**Verified live end to end** (`npm run e2e:frames-zk`): receive+announce
+`0xe1df05ee…b6cdb` (295,489), scan match, C13 sign 3.3 s, prove 50.4 s (10.9 GB),
+spend `0x0fef8acd…2bc1e` status 1 — one frame transaction carrying the in-frame
+account deploy (37,001 exec gas) and the proof-verified transfer (4,174,008),
+9,249,124 total; the first attempt with a 4 M frame died at 63/64 (out of gas
+inside the verifier), so live cost exceeds forge's 3.53 M by ~18 %.
+
+**Findings.** (1) For SPHINCS- the proof buys *unlinkability*, not cost: ≈ 3.5 M
+per spend against 188 k for the direct verify; against ML-DSA's 13.7 M it is
+4× cheaper but that comparison is between different statements. (2) UltraHonk
+on BN254/KZG is not quantum-sound: a Honk-authorized account is as exposed at
+rest as an ECDSA one, and the swap must precede a CRQC — an attacker who can
+forge proofs can also authorize the swap. (3) Wrapping a hash-based proof in a
+pairing-based EVM proof inherits the wrapper's soundness; the on-chain verifier
+is the trust root, so "migrate to any STARK backend" means an EVM STARK
+verifier (1–5 M+ gas with standard hashes, and it must fit the code-size
+limit), not a recursion trick. (4) Flock (Succinct; R1CS over GF(2), Ligerito
+PCS, SHA-256/BLAKE3 batched hashing, Rust API, no keccak encoder, no EVM
+verifier, research stage) has the right shape for the hash-based target but is
+not pluggable today. (5) Prover cost is laptop-class (2^23, 8 GB); browser
+proving needs the no-ZK flavour or recursion.
+
+**Status.** Spike; not a route decision. The direct C13 verify (D-018) stays the
+reference hash-based spend; this becomes the named answer to D-018's
+linkability item, gated on a hash-based EVM verifier.
+
+## D-024 — The scheme is key exchange: commitment meta-address (format 0x02, 1,217 B) adopted; Construction A becomes one address form; spending is delegated to the account model — **LOCKED (2026-09-04)**
+
+Decision (user, 2026-09-04): the ERC's subject is the post-quantum key
+exchange and address derivation, not signatures. "In the original proposal I
+didn't want to focus on the signatures much and make the main area to be
+about key-exchange." The spend-side measurements of D-022/D-023 (ML-DSA
+13.7 M, proof-verified SPHINCS- 4.2 M, both needing a sponsor) and the
+protocol's own direction (EIP-8288 aggregation at 3–30 k per dependency,
+EIP-8164 native keys) settle that spending is the protocol's problem and will
+be solved there. The ERC draft (`docs/erc-draft.md`) is emptied and from now on
+**human-written only**; agents must not generate or restore it.
+
+**What is adopted.** The commitment meta-address D-012 sketched, now
+implemented and vectored (`python/pq_stealth/commit.py`,
+`js-client/src/commit-scheme.ts`, `python/vectors/v0/commit_vectors.json`,
+13 + 6 tests, CI):
+
+```
+meta-address = 0x02 || spend_key(32) || ML-KEM-768 ek(1184)     = 1,217 B
+opener       = SHA-256("pq-stealth/sphincs-c13/open/v0" || ss)
+commitment   = keccak256("pq-stealth/sphincs-c13/commit/v0" || spend_key || opener)
+address      = CREATE2(factory, 0, initcode(commitment, verifier, frameCtx))
+```
+
+`spend_key` is a 32-byte commitment to the spending public key — the key itself
+for SPHINCS- C13 (D-018), a hash of it for anything larger. The sender needs
+only the shared secret and a deployment binding (factory, creation code,
+constructor args); the scanner needs the viewing key. The derivation is
+byte-identical to the deployed C13 commit signer and the D-023 ZK circuit
+(checked against the fixture), so the live `Stealth8141ZkFactory` accepts it
+unchanged, and the Lean roundtrip `meta_address_zk_roundtrips_1217`
+(`Invariants.lean`) already covers the encoding.
+
+**What changes.** The meta-address shrinks 5,633 → 1,217 B (4.6×): the
+full-precision `t` existed only for Construction A's key homomorphism, which a
+commitment-bound account does not need. D-011's registration finding
+(3.79 M gas naive, ~61× EC) shrinks with it. Construction A (format 0x01)
+stays as an address form for accounts that want a per-address standard ML-DSA
+key, not as the mechanism; its security freeze (D-021, Lean) is unaffected.
+Nothing about the spending scheme leaks at receive time; what a spend reveals
+is the account model's choice (revealed C13 key, ZK proof, native key,
+aggregated dependency).
+
+**Not decided here.** The domain strings still carry the C13 name (a rename
+once a second spend scheme exists); whether format 0x02 becomes the *only*
+normative meta-address for the scheme ID is for the hand-written draft.
