@@ -259,7 +259,7 @@ modules to 18 content modules plus the root and `Axioms.lean`. The full
 freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
 `MultiUnlink`, `MultiRecipient`, `KEMAnonymity`, `ConstructionA`,
 
-**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-018 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/SECURITY_ANALYSIS.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
+**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-021 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/SECURITY_ANALYSIS.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
 
 **Update (2026-09-02).** All of those obligations are discharged; `lean/PqStealth/` is sorry-free
 again and every new theorem is guarded. Along the way several of the frozen statements turned out
@@ -702,7 +702,7 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
   SPHINCS- key through the D-012 ZK ownership proof instead of an opened
   commitment; meta-address variant carrying the 32-B C13 key.
 
-## D-018 — Construction A retained for the ERC-5564 sender-address flow; Construction B documented as a separate account-transfer design — **LOCKED (2026-09-01)**
+## D-021 — Construction A retained for the ERC-5564 sender-address flow; Construction B documented as a separate account-transfer design — **LOCKED (2026-09-01)**
 
 Construction A is the only implemented branch in which the **sender** computes the
 destination address from the recipient's meta-address and the shared secret.  It
@@ -720,3 +720,60 @@ bridge), not on any unconditional theorem.
 
 D-008's custom ZK ownership authorization remains experimental and is not used
 as evidence for Construction A's spend theorem.
+
+## D-022 — ML-DSA spend cost: deployless code passing rejected, verify profiled, pre-frame deploy is designator-only, EIP-8164 native keys tracked as the target address form — **FINDING / tracked target (2026-09-02)**
+
+Full analysis: `docs/research/prefix-deploy-native-keys.md`. Companion code:
+`python/pq_stealth/native_key.py`, `js-client/src/native-key.ts`,
+`python/vectors/v0/native_key.json`; `js-client/contracts/src/ntt/` with
+`contracts/test/{NttPrecompute,DilithiumProfile}.t.sol`.
+
+**Rejected: the deployless `eth_call` trick for verification.** Passing the
+verifier bytecode along with the call is a simulation feature (`eth_call`
+creation semantics, state overrides); on chain it can only skip code deposit.
+EIP-8141 has no CREATE frame and no access list, wipes transient storage
+between frames, and caps the *sum* of frame execution gas (EIP-7825, 2^24), so
+neither carrying code nor splitting the verify across frames or transactions
+changes the per-spend cost. Cross-transaction splitting would persist ≈ 3 KB of
+intermediates (≈ 2 M state gas) to save less than that in compute.
+
+**Measured (corrects D-014 / TECHNICAL_SPEC §7).** The df999ed ERC-7913 verify
+on the blinded level-2 fixture is 14,911,249 gas and breaks down as: signature
+slicing 0.59 M, core1 1.39 M, SampleInBall (SHAKE256) 0.94 M, NTT(c) 0.26 M,
+key-dependent `NTT(t1·2^d)` 1.41 M, core2 (matrix product, 8 NTTs, hints, w1)
+5.69 M, final SHAKE256 4.05 M. The earlier claim that the per-verify NTT alone
+explains the 1.8× over 8.18 M was an inference and is wrong: precomputing it at
+key setup (`PKContractNtt` + `ZKNOX_dilithium_ntt`) yields 13,678,091 (−8 %),
+at 7,310,211 for the one-time key contract instead of 5,145,320. SHAKE256 in
+the EVM is the largest single cost (≈ 5.0 M, 34 %); it is the whole gap to the
+keccak-XOF `ZKNOX_ethdilithium` (4.9 M), which is not ML-DSA. The 8.18 M
+figure came from an earlier upstream revision and does not reproduce at df999ed.
+
+**Pre-frame deploy (EIP-8141 validation prefix).** Only a delegation designator
+fits: `SETDELEGATE` (EIP-7819, Draft) + one `SSTORE` (≈ 30 k exec, ≪ 500 k
+state), giving an EIP-7819 counterfactual address. Full account code does not
+(our SPHINCS- in-frame deploy needs ≈ 5.7 M state gas vs `MAX_VERIFY_STATE_GAS
+= 500 k`), and `self_verify` never fits `MAX_VERIFY_GAS = 100 k`, so the prefix
+stays `[deploy, sponsor VERIFY]` with the PQ verify post-prefix (D-020 pattern).
+
+**Tracked target: EIP-8164 native keys + pointer signatures.** EIP-8164 (Draft,
+no client code) makes an account's code `0xef0101 ‖ ML-DSA-44 pk`, validated by
+the client at 50 k intrinsic gas with ECDSA permanently rejected, installable by
+any party from a `native_key_authorization_list` tuple, and it specifies a
+crafted rootless authorization. For this scheme that yields a second address
+form: **stealth address = ecrecover of the crafted tuple over the blinded
+ML-DSA-44 stealth pk**, no factory or initcode, sender-computable; the sender's
+payment carries the tuple so funds and PQ key land atomically; the recipient
+spends with a plain native-key transaction — no sponsor, no `PKContract`, no
+EVM verifier. The Circle ecrecover-pointer proposal (ethresear.ch 25844) is the
+complementary contract-side half; it does not move value at a bare address.
+Implemented now: the address derivation with cross-checked vectors, pinning the
+encoding choices the draft leaves open (chain_id as 32-byte big-endian inside
+`r_seed`, `y_parity = 0`, `s = 1`, `r < n`).
+
+**Open (user decisions).** (1) Whether client-validated native schemes pass the
+"no precompiles" bar. (2) ML-DSA-44 as the native-key parameter set versus the
+scheme's ML-DSA-65 default. (3) Recording the in-flight CRQC race on the
+crafted ECDSA key (mitigation: private inclusion or an atomic
+`EXTCODEHASH` check frame if 8164 folds into 8141) and the "all 8164 accounts"
+anonymity set in the ERC draft.
