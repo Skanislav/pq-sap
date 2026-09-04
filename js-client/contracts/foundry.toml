@@ -24,4 +24,5 @@ fs_permissions = [
   { access = "read", path = "../../python/scripts" },
   # ZkAccount.t.sol reads the UltraHonk proof of the C13 circuit
   { access = "read", path = "../../noir/sphincs-c13-verify/out" },
+  { access = "read", path = "../../noir/preimage-ownership/out" },
 ]

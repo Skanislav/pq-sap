@@ -82,6 +82,10 @@ commitment (a *deployment binding*, not part of the meta-address). This is
 the key-exchange-only form: no lattice material, no per-address key
 derivation, nothing about the spend scheme at receive time. Vectors:
 `vectors/v0/commit_vectors.json`; Lean: `meta_address_zk_roundtrips_1217`.
+Two spend-scheme domain sets exist: `pq-stealth/sphincs-c13/*` (the C13 key
+is the `spend_key`; D-018/D-023) and `pq-stealth/preimage/*` (`spend_key =
+keccak256("pq-stealth/preimage/key/v0" ‖ sk)`, spending proves knowledge of
+`sk`; D-025, the demo's client-side proof).
 
 **Announcement**: ERC-5564 `Announcement` event fields with
 `ephemeralPubKey = R` (1,088 B ML-KEM ciphertext) and

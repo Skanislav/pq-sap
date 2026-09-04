@@ -72,8 +72,44 @@ export function decodeCommitMetaAddress(bytes: Uint8Array): CommitMetaAddress {
   return { spendKey: toHex(bytes.slice(1, 33)), kemEk: bytes.slice(33) };
 }
 
-export const deriveOpener = (ss: Uint8Array): Hex => sphincsC13Opener(ss);
-export const deriveCommitment = (spendKey: Hex, opener: Hex): Hex => sphincsC13Commitment(spendKey, opener);
+/** Domain separation of the opener/commitment derivation; one set per spend scheme. */
+export interface CommitDomains {
+  open: string;
+  commit: string;
+}
+/** The deployed SPHINCS- C13 commit signer / C13 ZK circuit (D-018, D-023). */
+export const SPHINCS_C13_DOMAINS: CommitDomains = { open: 'pq-stealth/sphincs-c13/open/v0', commit: 'pq-stealth/sphincs-c13/commit/v0' };
+/** Preimage-ownership spend (D-025, noir/preimage-ownership): spend_key = keccak(KEY || sk). */
+export const PREIMAGE_DOMAINS: CommitDomains = { open: 'pq-stealth/preimage/open/v0', commit: 'pq-stealth/preimage/commit/v0' };
+export const PREIMAGE_KEY_DOMAIN = 'pq-stealth/preimage/key/v0';
+
+function utf8(s: string): Uint8Array {
+  return new TextEncoder().encode(s);
+}
+
+export function deriveOpener(ss: Uint8Array, domains: CommitDomains = SPHINCS_C13_DOMAINS): Hex {
+  if (domains === SPHINCS_C13_DOMAINS) return sphincsC13Opener(ss);
+  const dom = utf8(domains.open);
+  const buf = new Uint8Array(dom.length + ss.length);
+  buf.set(dom, 0);
+  buf.set(ss, dom.length);
+  return toHex(sha256(buf));
+}
+
+export function deriveCommitment(spendKey: Hex, opener: Hex, domains: CommitDomains = SPHINCS_C13_DOMAINS): Hex {
+  if (domains === SPHINCS_C13_DOMAINS) return sphincsC13Commitment(spendKey, opener);
+  return keccak256(concatHex([toHex(utf8(domains.commit)), spendKey, opener]));
+}
+
+/** spend_key = keccak256(KEY_DOMAIN || sk): the 32-byte value the meta-address carries. */
+export function spendKeyFromSecret(sk: Uint8Array): Hex {
+  if (sk.length !== 32) throw new Error('spending secret must be 32 bytes');
+  const dom = utf8(PREIMAGE_KEY_DOMAIN);
+  const buf = new Uint8Array(dom.length + 32);
+  buf.set(dom, 0);
+  buf.set(sk, dom.length);
+  return keccak256(buf);
+}
 
 export function computeViewTag(ss: Uint8Array): Uint8Array {
   return sha256(ss).slice(0, VIEW_TAG_BYTES);
@@ -90,9 +126,10 @@ export function accountAddress(commitment: Hex, dep: Deployment): Address {
 /** Sender: encapsulate (or reuse given randomness via `encapsulate`), derive the account. */
 export function sendCommit(
   meta: CommitMetaAddress, dep: Deployment, encaps?: { cipherText: Uint8Array; sharedSecret: Uint8Array },
+  domains: CommitDomains = SPHINCS_C13_DOMAINS,
 ): { announcement: CommitAnnouncementData; commitment: Hex; sharedSecret: Uint8Array } {
   const { cipherText, sharedSecret } = encaps ?? ml_kem768.encapsulate(meta.kemEk);
-  const commitment = deriveCommitment(meta.spendKey, deriveOpener(sharedSecret));
+  const commitment = deriveCommitment(meta.spendKey, deriveOpener(sharedSecret, domains), domains);
   return {
     announcement: { stealthAddress: accountAddress(commitment, dep), ephemeralPubKey: cipherText, viewTag: computeViewTag(sharedSecret) },
     commitment, sharedSecret,
@@ -109,6 +146,7 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 /** Viewing-key scan of one announcement: view tag fast path, then re-derive the account. */
 export function checkCommitAnnouncement(
   meta: CommitMetaAddress, kemDk: Uint8Array, ann: CommitAnnouncementData, dep: Deployment,
+  domains: CommitDomains = SPHINCS_C13_DOMAINS,
 ): CommitPayment | null {
   let ss: Uint8Array;
   try {
@@ -117,18 +155,19 @@ export function checkCommitAnnouncement(
     return null;
   }
   if (!bytesEqual(computeViewTag(ss), ann.viewTag)) return null;
-  const opener = deriveOpener(ss);
-  const commitment = deriveCommitment(meta.spendKey, opener);
+  const opener = deriveOpener(ss, domains);
+  const commitment = deriveCommitment(meta.spendKey, opener, domains);
   if (accountAddress(commitment, dep).toLowerCase() !== ann.stealthAddress.toLowerCase()) return null;
   return { sharedSecret: ss, opener, commitment };
 }
 
 export function scanCommit(
   meta: CommitMetaAddress, kemDk: Uint8Array, announcements: CommitAnnouncementData[], dep: Deployment,
+  domains: CommitDomains = SPHINCS_C13_DOMAINS,
 ): Array<CommitPayment & { announcement: CommitAnnouncementData }> {
   const hits: Array<CommitPayment & { announcement: CommitAnnouncementData }> = [];
   for (const ann of announcements) {
-    const p = checkCommitAnnouncement(meta, kemDk, ann, dep);
+    const p = checkCommitAnnouncement(meta, kemDk, ann, dep, domains);
     if (p) hits.push({ announcement: ann, ...p });
   }
   return hits;
