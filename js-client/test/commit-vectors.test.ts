@@ -12,21 +12,24 @@ import { hexToBytes, type Address, type Hex } from 'viem';
 
 import {
   accountAddress, checkCommitAnnouncement, decodeCommitMetaAddress, deriveCommitment, deriveOpener,
-  encodeCommitMetaAddress, scanCommit, sendCommit, COMMIT_META_ADDRESS_BYTES, type CommitAnnouncementData, type Deployment,
+  encodeCommitMetaAddress, scanCommit, sendCommit, spendKeyFromSecret, COMMIT_META_ADDRESS_BYTES, PREIMAGE_DOMAINS,
+  SPHINCS_C13_DOMAINS, type CommitAnnouncementData, type Deployment,
 } from '../src/commit-scheme.ts';
 
 const VECTORS_PATH = fileURLToPath(new URL('../../python/vectors/v0/commit_vectors.json', import.meta.url));
 
 interface Ann { stealth_address: string; ephemeral_pub_key: string; view_tag: string }
 interface Case {
-  name: string; recipient: 'a' | 'b'; expect: 'match' | 'no_match'; announcement: Ann;
+  name: string; recipient: 'a' | 'b' | 'c'; expect: 'match' | 'no_match'; announcement: Ann;
   shared_secret?: string; opener?: string; commitment?: string;
 }
+interface Recipient { spend_key: string; meta_address: string; kem_dk: string; scheme?: string; sk?: string }
 interface Doc {
   deployment: { factory: string; creation_code: string; verifier: string; frame_ctx: string; salt: string };
-  recipients: Record<'a' | 'b', { spend_key: string; meta_address: string; kem_dk: string }>;
+  recipients: Record<'a' | 'b' | 'c', Recipient>;
   cases: Case[];
 }
+const domainsOf = (r: Recipient) => (r.scheme === 'preimage' ? PREIMAGE_DOMAINS : SPHINCS_C13_DOMAINS);
 
 const doc = JSON.parse(readFileSync(VECTORS_PATH, 'utf8')) as Doc;
 const dep: Deployment = {
@@ -51,7 +54,8 @@ for (const c of doc.cases) {
   test(`${c.name}: ${c.expect}`, () => {
     const r = doc.recipients[c.recipient];
     const meta = decodeCommitMetaAddress(hexToBytes(r.meta_address as Hex));
-    const hit = checkCommitAnnouncement(meta, hexToBytes(r.kem_dk as Hex), toAnn(c.announcement), dep);
+    const dom = domainsOf(r);
+    const hit = checkCommitAnnouncement(meta, hexToBytes(r.kem_dk as Hex), toAnn(c.announcement), dep, dom);
     if (c.expect === 'no_match') {
       assert.equal(hit, null);
       return;
@@ -60,10 +64,11 @@ for (const c of doc.cases) {
     assert.equal(`0x${Buffer.from(hit.sharedSecret).toString('hex')}`, c.shared_secret);
     assert.equal(hit.opener, c.opener);
     assert.equal(hit.commitment, c.commitment);
-    assert.equal(deriveCommitment(meta.spendKey, deriveOpener(hit.sharedSecret)), c.commitment);
+    assert.equal(deriveCommitment(meta.spendKey, deriveOpener(hit.sharedSecret, dom), dom), c.commitment);
     assert.equal(accountAddress(hit.commitment, dep).toLowerCase(), c.announcement.stealth_address);
+    if (r.scheme === 'preimage') assert.equal(spendKeyFromSecret(hexToBytes(r.sk as Hex)), r.spend_key);
     // sender side with the same shared secret reproduces the announcement
-    const sent = sendCommit(meta, dep, { cipherText: hexToBytes(c.announcement.ephemeral_pub_key as Hex), sharedSecret: hit.sharedSecret });
+    const sent = sendCommit(meta, dep, { cipherText: hexToBytes(c.announcement.ephemeral_pub_key as Hex), sharedSecret: hit.sharedSecret }, dom);
     assert.equal(sent.announcement.stealthAddress.toLowerCase(), c.announcement.stealth_address);
     assert.deepEqual(sent.announcement.viewTag, hexToBytes(c.announcement.view_tag as Hex));
   });

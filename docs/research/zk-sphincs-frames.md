@@ -146,6 +146,19 @@ it alongside EIP-8288 (protocol-level STARK aggregation).
 | ML-DSA direct (D-022) | 13.7 M | key revealed | yes (lattice) | live |
 | EIP-8164 native key (D-022) | 50 k | key in code at receive | yes | Draft, no client |
 
+## 5b. Follow-up: prove the secret instead, in the browser (D-025)
+
+The C13 statement is too large for browser proving (bb.js is wasm32, 4 GB
+cap; the circuit needs 8–11 GB). The user's redirection for the demo — prove the
+*spending secret*, not a signature — makes the statement two keccak calls:
+`noir/preimage-ownership`, **40,626 gates**, same public-input layout, same
+account. Measured: witness ~50 ms, **UltraHonk prove 0.65–1.3 s with bb.js in
+WASM**, verifier 26,317 B, `executeFrame` 2,942,272 gas in forge; live on the
+frames testnet `0xa598ec41…1fe65` with frames [100, 37,001, 3,544,107]. The
+demo UI proves in a web worker with no server component. Everything in §4
+about the backend still applies; the statement shrank, the trust root did not
+move.
+
 ## 6. Open
 
 - EIP-170 on the frames testnet and on mainnet (EIP-7907).

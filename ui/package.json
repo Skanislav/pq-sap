@@ -17,6 +17,8 @@
     "e2e:frames-pq": "node scripts/e2e-frames-pq.ts",
     "deploy:frames:zk": "node --env-file-if-exists=.env scripts/deploy-frames-zk.mjs",
     "e2e:frames-zk": "node --env-file-if-exists=.env scripts/e2e-frames-zk.ts",
+    "e2e:frames-preimage": "node --env-file-if-exists=.env scripts/e2e-frames-preimage.ts",
+    "prove:preimage": "node scripts/prove-preimage-node.mjs",
     "probe:frames": "node scripts/probe-frames.ts",
     "check-keygen": "node scripts/check-keygen.ts",
     "e2e": "node scripts/e2e-smoke.ts",
@@ -24,9 +26,11 @@
     "e2e:sepolia-live": "node scripts/e2e-sepolia-live.ts"
   },
   "dependencies": {
+    "@aztec/bb.js": "^4.2.0",
     "@noble/curves": "^2.2.0",
     "@noble/hashes": "^2.2.0",
     "@noble/post-quantum": "^0.6.1",
+    "@noir-lang/noir_js": "^1.0.0-beta.19",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "viem": "^2.55.8"

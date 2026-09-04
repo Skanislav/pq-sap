@@ -11,15 +11,19 @@ Usage: generate_commit_vectors.py [-o OUTDIR]
 """
 
 import argparse
+import hashlib
 import json
 import pathlib
 
 from pq_stealth.commit import (
+    PREIMAGE_DOMAINS,
+    PREIMAGE_KEY_DOMAIN,
     SPHINCS_C13_DOMAINS,
     Deployment,
     check_commit_announcement,
     gen_commit_meta_address,
     send_commit,
+    spend_key_from_secret,
 )
 
 SCHEMA_VERSION = "v0"
@@ -47,15 +51,28 @@ def generate() -> dict:
     meta_b, dk_b = gen_commit_meta_address(
         b"\xbb" * 32, kem_d=b"\x85" * 32, kem_z=b"\x86" * 32
     )
+    # recipient c: preimage-ownership scheme (D-025) — spend_key = keccak(KEY || sk),
+    # sk = SHA-256("pq-stealth/preimage/keygen/v0" || spend_seed) as the demo derives it
+    sk_c = hashlib.sha256(b"pq-stealth/preimage/keygen/v0" + b"\x81" * 32).digest()
+    meta_c, dk_c = gen_commit_meta_address(
+        spend_key_from_secret(sk_c), kem_d=b"\x83" * 32, kem_z=b"\x84" * 32
+    )
+    domains_of = {
+        "a": SPHINCS_C13_DOMAINS,
+        "b": SPHINCS_C13_DOMAINS,
+        "c": PREIMAGE_DOMAINS,
+    }
 
     cases = []
     for name, meta, dk, m, expect in [
         ("a-1", meta_a, dk_a, b"\x47" * 32, "match"),
         ("a-2", meta_a, dk_a, b"\x48" * 32, "match"),
         ("b-1", meta_b, dk_b, b"\x49" * 32, "match"),
+        ("c-1", meta_c, dk_c, b"\x4a" * 32, "match"),
     ]:
-        ann, commitment = send_commit(meta, DEP, encaps_m=m)
-        hit = check_commit_announcement(meta, dk, ann, DEP)
+        dom = domains_of[name[0]]
+        ann, commitment = send_commit(meta, DEP, encaps_m=m, domains=dom)
+        hit = check_commit_announcement(meta, dk, ann, DEP, domains=dom)
         assert hit is not None and hit.commitment == commitment
         cases.append(
             {
@@ -89,8 +106,16 @@ def generate() -> dict:
         "schema": SCHEMA_VERSION,
         "format": "version(1)=0x02 || spend_key(32) || ML-KEM-768 ek(1184) = 1217 B",
         "domains": {
-            "open": SPHINCS_C13_DOMAINS.open_domain.decode(),
-            "commit": SPHINCS_C13_DOMAINS.commit_domain.decode(),
+            "sphincs-c13": {
+                "open": SPHINCS_C13_DOMAINS.open_domain.decode(),
+                "commit": SPHINCS_C13_DOMAINS.commit_domain.decode(),
+            },
+            "preimage": {
+                "open": PREIMAGE_DOMAINS.open_domain.decode(),
+                "commit": PREIMAGE_DOMAINS.commit_domain.decode(),
+                "key": PREIMAGE_KEY_DOMAIN.decode(),
+                "spend_key": "keccak256(key || sk)",
+            },
             "opener": "SHA-256(open || ss)",
             "commitment": "keccak256(commit || spend_key || opener)",
             "view_tag": "SHA-256(ss)[0:1]",
@@ -117,6 +142,15 @@ def generate() -> dict:
                 "seeds": {"kem_d": hx(b"\x85" * 32), "kem_z": hx(b"\x86" * 32)},
                 "meta_address": hx(meta_b.encode()),
                 "kem_dk": hx(dk_b),
+            },
+            "c": {
+                "scheme": "preimage",
+                "spend_seed": hx(b"\x81" * 32),
+                "sk": hx(sk_c),
+                "spend_key": hx(meta_c.spend_key),
+                "seeds": {"kem_d": hx(b"\x83" * 32), "kem_z": hx(b"\x84" * 32)},
+                "meta_address": hx(meta_c.encode()),
+                "kem_dk": hx(dk_c),
             },
         },
         "cases": cases,

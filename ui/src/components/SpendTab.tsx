@@ -88,6 +88,7 @@ import { usd } from '../lib/useEthUsd.ts'
 import type { Wallet } from '../lib/useWallet.ts'
 import { AddressChip, HexBlob, Note } from './bits.tsx'
 import { FramesPqSpend } from './FramesPqSpend.tsx'
+import { FramesZkSpend } from './FramesZkSpend.tsx'
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false
@@ -107,7 +108,7 @@ function txLink(hash: string, cfg: ChainConfig) {
   )
 }
 
-type Route = 'classical' | 'pq'
+type Route = 'classical' | 'pq' | 'zk'
 
 export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; ethUsd: number | null }) {
   const [route, setRoute] = useState<Route>('pq')
@@ -115,9 +116,11 @@ export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wa
     <section>
       <h2>Spend received payments</h2>
       <p className="lede">
-        Two spend routes: the <strong>classical hybrid</strong> spends from a plain EOA with one ECDSA transaction
+        Three spend routes: the <strong>classical hybrid</strong> spends from a plain EOA with one ECDSA transaction
         (ecrecover, ~21k gas, quantum-vulnerable ownership); the <strong>PQ route</strong> spends through a smart
-        account that verifies the blinded ML-DSA key on-chain (~15M gas).
+        account that verifies the blinded ML-DSA key on-chain (~15M gas); the <strong>key-exchange route</strong>{' '}
+        uses the 1,217-byte commitment meta-address and spends with a zero-knowledge proof of a SPHINCS- signature
+        (~4.2M gas, key never revealed; frames testnet only).
       </p>
       <div className="segmented" role="tablist" aria-label="Spend route">
         <button
@@ -138,14 +141,26 @@ export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wa
         >
           PQ route · ML-DSA account
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={route === 'zk'}
+          className={route === 'zk' ? 'active' : ''}
+          disabled={!cfg.frames}
+          title={cfg.frames ? undefined : 'frames testnet only'}
+          onClick={() => setRoute('zk')}
+        >
+          Key-exchange route · ZK spend
+        </button>
       </div>
-      {/* both stay mounted so scan results and keys survive switching */}
+      {/* all stay mounted so scan results and keys survive switching */}
       <div hidden={route !== 'classical'}>
         <ClassicalSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
       </div>
       <div hidden={route !== 'pq'}>
         <PqSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />
       </div>
+      <div hidden={route !== 'zk'}>{cfg.frames && <FramesZkSpend cfg={cfg} wallet={wallet} ethUsd={ethUsd} />}</div>
     </section>
   )
 }

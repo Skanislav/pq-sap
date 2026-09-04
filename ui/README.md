@@ -114,7 +114,7 @@ announces, funds the stealth account with the (tiny) spend value, deploys it
 if needed, then submits the sponsored userOp through Pimlico. Stage 1 is
 idempotent and stage 2 is free/retryable, so re-runs cost almost nothing.
 
-## The two spend routes (Spend tab)
+## The spend routes (Spend tab)
 
 **Classical hybrid** (`secp256k1+ML-KEM-768`, 1,218 B meta-address):
 discovery is post-quantum, the spending key is secp256k1 — the stealth
@@ -139,6 +139,32 @@ never reaches the browser. Two backends by network:
   (ethereum/kohaku): ECDSA + ML-DSA-44, factory `0xF451…8C2e`, verifier
   `0x092c…21ef`. Nothing to deploy; createAccount ~710k gas, spend ~8.35M
   gas. This is the same path `js-client/src/spend.ts` and its fork test use.
+
+**Key-exchange route** (D-024 + D-025, frames testnet only): the demo
+recipient's meta-address is the **1,217-byte commitment form** (`0x02 ‖
+spend_key(32) ‖ ML-KEM-768 ek`, `spend_key = keccak(dom ‖ sk)` for a 32-byte
+secret) — no lattice material, no signature scheme. Receive derives `opener =
+SHA-256(dom ‖ ss)`, `commitment = keccak(dom ‖ spend_key ‖ opener)` and pays
+the CREATE2 `Stealth8141ZkAccount` of the commitment (computed in the browser
+from `creationCode` in `public/frames-zk-deployment.json`); scan re-derives it
+with the viewing key. Spending is one frame tx `[VERIFY(sponsor),
+createAccount?, executeFrame]` whose ARBITRARY signature is an **UltraHonk
+proof, made in a web worker on this machine** (noir_js + bb.js, ~1 s), that
+the spender knows the secret behind the commitment, bound to the tx's
+`sig_hash`. Nothing about the secret or the recipient appears on chain
+(~3.5M gas). No signer service is involved. Circuit: `noir/preimage-ownership`
+(2 keccak, 40,626 gates), served as `public/circuits/preimage_ownership.json`.
+
+```sh
+npm run deploy:frames:zk          # once per chain reset; writes frames-zk-deployment.json (creationCode included)
+npm run e2e:frames-preimage       # the same flow headless, proof made with bb.js in Node
+npm run prove:preimage            # prove the fixture instance and check the vk against the deployed verifier
+```
+
+The SPHINCS- C13 *signature-in-circuit* variant (D-023, 6.4M gates, proven by
+the signer service with the upstream Rust signer) is kept behind
+`ZK_CIRCUIT=c13 npm run deploy:frames:zk` (→ `frames-zk-c13-deployment.json`)
+and `SIGNER_C13=/path/to/signer-c13 npm run signer` + `npm run e2e:frames-zk`.
 
 ## Checks
 
