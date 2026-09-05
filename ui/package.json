@@ -15,6 +15,8 @@
     "deploy:sepolia": "node --env-file-if-exists=.env scripts/deploy-sepolia.mjs",
     "deploy:frames": "node --env-file-if-exists=.env scripts/deploy-frames.mjs",
     "e2e:frames-pq": "node scripts/e2e-frames-pq.ts",
+    "deploy:frames:zk": "node --env-file-if-exists=.env scripts/deploy-frames-zk.mjs",
+    "e2e:frames-zk": "node --env-file-if-exists=.env scripts/e2e-frames-zk.ts",
     "probe:frames": "node scripts/probe-frames.ts",
     "check-keygen": "node scripts/check-keygen.ts",
     "e2e": "node scripts/e2e-smoke.ts",
