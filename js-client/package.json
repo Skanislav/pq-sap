@@ -16,6 +16,8 @@
     "e2e-7913-sphincs": "node --test test/e2e-7913-sphincs.test.ts",
     "e2e-pointer-sig": "node --test test/e2e-pointer-sig.test.ts",
     "test:frames": "node --test test/frame-tx.vectors.test.ts",
+    "test:native-key": "node --test test/native-key.test.ts",
+    "test:forge": "forge test --root contracts -vv",
     "e2e:frames:public": "node --env-file-if-exists=.env --test test/e2e-frame-public.test.ts",
     "frames:live": "node --env-file-if-exists=.env scripts/frames-live.ts",
     "build-contracts": "forge build --root contracts",

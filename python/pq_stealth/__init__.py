@@ -17,6 +17,11 @@ from .encoding import (
     unpack_blinded_sk,
 )
 from .meta import MetaPublic, MetaSecret, gen_meta_address
+from .native_key import (
+    NativeKeyAuthorization,
+    craft_authorization,
+    native_key_stealth_address,
+)
 from .params import DEFAULT, PARAM_SETS, ParamSet
 from .recipient import Payment, check_announcement, scan
 from .sender import Announcement, compute_view_tag, send
@@ -28,16 +33,19 @@ __all__ = [
     "Announcement",
     "MetaPublic",
     "MetaSecret",
+    "NativeKeyAuthorization",
     "ParamSet",
     "Payment",
     "check_announcement",
     "compute_view_tag",
+    "craft_authorization",
     "decode_meta_address",
     "derive_blinding",
     "derive_stealth_pk",
     "encode_meta_address",
     "gen_meta_address",
     "keccak256",
+    "native_key_stealth_address",
     "pack_blinded_sk",
     "prove_possession",
     "scan",

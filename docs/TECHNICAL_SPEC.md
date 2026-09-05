@@ -249,6 +249,16 @@ Note the verify gas is ~1.8× the old table above: df999ed stores `t1`
 plain and recomputes `NTT(t1·2^d)` inside every `verify`  -  work the old
 `setKey` flow did once at key-setup time.
 
+**Correction (2026-09-02, D-022).** Profiled step by step
+(`js-client/contracts/test/DilithiumProfile.t.sol`), the per-verify
+`NTT(t1·2^d)` is 1.41 M of the 14.91 M; precomputing it at key setup
+(`contracts/src/ntt/`) gives 13,678,091 (−8 %), not the old 8.18 M. The
+largest single cost is SHAKE256 in Solidity (SampleInBall 0.94 M + the
+final `mu`/`c̃` hashes 4.05 M ≈ 34 %), which is exactly the gap to the
+keccak-XOF `ZKNOX_ethdilithium`. The 8,176,453 figure above was measured on
+an earlier upstream revision and does not reproduce at df999ed. Breakdown
+and consequences: `docs/research/prefix-deploy-native-keys.md` §3–4.
+
 ## 7b. Threat model, scheme variants, and the ZK direction
 
 The locked decisions and empirical findings from the design work  -  threat
@@ -297,7 +307,7 @@ named theorems and explicit assumption records in
   probability at most `q` times the master key's ownership-forgery advantage at
   bound `b + η`. The signature-layer losses `CmaToNmaLossNN` and
   `TruncationLossNN` are defined but not yet composed.
-- **Construction A/B decision** — D-018 in `DECISIONS.md` locks Construction A for
+- **Construction A/B decision** — D-021 in `DECISIONS.md` locks Construction A for
   the ERC-5564 sender-address flow and documents Construction B as a separate
   account-transfer protocol.
 
