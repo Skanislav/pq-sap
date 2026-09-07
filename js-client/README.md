@@ -37,6 +37,11 @@ npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
 npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
                         # verifies through the vendored Verity-verified verifier,
                         # raw-key and committed ERC-7913 signers, same account
+npm run test-contracts  # forge test: the key-exchange contract against the
+                        # v0 vectors (needs foundry)
+npm run e2e-key-exchange # register an ML-KEM ek, announce the vectors through
+                        # StealthKeyExchange.sol (truncated ct rejected
+                        # on-chain), scan the singleton's log
 npm run e2e-pointer-sig # (v, r, s) pointer signatures with r = the C13 key
                         # (0x52) or its commitment (0x53); ML-DSA 0x50/0x51
                         # at recover level. Value lives in the vault — see
@@ -50,6 +55,20 @@ npm run e2e:fork:record # force a fresh recording
 The conformance test asserts that the JS-derived stealth public key is
 byte-identical to the Python reference, and verifies the vectors'
 possession proof with noble's stock ML-DSA-65 verifier.
+
+## The key-exchange contract (D-021)
+
+`contracts/src/StealthKeyExchange.sol` is the on-chain half of the ML-KEM
+handshake, separated from the spend-side contracts: a write-once registry
+of encapsulation keys (SSTORE2, typed by parameter set) and an `announce`
+that checks the announcement's shape (ciphertext of a supported length,
+view tag present) and forwards it byte for byte to the ERC-5564 singleton
+under scheme ID 2. Encapsulation itself never runs on-chain — the EVM
+computes in public and would publish the shared secret. `src/key-exchange.ts`
+is the client (ABI, the parameter table, `announceViaKeyExchange`,
+`registerViewingKey`); `contracts/test/StealthKeyExchange.t.sol` replays the
+vectors on the bytecode; `contracts/lean/` is a dependency-free Lean 4 model
+of the contract with proofs (see its README).
 
 ## Reproducible fork state
 
