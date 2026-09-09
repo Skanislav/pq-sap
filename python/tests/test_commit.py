@@ -109,6 +109,34 @@ def test_send_scan_roundtrip(recipient):
     assert len(scan_commit(meta, dk, [ann, ann2], DEP)) == 2
 
 
+def test_preimage_scheme_roundtrip():
+    """D-025: spend_key = keccak(KEY || sk); commitment under the preimage domains."""
+    from pq_stealth.commit import (
+        PREIMAGE_DOMAINS,
+        PREIMAGE_KEY_DOMAIN,
+        spend_key_from_secret,
+    )
+
+    sk = b"\x77" * 32
+    spend_key = spend_key_from_secret(sk)
+    assert spend_key == keccak256(PREIMAGE_KEY_DOMAIN + sk)
+    meta, dk = gen_commit_meta_address(
+        spend_key, kem_d=b"\x11" * 32, kem_z=b"\x12" * 32
+    )
+    ann, commitment = send_commit(
+        meta, DEP, encaps_m=b"\x4a" * 32, domains=PREIMAGE_DOMAINS
+    )
+    hit = check_commit_announcement(meta, dk, ann, DEP, domains=PREIMAGE_DOMAINS)
+    assert hit is not None and hit.commitment == commitment
+    assert commitment == keccak256(
+        PREIMAGE_DOMAINS.commit_domain + spend_key + hit.opener
+    )
+    # the C13 domains do not open the same account
+    assert check_commit_announcement(meta, dk, ann, DEP) is None
+    with pytest.raises(ValueError):
+        spend_key_from_secret(b"\x00" * 31)
+
+
 def test_negatives(recipient):
     _, meta, dk = recipient
     ann, _ = send_commit(meta, DEP, encaps_m=b"\x47" * 32)

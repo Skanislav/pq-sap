@@ -879,3 +879,50 @@ aggregated dependency).
 **Not decided here.** The domain strings still carry the C13 name (a rename
 once a second spend scheme exists); whether format 0x02 becomes the *only*
 normative meta-address for the scheme ID is for the hand-written draft.
+
+## D-025 — Demo spend proves the spending secret, not a signature; the proof is made in the browser — **LOCKED for the demo (2026-09-04)**
+
+Decision (user): "we'd want to prove the secret, not the signature, for that
+demo" and "we need to generate the proof on the client side for the ZK
+example." The D-023 C13-in-circuit statement (6.4 M gates, 8–11 GB, ~1 min
+natively) cannot be proven in a browser: bb.js is wasm32, capped at 4 GB. The
+key-exchange design of D-024 makes the signature unnecessary anyway: the
+meta-address carries a 32-byte commitment to the spending key, so spending can
+prove knowledge of what that key commits to.
+
+**Statement** (`noir/preimage-ownership`, 2 keccak calls, **40,626 UltraHonk
+gates**, 2^16): with `spend_key = keccak256("pq-stealth/preimage/key/v0" ‖ sk)`
+and `commitment = keccak256("pq-stealth/preimage/commit/v0" ‖ spend_key ‖
+opener)`, prove knowledge of `(sk, opener)` for the public `commitment`, with
+the frame tx `sig_hash` as the other public input (same
+`[message_hi, message_lo, commitment_hi, commitment_lo]` layout as D-023, so
+`Stealth8141ZkAccount` is unchanged). Opener/commitment domains
+`pq-stealth/preimage/{open,commit}/v0`; the demo secret is
+`SHA-256("pq-stealth/preimage/keygen/v0" ‖ spend_seed)`. Python
+(`pq_stealth.commit`: `PREIMAGE_DOMAINS`, `spend_key_from_secret`), TS
+(`commit-scheme.ts`: `PREIMAGE_DOMAINS`, `spendKeyFromSecret`, domains threaded
+through send/scan) and vectors (recipient `c`) cover it.
+
+**Measured.** forge: `executeFrame` with the preimage proof **2,942,272 gas**,
+proof 8,768 B, verifier 26,317 B (+ 6,577 B `ZKTranscriptLib`). Client-side
+(`ui/src/lib/preimage-prover.ts` = noir_js 1.0.0-beta.19 + bb.js 4.2.0, WASM):
+witness 42–61 ms, **prove 0.65–1.3 s**, bb.js verifies its own proof and its
+verification key is byte-identical to the bb CLI's, i.e. to the deployed
+verifier. Live on the frames testnet: `PreimageHonkVerifier`
+`0xaDe68b4b…6b01`, `Stealth8141ZkFactory` `0x86A0679C…88ff`
+(`ui/public/frames-zk-deployment.json`, now carrying `creationCode` so the
+browser computes CREATE2 without an RPC); receive `0xe6e86ece…523ee` (295,489),
+spend `0xa598ec41…1fe65` status 1, frames [100, deploy 37,001, **proof verify
++ transfer 3,544,107**], 8,576,431 total. The demo UI's key-exchange route
+(`ui/src/components/FramesZkSpend.tsx`) proves in a web worker
+(`preimage-worker.ts`; COOP/COEP headers in `vite.config.ts` for threads) and
+needs no signer service. The C13 statement and its signer-service prover stay
+as the signature variant (`frames-zk-c13-deployment.json`, `ZK_CIRCUIT=c13`).
+
+**What this is and is not.** Ownership by hash preimage is post-quantum by
+assumption (D-007 / D-012's "lattice-free end to end"); the proof system is the
+non-PQ part, exactly as in D-023, and the rotatable verifier is the swap seam.
+A revealed secret would be catastrophic, so the secret is only ever a witness;
+the demo derives it from a seed in the page and never transmits it. This is the
+demo's spend route, not a normative choice for the ERC — that text is
+hand-written.

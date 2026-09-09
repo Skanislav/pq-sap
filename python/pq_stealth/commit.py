@@ -45,6 +45,23 @@ SPHINCS_C13_DOMAINS = CommitDomains(
 )
 assert len(SPHINCS_C13_DOMAINS.commit_domain) == 32
 
+# Preimage-ownership spend (D-025): the spend key is a hash of a 32-byte secret
+# and spending proves knowledge of the secret in zero knowledge
+# (noir/preimage-ownership). No signature scheme at all.
+PREIMAGE_DOMAINS = CommitDomains(
+    open_domain=b"pq-stealth/preimage/open/v0",
+    commit_domain=b"pq-stealth/preimage/commit/v0",
+)
+PREIMAGE_KEY_DOMAIN = b"pq-stealth/preimage/key/v0"
+
+
+def spend_key_from_secret(sk: bytes, key_domain: bytes = PREIMAGE_KEY_DOMAIN) -> bytes:
+    """spend_key = keccak256(key_domain || sk) — the 32-byte value published in
+    the format-0x02 meta-address for the preimage-ownership scheme."""
+    if len(sk) != 32:
+        raise ValueError("spending secret must be 32 bytes")
+    return keccak256(key_domain + sk)
+
 
 @dataclass(frozen=True)
 class KemSet:

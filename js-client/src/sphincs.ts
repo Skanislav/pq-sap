@@ -16,7 +16,7 @@
  */
 
 import { sha256 } from '@noble/hashes/sha2.js';
-import { concatHex, hexToBytes, keccak256, stringToHex, type Address, type Hex } from 'viem';
+import { bytesToHex, concatHex, hexToBytes, keccak256, stringToHex, type Address, type Hex } from 'viem';
 
 export const SPHINCS_C13 = {
   /** Hash output truncation (bytes). Public key = two n-byte halves. */
@@ -60,7 +60,7 @@ export function sphincsC13Opener(sharedSecret: Uint8Array): Hex {
   const dom = hexToBytes(stringToHex(SPHINCS_C13.openDomain));
   const buf = new Uint8Array(dom.length + sharedSecret.length);
   buf.set(dom); buf.set(sharedSecret, dom.length);
-  return ('0x' + Buffer.from(sha256(buf)).toString('hex')) as Hex;
+  return bytesToHex(sha256(buf)); // no Buffer: this runs in the browser too
 }
 
 /** key for SphincsC13CommitSigner7913: keccak256(commitDomain || pk || opener). */

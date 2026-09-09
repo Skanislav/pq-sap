@@ -17,7 +17,7 @@
  *
  * Env: SIGNER_C13 (path to the signer-c13 binary; required), NARGO, BB (default:
  * the aztec-bundled ones), FRAMES_SPONSOR_KEY (default: shared dev key).
- * Needs: frames-zk-deployment.json (scripts/deploy-frames-zk.mjs), Node 26,
+ * Needs: frames-zk-c13-deployment.json (scripts/deploy-frames-zk.mjs), Node 26,
  * python with pycryptodome (python/.venv).
  */
 
@@ -46,7 +46,7 @@ import { framesTestnet, SCHEME_ID } from '../src/lib/chain.ts'
 import { fromHex, toHex } from '../src/lib/hex.ts'
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url))
-const dep = JSON.parse(readFileSync(here('../public/frames-zk-deployment.json'), 'utf8'))
+const dep = JSON.parse(readFileSync(here('../public/frames-zk-c13-deployment.json'), 'utf8'))
 const RPC = framesTestnet.rpcUrls.default.http[0]
 const CHAIN = BigInt(framesTestnet.id)
 const SPONSOR_KEY = (process.env.FRAMES_SPONSOR_KEY ??
