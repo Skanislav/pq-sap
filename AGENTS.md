@@ -48,7 +48,8 @@ Spend:     derive_blinding(ss) → (s′, e′) → widened key (s1+s′, s2+e�
 | TS client | `js-client/src/scheme.ts`, `mldsa65.ts`, `spend.ts`, `frame-tx/` | Byte-identical port; hand-written ML-DSA-65 polynomial layer |
 | Demo UI | `ui/src/lib/` (`keygen.ts`, `scan-worker.ts`, `spend4337.ts`, `frames.ts`) | React app over the js-client scheme; scanning in a web worker |
 | Proofs | `lean/PqStealth/` (`Blinding.lean`, `Invariants.lean`, `Games.lean`, `ConstructionA.lean`, `MLKEM.lean`, `DKSAP.lean`, …) | Lean 4 / VCVio: blinding identity, widened bound, unlinkability games, DKSAP break |
-| On-chain | `js-client/contracts/src/*.sol` + vendored ZKNOX verifier | ERC-7913 accounts, registry, announcer, SSTORE2 key storage |
+| On-chain | `js-client/contracts/src/*.sol` + vendored ZKNOX verifier | ERC-7913 accounts, registry, announcer, SSTORE2 key storage; `StealthKeyExchange.sol` = the key-exchange layer (ek registry + shape-validated announce, D-027) |
+| Contract proofs | `js-client/contracts/lean/` | Dependency-free Lean 4 model of `StealthKeyExchange.sol`: announce/registry theorems, vectors replayed as `#guard`s, constants cross-check |
 | ZK PoC | `noir/pq-stealth-ownership/src/main.nr` | Standalone MLWE-relation ownership proof (not wired into spend path) |
 | Rust baseline | `pq-sap/` | **Third-party** reference clone (0x3327/pq-sap) — read-only context |
 | Solidity verifier | `ETHDILITHIUM/` | **Third-party** ZKNOX clone, vendored into `js-client/contracts/lib/ETHDILITHIUM` at rev `df999ed` |
@@ -95,8 +96,9 @@ nvm use && npm install
 npm run typecheck               # tsc; "lint" is also just tsc
 npm test                        # replays ../python/vectors/v0 — byte-for-byte
 npm run build-contracts         # forge build --root contracts (needs Foundry)
+npm run test-contracts          # forge test: StealthKeyExchange vs python/vectors/v0
 npm run e2e                     # anvil-backed e2e (auto-boots anvil via test/util/anvil.ts)
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig
+npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-key-exchange
 npm run e2e:fork                # offline Sepolia fork replay; e2e:fork:record to re-record
 
 # ui/  (Node ≥22.12, npm; needs ../js-client npm-installed)
@@ -113,6 +115,11 @@ lake build                      # full build incl. axiom audit
 python3 scripts/check_citations.py   # doc citations resolve to real declarations
 python3 scripts/check_sizes.py       # proved byte sizes match python/vectors
 
+# js-client/contracts/lean/  (Lean 4 v4.32.0, no deps — builds in seconds)
+lake build                           # model of StealthKeyExchange.sol + axiom audit
+python3 scripts/gen_vectors.py --check   # Vectors.lean regenerated from python/vectors
+python3 scripts/check_constants.py       # table in step: .sol / .lean / .ts / vectors
+
 # wiki/  (Node 22, pnpm 10 — NOT npm)
 pnpm install
 pnpm dev | pnpm build           # both run "pnpm sync" first (generates pages/sidebar)
@@ -128,7 +135,8 @@ make bench
 ```
 
 CI (`.github/workflows/ci.yml`, `lean.yml`) runs: ruff + pytest + vector `cmp` (also in
-Docker/liboqs), js-client typecheck/test/all e2e, wiki `pnpm lint`/`typecheck`/`build`,
+Docker/liboqs), js-client typecheck/test/`forge test`/all e2e, the contracts-Lean model
+(`lake build` + both checker scripts), wiki `pnpm lint`/`typecheck`/`build`,
 noir toy proof, and `lake build` with **zero sorries/warnings** in `PqStealth/` plus both
 Python checker scripts. If your change is in one of those areas, CI is the bar.
 

@@ -1,0 +1,14 @@
+name = "StealthKeyExchange"
+defaultTargets = ["StealthKeyExchange"]
+
+# Same discipline as lean/ (the PqStealth package): no auto-bound implicits,
+# every declaration documented. No dependencies on purpose — the contract model
+# is finite bookkeeping over byte strings, and a Mathlib-free package builds in
+# seconds, so CI can run it on every push next to `forge test`.
+[leanOptions]
+autoImplicit = false
+relaxedAutoImplicit = false
+linter.missingDocs = true
+
+[[lean_lib]]
+name = "StealthKeyExchange"

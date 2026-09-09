@@ -7,7 +7,6 @@ optimizer_runs = 10000
 solc_version = "0.8.30"
 # Upstream ETHDILITHIUM targets osaka; prague keeps anvil compatibility (D-014).
 evm_version = "prague"
-
 # The vendored SPHINCS- C13 verifier (src/vendor/sphincs-minus/) is compiled with
 # upstream's settings (via-IR, 200 runs) so its bytecode matches what Verity Labs
 # modeled; the default (legacy codegen) profile hits stack-too-deep on it. Only
@@ -25,4 +24,6 @@ fs_permissions = [
   # ZkAccount.t.sol reads the UltraHonk proof of the C13 circuit
   { access = "read", path = "../../noir/sphincs-c13-verify/out" },
   { access = "read", path = "../../noir/preimage-ownership/out" },
+  # StealthKeyExchange.t.sol replays the reference conformance vectors
+  { access = "read", path = "../../python/vectors" },
 ]
