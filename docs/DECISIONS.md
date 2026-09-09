@@ -648,76 +648,6 @@ working interim demo, not extended further. Open: a `Stealth8141Account`
 sketch (VERIFY code calling C13/ML-DSA + APPROVE) once client devnets
 expose type `0x06`.
 
-## D-021 — The on-chain key exchange is a format/registry contract; encapsulation stays off-chain; the contract is modelled and proved in Lean — **LOCKED**
-
-Question (2026-09-07, user): can the key exchange be separated into the
-Solidity code, and can Lean be set up to verify that contract?
-
-**What "the key exchange on-chain" can be.** The EVM computes in public. An
-on-chain `ML-KEM.Encaps` would publish the shared secret `ss` in the
-transaction trace, and with it the view tag and the blinded stealth key
-(every derivation downstream of `ss` is deterministic) — the announcement
-would name its recipient to anyone reading the chain. So the sender's
-encapsulation and the recipient's decapsulation are off-chain by necessity,
-not by convenience, and the chain's whole share of the handshake is (a) the
-recipient's encapsulation key `ek` and (b) the sender's ciphertext riding as
-the ERC-5564 `ephemeralPubKey`. That share is now one contract,
-`js-client/contracts/src/StealthKeyExchange.sol`, separated from the spend
-side (accounts, verifiers, factories):
-
-- a write-once registry of encapsulation keys (SSTORE2, typed by parameter
-  set from the key's length, referenced by index — generalizing
-  `StealthKeyRegistry`, which stays as the classical hybrid's registry);
-- `announce(stealthAddress, ciphertext, metadata)`: checks the announcement's
-  SHAPE — ciphertext of a supported set's length (768 / 1,088 / 1,568 B for
-  ML-KEM-512/768/1024, 1,120 B for X-Wing, D-017; the lengths are pairwise
-  distinct, so the ciphertext types itself) and `metadata[0]` present — and
-  forwards it byte for byte under scheme ID `2` to the ERC-5564 singleton.
-  Scanners reading the singleton with `caller == StealthKeyExchange` see only
-  well-formed announcements; the truncated-ciphertext conformance vector is
-  rejected on-chain (`UnsupportedCiphertextLength(1087)`) instead of being
-  skipped by every scanner. By construction `announce` takes no
-  recipient-identifying input — an announcement that referenced a registry
-  index would link the payment to the recipient;
-- the pure parameter table (`ciphertextBytes`, `encapsulationKeyBytes`,
-  `metaAddressBytes`, `kemOfMetaAddress`, `isValidAnnouncement`) wallets can
-  call to pre-check what the contract will accept.
-
-Cost: 2,065 gas execution over a direct singleton `announce` (Foundry,
-`test_announce_overhead_gas`), i.e. ~3% on the 67,580-gas EIP-7623 floor of
-D-011. Nothing about the scheme changes: same event, same scheme ID, same
-bytes on the wire; wallets may keep calling the singleton directly.
-
-**Lean verification of the contract.** `js-client/contracts/lean/` is a
-second, dependency-free Lean package (`StealthKeyExchange`, same toolchain
-pin as `lean/`, builds in seconds — no Mathlib, no VCVio): a functional model
-of the contract with one line per `if`/`revert`, and theorems over all
-inputs — `announce_toBool` (succeeds iff `isValidAnnouncement`),
-`announce_ok` (exactly one log entry appended, scheme ID 2, address /
-ciphertext / metadata unchanged, registry untouched),
-`announce_no_registry_read` (the announcement path is the same function for
-every registry content — nothing recipient-identifying can enter),
-`registerViewingKey_ok` / `viewingKeyOf_after_register` (append-only: next
-index, older indices unchanged, read-back), `kemOfMetaAddress_ok_iff`
-(a meta-address is typed exactly by version byte and length), the table's
-injectivity, and an axiom audit (`Axioms.lean`, `#guard_msgs` on
-`#print axioms`, as in `lean/`). The model and the bytecode are tied
-together three ways: `Vectors.lean` (generated from the v0 vectors) replays
-every conformance case through the model as build-checked `#guard`s, the
-Foundry suite (`contracts/test/StealthKeyExchange.t.sol`) replays the same
-vectors and fuzzes `announce` against `isValidAnnouncement` on the real
-contract, and `scripts/check_constants.py` fails CI if the parameter table
-drifts between Solidity, Lean, the TS client and the vectors.
-
-**What is and is not claimed.** The proofs are about the model, and the
-model's faithfulness rests on line-by-line correspondence plus the shared
-tests — the same footing as `lean/` vs. `python/`. A mechanized link to the
-compiled bytecode (Nethermind's Clear, Yul → Lean 4, or an EVM semantics such
-as EvmYul) is the upgrade path: both need Mathlib, so they belong in the
-multi-hour `lean.yml` lane rather than the seconds-fast `ci.yml` job this
-package runs in. The contract is small enough that the model is arguably
-the specification and the Solidity the implementation.
-
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured
@@ -1108,3 +1038,88 @@ author of the hand-written ERC draft (D-024: agents do not write
 `ui/`/`js-client/` when a chain exposes either mode; carry both WG items
 (sender-uncomputable in 8250's Security Considerations; state gas in the D-020
 ask) to the authors.
+
+## D-027 — The on-chain key exchange is a format/registry contract; encapsulation stays off-chain; the contract is modelled and proved in Lean — **FINDING / pending reconciliation with D-024 (2026-09-07; renumbered from a second D-021 on 2026-09-09)**
+
+Question (2026-09-07, user): can the key exchange be separated into the
+Solidity code, and can Lean be set up to verify that contract?
+
+**What "the key exchange on-chain" can be.** The EVM computes in public. An
+on-chain `ML-KEM.Encaps` would publish the shared secret `ss` in the
+transaction trace, and with it the view tag and the blinded stealth key
+(every derivation downstream of `ss` is deterministic) — the announcement
+would name its recipient to anyone reading the chain. So the sender's
+encapsulation and the recipient's decapsulation are off-chain by necessity,
+not by convenience, and the chain's whole share of the handshake is (a) the
+recipient's encapsulation key `ek` and (b) the sender's ciphertext riding as
+the ERC-5564 `ephemeralPubKey`. That share is now one contract,
+`js-client/contracts/src/StealthKeyExchange.sol`, separated from the spend
+side (accounts, verifiers, factories):
+
+- a write-once registry of encapsulation keys (SSTORE2, typed by parameter
+  set from the key's length, referenced by index — generalizing
+  `StealthKeyRegistry`, which stays as the classical hybrid's registry);
+- `announce(stealthAddress, ciphertext, metadata)`: checks the announcement's
+  SHAPE — ciphertext of a supported set's length (768 / 1,088 / 1,568 B for
+  ML-KEM-512/768/1024, 1,120 B for X-Wing, D-017; the lengths are pairwise
+  distinct, so the ciphertext types itself) and `metadata[0]` present — and
+  forwards it byte for byte under scheme ID `2` to the ERC-5564 singleton.
+  Scanners reading the singleton with `caller == StealthKeyExchange` see only
+  well-formed announcements; the truncated-ciphertext conformance vector is
+  rejected on-chain (`UnsupportedCiphertextLength(1087)`) instead of being
+  skipped by every scanner. By construction `announce` takes no
+  recipient-identifying input — an announcement that referenced a registry
+  index would link the payment to the recipient;
+- the pure parameter table (`ciphertextBytes`, `encapsulationKeyBytes`,
+  `metaAddressBytes`, `kemOfMetaAddress`, `isValidAnnouncement`) wallets can
+  call to pre-check what the contract will accept.
+
+Cost: 2,065 gas execution over a direct singleton `announce` (Foundry,
+`test_announce_overhead_gas`), i.e. ~3% on the 67,580-gas EIP-7623 floor of
+D-011. Nothing about the scheme changes: same event, same scheme ID, same
+bytes on the wire; wallets may keep calling the singleton directly.
+
+**Reconciliation with D-024 (open, 2026-09-09).** This record predates
+D-024. The contract's meta-address table follows D-017: version `0x01` for
+the Construction A forms (5,633 B at ML-KEM-768 / ML-DSA-65) and `0x02` for
+the X-Wing hybrid (5,665 B). D-024 then assigned `0x02` to the 1,217-byte
+commitment meta-address, so `main` now carries two meanings of `0x02`, and
+`kemOfMetaAddress` rejects a D-024 meta-address with
+`UnsupportedMetaAddress(1217, 0x02)`. The announcement path is unaffected —
+`announce` takes only the ciphertext and metadata, and a format-`0x02`
+payment produces the same 1,088-byte ML-KEM-768 ciphertext — so the typing
+table is the only part to settle: either X-Wing moves to `0x03` (a one-line
+change in D-017, the contract, its Lean model and the vectors) or the table
+types by total length alone, which is unambiguous today (1,217 / 5,633 /
+5,665 B are pairwise distinct). That choice belongs to the author of the
+hand-written draft; this record stays a finding until it is made.
+
+**Lean verification of the contract.** `js-client/contracts/lean/` is a
+second, dependency-free Lean package (`StealthKeyExchange`, same toolchain
+pin as `lean/`, builds in seconds — no Mathlib, no VCVio): a functional model
+of the contract with one line per `if`/`revert`, and theorems over all
+inputs — `announce_toBool` (succeeds iff `isValidAnnouncement`),
+`announce_ok` (exactly one log entry appended, scheme ID 2, address /
+ciphertext / metadata unchanged, registry untouched),
+`announce_no_registry_read` (the announcement path is the same function for
+every registry content — nothing recipient-identifying can enter),
+`registerViewingKey_ok` / `viewingKeyOf_after_register` (append-only: next
+index, older indices unchanged, read-back), `kemOfMetaAddress_ok_iff`
+(a meta-address is typed exactly by version byte and length), the table's
+injectivity, and an axiom audit (`Axioms.lean`, `#guard_msgs` on
+`#print axioms`, as in `lean/`). The model and the bytecode are tied
+together three ways: `Vectors.lean` (generated from the v0 vectors) replays
+every conformance case through the model as build-checked `#guard`s, the
+Foundry suite (`contracts/test/StealthKeyExchange.t.sol`) replays the same
+vectors and fuzzes `announce` against `isValidAnnouncement` on the real
+contract, and `scripts/check_constants.py` fails CI if the parameter table
+drifts between Solidity, Lean, the TS client and the vectors.
+
+**What is and is not claimed.** The proofs are about the model, and the
+model's faithfulness rests on line-by-line correspondence plus the shared
+tests — the same footing as `lean/` vs. `python/`. A mechanized link to the
+compiled bytecode (Nethermind's Clear, Yul → Lean 4, or an EVM semantics such
+as EvmYul) is the upgrade path: both need Mathlib, so they belong in the
+multi-hour `lean.yml` lane rather than the seconds-fast `ci.yml` job this
+package runs in. The contract is small enough that the model is arguably
+the specification and the Solidity the implementation.

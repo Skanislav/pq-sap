@@ -56,7 +56,7 @@ The conformance test asserts that the JS-derived stealth public key is
 byte-identical to the Python reference, and verifies the vectors'
 possession proof with noble's stock ML-DSA-65 verifier.
 
-## The key-exchange contract (D-021)
+## The key-exchange contract (D-027)
 
 `contracts/src/StealthKeyExchange.sol` is the on-chain half of the ML-KEM
 handshake, separated from the spend-side contracts: a write-once registry

@@ -3,7 +3,7 @@
 A machine-checked model of [`../src/StealthKeyExchange.sol`](../src/StealthKeyExchange.sol),
 the contract that owns the chain's share of the ML-KEM handshake: the
 encapsulation-key registry and the shape-validated `announce` that forwards
-to the ERC-5564 singleton (D-021 in `docs/DECISIONS.md`). A second Lean
+to the ERC-5564 singleton (D-027 in `docs/DECISIONS.md`). A second Lean
 package next to the contract, on the same toolchain pin as [`lean/`](../../../lean/)
 but with **no dependencies** — no Mathlib, no VCVio — so `lake build` takes
 seconds and runs in `ci.yml` beside `forge test`.

@@ -48,7 +48,7 @@ Spend:     derive_blinding(ss) → (s′, e′) → widened key (s1+s′, s2+e�
 | TS client | `js-client/src/scheme.ts`, `mldsa65.ts`, `spend.ts`, `frame-tx/` | Byte-identical port; hand-written ML-DSA-65 polynomial layer |
 | Demo UI | `ui/src/lib/` (`keygen.ts`, `scan-worker.ts`, `spend4337.ts`, `frames.ts`) | React app over the js-client scheme; scanning in a web worker |
 | Proofs | `lean/PqStealth/` (`Blinding.lean`, `Invariants.lean`, `Games.lean`, `ConstructionA.lean`, `MLKEM.lean`, `DKSAP.lean`, …) | Lean 4 / VCVio: blinding identity, widened bound, unlinkability games, DKSAP break |
-| On-chain | `js-client/contracts/src/*.sol` + vendored ZKNOX verifier | ERC-7913 accounts, registry, announcer, SSTORE2 key storage; `StealthKeyExchange.sol` = the key-exchange layer (ek registry + shape-validated announce, D-021) |
+| On-chain | `js-client/contracts/src/*.sol` + vendored ZKNOX verifier | ERC-7913 accounts, registry, announcer, SSTORE2 key storage; `StealthKeyExchange.sol` = the key-exchange layer (ek registry + shape-validated announce, D-027) |
 | Contract proofs | `js-client/contracts/lean/` | Dependency-free Lean 4 model of `StealthKeyExchange.sol`: announce/registry theorems, vectors replayed as `#guard`s, constants cross-check |
 | ZK PoC | `noir/pq-stealth-ownership/src/main.nr` | Standalone MLWE-relation ownership proof (not wired into spend path) |
 | Rust baseline | `pq-sap/` | **Third-party** reference clone (0x3327/pq-sap) — read-only context |
