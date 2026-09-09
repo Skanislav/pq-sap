@@ -212,7 +212,8 @@ the bottom remain paper-level, exactly as scoped.
 ```
 unlinkability ≤ ssHidingTrue + (sprTrue + sprFalse) + ssHidingFalse   [Lean]
   ssHiding  = KEM IND-CPA (real-or-random)  → MLWE  [Lean bridge + VCVio]
-  SPR       → 2·MLWE  (two-hop, documented — the one open lattice step)
+  SPR       ≤ epsilonPrim + 3 seeded-MLWE advantages + epsilonEnc  (SPRTwoHop.lean)
+  spend     ≤ relatedSpendAdvantage_le_mul  (SpendSecurity.lean)
 spend forgery ≤ MSIS  (honest witness always valid)                   [Lean]
 all of it instantiated on VCVio's concrete ML-KEM                     [Lean]
 ```
@@ -257,6 +258,19 @@ modules to 18 content modules plus the root and `Axioms.lean`. The full
 `lake build` remains green and sorry-free. `PqStealth/Axioms.lean` now
 freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
 `MultiUnlink`, `MultiRecipient`, `KEMAnonymity`, `ConstructionA`,
+
+**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-018 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/SECURITY_ANALYSIS.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
+
+**Update (2026-09-02).** All of those obligations are discharged; `lean/PqStealth/` is sorry-free
+again and every new theorem is guarded. Along the way several of the frozen statements turned out
+to be false or vacuous and were corrected rather than proven: the widened-signing mask was ring-uniform
+(now a FIPS 204 cube sampler), the widened key relation lacked the public-key identity and the `r₀`
+gate was too narrow for a `2η`-short `s₂`, the key-restoration game identities were swapped, the
+related-key spend game was a unit stub with advantage `0` (now a real search-witness game with a
+proven `q`-fold offset-subtraction reduction), the ROM bad-query bound had no query bound on the
+adversary, and the ML-DSA point-mass bound was unprovable for an opaque `Prims`. See
+`docs/SECURITY_ANALYSIS.md` for the current statements and their hypotheses.
+
 `BlindingROM`, `ROMUpToBad`, `SharedSecretHiding`, `AnonymityFromSPR`,
 `MLKEM`, `SPRTwoHop`, `Ownership`, `Soundness`, `DKSAPOracle`, `Controls`,
 `Demo`, and the renamed theorems). The build is the guard: a `sorry`
@@ -687,3 +701,22 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
 - Hash-based spend (D-018): remove spend-time linkability by binding the
   SPHINCS- key through the D-012 ZK ownership proof instead of an opened
   commitment; meta-address variant carrying the 32-B C13 key.
+
+## D-018 — Construction A retained for the ERC-5564 sender-address flow; Construction B documented as a separate account-transfer design — **LOCKED (2026-09-01)**
+
+Construction A is the only implemented branch in which the **sender** computes the
+destination address from the recipient's meta-address and the shared secret.  It
+is therefore the normative ownership mechanism for the ERC-5564 scheme ID under
+this project.  Construction B, which would require recipient-assisted key
+generation, changes who can compute the destination and is documented only as a
+separate account-transfer protocol; it does not share the Construction A scheme
+ID or claim.
+
+The security argument for Construction A is recorded in `docs/SECURITY_ANALYSIS.md`
+and in `lean/PqStealth/ConstructionASecurity.lean`.  It is contingent on the
+explicit named assumptions listed there (ROM/PRF, seeded-MLWE, SelfTargetMSIS,
+XOF idealization, widened-transcript distance, CMA-to-NMA, and unbounded-signing
+bridge), not on any unconditional theorem.
+
+D-008's custom ZK ownership authorization remains experimental and is not used
+as evidence for Construction A's spend theorem.

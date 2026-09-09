@@ -9,7 +9,7 @@ Last updated 2026-08-26.
 `lean/PqStealth/` is a **sorry-free** Lean 4 / VCVio formalization of the
 post-quantum stealth-address scheme. The full `lake build` is green. Every
 headline theorem's axiom list is frozen by `PqStealth/Axioms.lean`
-(currently **114** `#print axioms` blocks). A `sorry` introduced anywhere
+(currently **154** `#print axioms` blocks). A `sorry` introduced anywhere
 under a headline theorem's dependency cone turns the mismatch into a
 compile error.
 

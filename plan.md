@@ -30,7 +30,7 @@ The work divides into one research question and one engineering deliverable.
 
 * **(B)** Use ML-KEM only for the shared secret and have the recipient derive a fresh standardized keypair from it. Only standardized operations, but the sender can't compute the address on its own, so the announcement flow changes and unlinkability needs its own analysis. Fine for account-transfer flows, not for sender-names-the-address ones. We keep it as the fallback if A's security argument doesn't hold up.
 
-**Threat model.** One thing shapes both choices. Ethereum's own [PQ roadmap](http://pq.ethereum.org) points out that harvest-now-decrypt-later hits confidentiality, not ownership: recording announcements today doesn't let anyone steal funds later. So the urgent piece is the ML-KEM detection layer, which protects who-paid-whom permanently. Spending is a live threat, and it migrates through account abstraction whenever a quantum computer actually shows up, which is the path the EF roadmap takes anyway. That's why A is the forward-looking spend path, the ZK proof is its cheaper on-chain version, and B is the fallback, all on top of the same confidentiality core that's the real priority. The reason for picking A and the reason for dropping B are both deliverables.
+**Threat model.** One thing shapes both choices. Ethereum's own [PQ roadmap](http://pq.ethereum.org) points out that harvest-now-decrypt-later hits confidentiality, not ownership: recording announcements today doesn't let anyone steal funds later. So the urgent piece is the ML-KEM detection layer, which protects who-paid-whom permanently. Spending is a live threat, and it migrates through account abstraction whenever a quantum computer actually shows up, which is the path the EF roadmap takes anyway. That's why A is the forward-looking spend path, the ZK proof is its cheaper on-chain version, and B is documented as a separate account-transfer protocol, not a fallback under the same scheme ID, all on top of the same confidentiality core that's the real priority. The reason for picking A and the reason for dropping B are both deliverables.
 
 **Deliverables:**
 
@@ -92,7 +92,7 @@ Because the shared secret S itself, not its hash, derives the address here, view
 
 ML-KEM-768 by default, and the spec stays parameter-agile across the 512/768/1024 sets. `VIEW_TAG_BYTES = 1`. One caveat that came out of building the spend path: on-chain you're stuck with whatever verifier is actually deployed, which today means a level-2 Dilithium2 profile, not our level-3 default.
 
-Decisions the spec still has to close, in order: (1) construction A vs. B. A is the working default now (built, tested, spent on-chain, partly proved in Lean), and B stays as the fallback; the final call is gated on the security write-up. (2) target signature scheme for derived keys: ML-DSA family by default, since it matches the deployed verifiers, with SLH-DSA documented as the alternative if we end up on B. (3) which parameter level, given the deployed-verifier reality above. (4) announcement encoding.
+(1) Construction A vs. B — CLOSED by D-018: Construction A is locked for the ERC-5564 sender-address flow; Construction B is documented as a separate account-transfer protocol. (2) target signature scheme for derived keys: ML-DSA family by default, since it matches the deployed verifiers, with SLH-DSA documented as the alternative if we end up on B. (3) which parameter level, given the deployed-verifier reality above. (4) announcement encoding.
 
 ## Roadmap
 

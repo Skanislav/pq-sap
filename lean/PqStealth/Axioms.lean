@@ -18,6 +18,10 @@ import PqStealth.Reorder
 import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
+import PqStealth.WidenedSigning
+import PqStealth.BlindingEntropy
+import PqStealth.SpendSecurity
+import PqStealth.ConstructionASecurity
 
 /-!
 # Build-checked axiom audit
@@ -272,6 +276,15 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.game0_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_keyHopProblem
 
+/-- info: 'PqStealth.game0_keyRestorationAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game0_keyRestorationAdv
+
+/-- info: 'PqStealth.game1_keyRestorationAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_keyRestorationAdv
+
+/-- info: 'PqStealth.keyRestoration_le_mlwe_add_keyIdealization' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.keyRestoration_le_mlwe_add_keyIdealization
+
 /-- info: 'PqStealth.game1_keyHopProblem' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.game1_keyHopProblem
 
@@ -439,3 +452,108 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_blindBadProb
+
+/-! ## The ROM query bound (`ROMUpToBad` query budget, `BlindingEntropy`) -/
+
+/-- info: 'PqStealth.probEvent_bind_le_const' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_bind_le_const
+
+/-- info: 'PqStealth.probEvent_flag_trackingROImpl_pointPolicy_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_flag_trackingROImpl_pointPolicy_le
+
+/-- info: 'PqStealth.roImpl_run_keys_subset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.roImpl_run_keys_subset
+
+/-- info: 'PqStealth.probEvent_isSome_apply_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probEvent_isSome_apply_le
+
+/-- info: 'PqStealth.ConstructionA.probOutput_blindBadQuery_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.probOutput_blindBadQuery_le
+
+/-- info: 'PqStealth.ConstructionA.blindBadProb_le_queryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindBadProb_le_queryBound
+
+/-- info: 'PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindingAdvantageRO_le_queryBound
+
+/-! ## The ML-DSA address-point mass (`BlindingEntropy`) -/
+
+/-- info: 'PqStealth.ConstructionA.power2RoundCoeff_decomp' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.power2RoundCoeff_decomp
+
+/-- info: 'PqStealth.ConstructionA.power2RoundCoeff_low_range' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.power2RoundCoeff_low_range
+
+/-- info: 'PqStealth.ConstructionA.card_power2Round_fiber_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.card_power2Round_fiber_le
+
+/-- info: 'PqStealth.ConstructionA.blindPointMassBound_mldsa' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindPointMassBound_mldsa
+
+/-- info: 'PqStealth.ConstructionA.blindPointMassBound_mldsa65' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindPointMassBound_mldsa65
+
+/-! ## Widened ML-DSA signing for blinded keys (`WidenedSigning`) -/
+
+/-- info: 'MLDSA.sampleInBall_smul_widened_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.sampleInBall_smul_widened_bound
+
+/-- info: 'MLDSA.widenedValidKeyPair_blinded' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widenedValidKeyPair_blinded
+
+/-- info: 'MLDSA.wApprox_eq_of_keyIdentity' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.wApprox_eq_of_keyIdentity
+
+/-- info: 'MLDSA.cube_shift_accept_prob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.cube_shift_accept_prob
+
+/-- info: 'MLDSA.widened_z_accepted_independent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_z_accepted_independent
+
+/-- info: 'MLDSA.mldsa65_widened_z_accept_prob' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.mldsa65_widened_z_accept_prob
+
+/-- info: 'MLDSA.widened_ids_complete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_ids_complete
+
+/-- info: 'MLDSA.widened_ids_hvzk' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms MLDSA.widened_ids_hvzk
+
+/-! ## Related-key spend security (`SpendSecurity`, `ConstructionASecurity`) -/
+
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantage_full_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantage_full_bound
+
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantageMulti_full_bound' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantageMulti_full_bound
+
+/-- info: 'PqStealth.ownershipValid_subtractOffset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ownershipValid_subtractOffset
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_sum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_sum
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_mul' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_mul
+
+/-- info: 'PqStealth.relatedSpendAdvantageAt_le_spendForgery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantageAt_le_spendForgery
+
+/-- info: 'PqStealth.relatedSpendAdvantage_le_mul_spendForgery' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.relatedSpendAdvantage_le_mul_spendForgery
+
+/-- info: 'PqStealth.cInfNorm_sub_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.cInfNorm_sub_le
+
+/-- info: 'PqStealth.mldsaShort_subtractOffset' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mldsaShort_subtractOffset
+
+/-- info: 'PqStealth.mldsa_relatedSpendAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mldsa_relatedSpendAdvantage_le
+
+/-- info: 'PqStealth.CmaToNmaLossNN_val' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.CmaToNmaLossNN_val
+
+/-- info: 'PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.relatedSpendAdvantage_le_mul_capstone
+

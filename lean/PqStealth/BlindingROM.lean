@@ -13,10 +13,13 @@ degenerate identical-until-bad case, no address query ⇒ advantage `0`.
 Proved in addition: identical-until-bad (`blindingAdvantageRO_le_blindBadProb`),
 against VCVio's programming-oracle engine via `ROMUpToBad`.
 
-Assumed / NOT closed: TWO things — that `blindGameRO` is `auxKeyIndependence`
-after the mask hop (a standalone abstraction, NOT identified with it here), and
-the bound on `Pr[bad]` (`blindBadProb`), which needs a query bound and a
-min-entropy hypothesis. See `docs/announcement-model.md`.
+Closed downstream: the bound on `Pr[bad]` (`blindBadProb ≤ qH · β`) is
+`BlindingEntropy.blindBadProb_le_queryBound`, under a query bound on the
+adversary and the point-mass hypothesis `BlindPointMassBound`.
+
+Assumed / NOT closed: that `blindGameRO` is `auxKeyIndependence` after the
+mask hop (a standalone abstraction, NOT identified with it here). See
+`docs/announcement-model.md`.
 -/
 
 open OracleComp OracleSpec
@@ -220,14 +223,15 @@ theorem blindingAdvantageRO_le_blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K
         · rw [ProbComp.boolDistAdvantage_comm]
           exact boolDistAdvantage_blindGameRO_blindGameROFree_le P tg rho t adv false
 
-/-! ### Where the argument stops
+/-! ### The query bound, and where the argument stops
 
-Bounding `blindBadProb` is the remaining target — `Pr[bad] ≤ mlwe + q_H · β`: after
-the MLWE hop that makes the mask uniform, hitting the point costs one guess per
-oracle query, with `β` the min-entropy bound of `pack ∘ power2Round` on a uniform
-argument. It needs a query bound on `adv` (`IsTotalQueryBound`) and an
-unpredictability hypothesis on the point (`HasUnpredictableSample`); neither is
-stated here yet. The reduction it would consume is type-checked below. -/
+`blindBadProb ≤ q_H · β` is proven in `BlindingEntropy`
+(`blindBadProb_le_queryBound`): with the mask uniform, hitting the point costs
+one guess per oracle query, `β` the point-mass bound of `pack ∘ power2Round` on
+a uniform argument (`BlindPointMassBound`), under `IsQueryBoundP` on the
+adversary's hash queries. What remains open is the MLWE hop that makes the mask
+uniform in the first place; the reduction it would consume is type-checked
+below. -/
 
 /-- **The ROM reduction, type-checked.** Simulating the address oracle inside,
 a ROM blinding adversary is an ordinary seeded-MLWE distinguisher: the challenge
@@ -240,6 +244,7 @@ noncomputable def mlweAdvOfBlindAdvRO (P : Prims R Rho Bytes T1 Tag Addr K k l)
     (simulateQ romImpl
       (hashAddrRO (P.pack chal.1 (P.power2Round (chal.2 + t))) >>=
         fun a => adv (tg, a))).run' ∅
+
 
 end ConstructionA
 
