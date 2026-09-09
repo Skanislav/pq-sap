@@ -22,10 +22,13 @@ lean/docs-proofs/
 wiki/src/generated/
 
 # agent worktrees — each carries a `.git` pointer file, and a tree containing
-# `.git` is rejected outright by GitHub's receive-side fsck (hasDotgit),
-# which makes any branch that commits one permanently unpushable
+# `.git` is rejected outright by GitHub's receive-side fsck (hasDotgit), which
+# makes any branch that commits one permanently unpushable
 .claude/worktrees/
 
-# dependency trees and tool caches (17M lines of these got committed once)
+# dependency trees, build output and tool caches. 145k of these files were
+# committed once (17M lines); nothing under them belongs in the repo.
 node_modules/
+dist/
 .ruff_cache/
+js-client/contracts/cache/
