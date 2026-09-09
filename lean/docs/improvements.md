@@ -164,9 +164,9 @@ theorems it should be closed.)
   raw `ByteArray`, sample a `Vector Byte n` and convert).
 - State one theorem `mlkem768_unlinkAdvantage_le …` at
   `concreteNTTRingOps`/`mlkem768Encoding`/`mlkem768Primitives`
-  (`Concrete/NTT.lean:324 concreteNTTRingOps`,
-  `Concrete/Instance.lean:119 mlkem768Encoding`,
-  `Concrete/Instance.lean:147 mlkem768Primitives`) with **no**
+  (`LatticeCrypto/MLKEM/Concrete/NTT.lean:324 concreteNTTRingOps`,
+  `LatticeCrypto/MLKEM/Concrete/Instance.lean:119 mlkem768Encoding`,
+  `LatticeCrypto/MLKEM/Concrete/Instance.lean:147 mlkem768Primitives`) with **no**
   instance hypotheses.
 
 **Acceptance.** A theorem about `mlkem768` whose only hypotheses are the
@@ -382,7 +382,7 @@ says nothing about the wire format `version ‖ rho ‖ pack23(t) ‖ ek`
 **Proposal.** Model the meta-address as `Bytes n` built with VCVio's
 `MLDSA.Encoding.pkEncode` and the ML-KEM `EncapsulationKey` encoder, and
 prove decode∘encode = id from their `Laws` (VCVio has
-`mlkem768EncodingLaws`, `Concrete/Instance.lean:133`). Use `UInt8`/`Fin 256`
+`mlkem768EncodingLaws`, `LatticeCrypto/MLKEM/Concrete/Instance.lean:133`). Use `UInt8`/`Fin 256`
 for `version`.
 
 **Acceptance.** A roundtrip theorem whose statement mentions concrete byte

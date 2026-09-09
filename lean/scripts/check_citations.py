@@ -34,11 +34,16 @@ DECL = r"^(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+|noncomputable\s+|nonrec\
        r"(?:theorem|lemma|def|abbrev|structure|class|instance|inductive|opaque|axiom|example)\s+{name}\b"
 
 
-def resolve(rel: str) -> Path | None:
+def resolve(rel: str) -> Path | list[Path] | None:
+    """The first root (in ROOTS order) holding `rel`; a list when that root
+    holds several files ending in `rel` (e.g. `Concrete/NTT.lean` under VCVio),
+    since `rglob` order is filesystem-dependent and the citation must say which."""
     for root in ROOTS:
-        for cand in root.rglob(Path(rel).name):
-            if str(cand).endswith(rel):
-                return cand
+        hits = sorted({c.resolve() for c in root.rglob(Path(rel).name) if str(c).endswith(rel)})
+        if len(hits) == 1:
+            return hits[0]
+        if hits:
+            return hits
     return None
 
 
@@ -64,6 +69,10 @@ def check_doc(doc: Path, fix: bool) -> list[str]:
         f = resolve(rel)
         if f is None:
             problems.append(f"{where}: cannot resolve `{rel}`")
+            continue
+        if isinstance(f, list):
+            opts = ", ".join("/".join(c.parts[-4:]) for c in f)
+            problems.append(f"{where}: `{rel}` is ambiguous ({opts}); cite a longer path")
             continue
         lines = f.read_text().splitlines()
         if end > len(lines) or start < 1 or end < start:
