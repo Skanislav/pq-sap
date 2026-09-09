@@ -4,6 +4,16 @@
 parked D-012 / D-008 ZK-spend variant. No code or vectors change; this is a design memo
 against two Draft EIPs that were not on the table when D-020 was written.*
 
+> **Update 2026-09-09.** Written on 2026-09-03 against the construction-A mainline; its
+> decision record is now **D-026** (`docs/DECISIONS.md`). Since then D-024 adopted the
+> 1,217-byte commitment meta-address this memo calls "D-012's prize", and D-025 made the
+> ZK-authorized spend the demo mainline, with non-replay currently supplied by the
+> sponsor's nonce (the account is not the tx sender). §5 and §9.4 should be read as
+> applying to that mainline rather than to a parked variant. The scoping in §6 is
+> unchanged: the payer of a D-024 payment computes the commitment and the address, so the
+> nonce key is still not the only per-payment tag. `docs/erc-draft.md` is hand-written
+> only (D-024); the spec-text items here go to its author and to `docs/TECHNICAL_SPEC.md`.
+
 ## 1. Question
 
 D-020 locked the spend path onto EIP-8141 frame transactions and inherited that EIP's
@@ -338,6 +348,7 @@ Stated plainly, because the temptation to oversell a protocol-level gift is real
 4. **Re-cost the D-012 ZK-spend variant** with the non-replay obligation removed. It stays
    parked on address-binding, but the cost line is now "binding + one `nonce_key`", and the
    prize is unchanged: 5,633 B → 1,217 B meta-address, KEM decoupled from spend.
+   *(2026-09-09: landed as D-024/D-025 — the cost line now describes the mainline spend.)*
 5. **Carry two items to the EIP authors.** (a) The sender-uncomputable requirement belongs
    in 8250's Security Considerations — schemes where a third party knows the payment secret
    need it, and 8250's own privacy framing invites exactly those schemes. (b) The D-020 ask

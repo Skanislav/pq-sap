@@ -648,104 +648,6 @@ working interim demo, not extended further. Open: a `Stealth8141Account`
 sketch (VERIFY code calling C13/ML-DSA + APPROVE) once client devnets
 expose type `0x06`.
 
-## D-021 — Frame-tx nonce independence: expiring nonces for the spend, keyed nonces only where a nullifier is real — **FINDING / direction**
-
-Two Draft EIPs landed after D-020 and change its inherited replay model —
-EIP-8141's single linear sender nonce. Full analysis and citations in
-`docs/research/keyed-nonces-as-nullifiers.md`.
-
-- **EIP-8250 (Keyed Nonces, Draft 2026-04-16)** replaces `nonce` with
-  `(nonce_keys, nonce_seq)`; non-zero keys get permanent slots in the
-  `NONCE_MANAGER` predeploy at `keccak(pad32(sender) ‖ bytes32(key))`, and
-  consumption is tied to EIP-8141's payment-approval step. Its own Rationale
-  offers this to "single-use-key applications, such as nullifiers" as an
-  atomic spent-once guarantee.
-- **EIP-8266 (Expiring Nonces, Draft 2026-05-15)** replaces the nonce with a
-  ≤60 s deadline plus a `2^18`-slot ring buffer: `EXPIRING_NONCE_GAS = 13,000`
-  flat, **zero net state growth**, and nodes MAY admit multiple pending
-  transactions per sender.
-
-**Finding: we need freshness, not a nullifier.** A nullifier exists because a
-note is a commitment nothing on-chain stops you presenting twice. pq-sap has no
-notes — value is native ETH at an account, and the balance is the double-spend
-defence. So the mainline construction-A spend should take **8266** (13,000 gas,
-no permanent state) rather than **8250** (`KEYED_NONCE_FIRST_USE_STATE_GAS =
-97,920` state gas and one permanent slot *per payment, forever* — the wrong
-direction for a project whose headline cost finding is D-011's "cost is data").
-8250 is the fallback if the 60 s deadline is too tight for pre-signed spends,
-and the right tool only where the authorization is detachable from the balance.
-
-**What it fixes: the sponsor.** `Stealth8141Account` is not the tx `sender` — a
-sponsor EOA is (the demo's in-page throwaway key), so today's spend carries a
-unique public sender that must be funded from somewhere, and every sponsored
-spend serializes on one nonce (`ui/src/lib/frames.ts` `pendingNonce`, "rapid
-back-to-back frame txs collide on `latest`"). EIP-8250's Rationale names this
-case exactly. Either EIP unblocks a **shared public sponsor**: one funded
-account carrying every stealth spend, each in its own replay domain, nothing for
-the recipient to fund. This completes D-020's gas-funding-privacy item —
-paymaster frames fix *who pays*, nonce independence fixes *whose nonce orders
-the transaction*. Note what happened: ERC-4337 got this free (the bundler is the
-on-chain sender), EIP-8141 gave it up with the bundler, and these EIPs give it
-back. No contract change is needed for binding — EIP-8141's `sig_hash` is keccak
-over the RLP body and 8250 replaces the `nonce` field *inside* it, so
-`executeFrame`'s existing `FRAME_CTX.sigHash()` check already authenticates
-`(sender, nonce_keys_hash, nonce_seq)` as 8250 asks. `frame-tx/serialize.ts`
-would need the new body layout, but it tracks *deployed* ethrex, so not yet.
-
-**What it does for generation.** A ZK spend (D-008/D-012) owes (a) address
-binding and (b) non-replay. Under construction A (b) was free and invisible — the
-one-time account's own nonce serialized it. A keyed nonce discharges (b) at the
-protocol layer for the price of picking a key. This does **not** unpark D-012:
-(a) is the harder half and is untouched. But the variant should now be costed as
-"binding + one `nonce_key`", not "binding + a nullifier subsystem", with D-012's
-prize unchanged (meta-address 5,633 B → 1,217 B; KEM decoupled from spend).
-
-**Security rule — nonce keys MUST NOT derive from `ss`.** `nonce_keys` are public
-payload fields (`TXPARAM 0x0F`/`0x10`) and consumed slots are permanent public
-state. In a stealth scheme the *sender* computes `ss`, so `k = H(ss)` hands every
-payer a permanent, publicly checkable "has my payment been spent, and where"
-oracle. Scoped honestly: in today's construction-A shape this is *cheaper*
-lookup, not new information — the payer knows the stealth address and watches
-value leave it, and a shared sponsor mixes the `sender` field without hiding
-that value edge. It becomes decisive where the nonce key is the **only** public
-per-payment tag: the pooled/ZK-spend variant, or any separate entitlement draw
-(a gas-bank draw is exactly this shape). The rule is free, so adopt it
-unconditionally rather than when the variant that needs it arrives. Required
-derivation:
-
-```
-k = SHAKE256("PQSAP-nonce-key-v1" ‖ K_null ‖ ct)  truncated to 256 bits, k != 0
-```
-
-with `K_null` a **nullifying key** from the recipient's master seed under its own
-domain separator (sender-uncomputable), and `ct` the announcement ciphertext
-(public, per-payment, no new bytes). Domain separation and `k != 0` are 8250's
-own MUSTs; **sender-uncomputable is ours** — 8250 has no party that knows the
-payment secret and is not the spender, so its Security Considerations do not
-state it. Spec consequence: a third key beside detection (`dk`) and spend, with
-viewing-key disclosure semantics — anyone holding `K_null` can read every
-payment's spent flag retroactively; a watch-only export must omit it. Free side
-effect for the owner: `slot(sender, k)` answers "which payments are unspent" with
-a storage read instead of a transfer scan.
-
-**Budget impact on the D-020 ask.** Neither EIP touches `MAX_VERIFY_GAS`
-(100,000 execution), but 8250 spends 97,920 of the prefix's 500,000 **state** gas
-per fresh key — a fifth, before validation begins, capping the prefix at ≤5 fresh
-keys. The working-group ask therefore grows a second half: alongside a
-protocol-validated PQ signature identifier or a raised execution budget, the
-*state* budget must accommodate a first-use keyed nonce next to a PQ verification.
-
-**Not fixed:** verification cost (D-007/D-020), announcement size (D-011), the
-value graph (a shared sponsor mixes sender and gas-funding edges only — value
-still leaves a unique stealth address), per-address deployment (D-014/D-020).
-Both EIPs are Draft and unscheduled; EIP-8141 itself is only SFI for Hegotá.
-
-Follow-ups: fold the derivation rule and `K_null` into `docs/erc-draft.md` and
-the key hierarchy before the ERC freeze; adopt the shared-sponsor shape in
-`ui/`/`js-client/` when a chain exposes either mode; carry both WG items
-(sender-uncomputable in 8250's Security Considerations; state gas in the D-020
-ask) to the authors.
-
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured
@@ -1024,3 +926,115 @@ A revealed secret would be catastrophic, so the secret is only ever a witness;
 the demo derives it from a seed in the page and never transmits it. This is the
 demo's spend route, not a normative choice for the ERC — that text is
 hand-written.
+
+## D-026 — Frame-tx nonce independence: expiring nonces for the spend, keyed nonces only where a nullifier is real — **FINDING / direction (2026-09-03; renumbered from a second D-021 and updated against D-024/D-025 on 2026-09-09)**
+
+Two Draft EIPs landed after D-020 and change its inherited replay model —
+EIP-8141's single linear sender nonce. Full analysis and citations in
+`docs/research/keyed-nonces-as-nullifiers.md`.
+
+- **EIP-8250 (Keyed Nonces, Draft 2026-04-16)** replaces `nonce` with
+  `(nonce_keys, nonce_seq)`; non-zero keys get permanent slots in the
+  `NONCE_MANAGER` predeploy at `keccak(pad32(sender) ‖ bytes32(key))`, and
+  consumption is tied to EIP-8141's payment-approval step. Its own Rationale
+  offers this to "single-use-key applications, such as nullifiers" as an
+  atomic spent-once guarantee.
+- **EIP-8266 (Expiring Nonces, Draft 2026-05-15)** replaces the nonce with a
+  ≤60 s deadline plus a `2^18`-slot ring buffer: `EXPIRING_NONCE_GAS = 13,000`
+  flat, **zero net state growth**, and nodes MAY admit multiple pending
+  transactions per sender.
+
+**Finding: we need freshness, not a nullifier.** A nullifier exists because a
+note is a commitment nothing on-chain stops you presenting twice. pq-sap has no
+notes — value is native ETH at an account, and the balance is the double-spend
+defence. So the mainline construction-A spend should take **8266** (13,000 gas,
+no permanent state) rather than **8250** (`KEYED_NONCE_FIRST_USE_STATE_GAS =
+97,920` state gas and one permanent slot *per payment, forever* — the wrong
+direction for a project whose headline cost finding is D-011's "cost is data").
+8250 is the fallback if the 60 s deadline is too tight for pre-signed spends,
+and the right tool only where the authorization is detachable from the balance.
+
+**What it fixes: the sponsor.** `Stealth8141Account` is not the tx `sender` — a
+sponsor EOA is (the demo's in-page throwaway key), so today's spend carries a
+unique public sender that must be funded from somewhere, and every sponsored
+spend serializes on one nonce (`ui/src/lib/frames.ts` `pendingNonce`, "rapid
+back-to-back frame txs collide on `latest`"). EIP-8250's Rationale names this
+case exactly. Either EIP unblocks a **shared public sponsor**: one funded
+account carrying every stealth spend, each in its own replay domain, nothing for
+the recipient to fund. This completes D-020's gas-funding-privacy item —
+paymaster frames fix *who pays*, nonce independence fixes *whose nonce orders
+the transaction*. Note what happened: ERC-4337 got this free (the bundler is the
+on-chain sender), EIP-8141 gave it up with the bundler, and these EIPs give it
+back. No contract change is needed for binding — EIP-8141's `sig_hash` is keccak
+over the RLP body and 8250 replaces the `nonce` field *inside* it, so
+`executeFrame`'s existing `FRAME_CTX.sigHash()` check already authenticates
+`(sender, nonce_keys_hash, nonce_seq)` as 8250 asks. `frame-tx/serialize.ts`
+would need the new body layout, but it tracks *deployed* ethrex, so not yet.
+
+**What it does for generation.** A ZK spend (D-008/D-012) owes (a) address
+binding and (b) non-replay. Under construction A (b) was free and invisible — the
+one-time account's own nonce serialized it. A keyed nonce discharges (b) at the
+protocol layer for the price of picking a key. This does **not** unpark D-012:
+(a) is the harder half and is untouched. But the variant should now be costed as
+"binding + one `nonce_key`", not "binding + a nullifier subsystem", with D-012's
+prize unchanged (meta-address 5,633 B → 1,217 B; KEM decoupled from spend).
+
+*Update 2026-09-09.* D-024 has since adopted that 1,217-byte commitment
+meta-address (format `0x02`) and D-025 made the ZK-authorized spend the demo
+mainline, so the variant this paragraph costs is no longer parked: (a) is
+discharged by the commitment binding (the proof is bound to the frame tx's
+`sig_hash` and the account to the commitment), and (b) is discharged today by
+the *sponsor's* legacy nonce, since `Stealth8141ZkAccount` is not the tx
+sender. The shared-sponsor shape below is therefore what D-025's spend grows
+into once either EIP ships, with one `nonce_key` per payment replacing the
+sponsor's serial nonce.
+
+**Security rule — nonce keys MUST NOT derive from `ss`.** `nonce_keys` are public
+payload fields (`TXPARAM 0x0F`/`0x10`) and consumed slots are permanent public
+state. In a stealth scheme the *sender* computes `ss`, so `k = H(ss)` hands every
+payer a permanent, publicly checkable "has my payment been spent, and where"
+oracle. Scoped honestly: in today's construction-A shape this is *cheaper*
+lookup, not new information — the payer knows the stealth address and watches
+value leave it, and a shared sponsor mixes the `sender` field without hiding
+that value edge. It becomes decisive where the nonce key is the **only** public
+per-payment tag: a pooled variant, or any separate entitlement draw (a gas-bank
+draw is exactly this shape). D-025's spend does not change this scoping: its
+payer computes the commitment and the CREATE2 address (D-024), so the address
+is still a known tag and the value edge is still visible. The rule is free, so adopt it
+unconditionally rather than when the variant that needs it arrives. Required
+derivation:
+
+```
+k = SHAKE256("PQSAP-nonce-key-v1" ‖ K_null ‖ ct)  truncated to 256 bits, k != 0
+```
+
+with `K_null` a **nullifying key** from the recipient's master seed under its own
+domain separator (sender-uncomputable), and `ct` the announcement ciphertext
+(public, per-payment, no new bytes). Domain separation and `k != 0` are 8250's
+own MUSTs; **sender-uncomputable is ours** — 8250 has no party that knows the
+payment secret and is not the spender, so its Security Considerations do not
+state it. Spec consequence: a third key beside detection (`dk`) and spend, with
+viewing-key disclosure semantics — anyone holding `K_null` can read every
+payment's spent flag retroactively; a watch-only export must omit it. Free side
+effect for the owner: `slot(sender, k)` answers "which payments are unspent" with
+a storage read instead of a transfer scan.
+
+**Budget impact on the D-020 ask.** Neither EIP touches `MAX_VERIFY_GAS`
+(100,000 execution), but 8250 spends 97,920 of the prefix's 500,000 **state** gas
+per fresh key — a fifth, before validation begins, capping the prefix at ≤5 fresh
+keys. The working-group ask therefore grows a second half: alongside a
+protocol-validated PQ signature identifier or a raised execution budget, the
+*state* budget must accommodate a first-use keyed nonce next to a PQ verification.
+
+**Not fixed:** verification cost (D-007/D-020), announcement size (D-011), the
+value graph (a shared sponsor mixes sender and gas-funding edges only — value
+still leaves a unique stealth address), per-address deployment (D-014/D-020).
+Both EIPs are Draft and unscheduled; EIP-8141 itself is only SFI for Hegotá.
+
+Follow-ups (tracked in issue #15): hand the derivation rule and `K_null` to the
+author of the hand-written ERC draft (D-024: agents do not write
+`docs/erc-draft.md`) and fold them into the key hierarchy in
+`docs/TECHNICAL_SPEC.md` before the ERC freeze; adopt the shared-sponsor shape in
+`ui/`/`js-client/` when a chain exposes either mode; carry both WG items
+(sender-uncomputable in 8250's Security Considerations; state gas in the D-020
+ask) to the authors.
