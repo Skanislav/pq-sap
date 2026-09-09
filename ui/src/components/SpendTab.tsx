@@ -78,7 +78,7 @@ function ensureFunded(balance: bigint, value: bigint, prefund: bigint): void {
 }
 
 import { buildAnnounceTransfer, buildEoaTransfer, rpc as frameRpc } from '../../../js-client/src/frame-tx/actions.ts'
-import { fetchAnnouncements, type OnchainAnnouncement } from '../lib/announcements.ts'
+import { fetchAnnouncements, type OnchainAnnouncement, requireAnnouncer } from '../lib/announcements.ts'
 import { parseTxError } from '../lib/errors.ts'
 import { fromHex, toHex } from '../lib/hex.ts'
 import { clearClassicalSeeds, loadClassicalSeeds, saveClassicalSeeds } from '../lib/storage.ts'
@@ -283,6 +283,7 @@ function ClassicalSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wal
       // self-pay demo helper: you fund your OWN stealth address, so a failed
       // announce only strands your own test ETH (unlike SendTab's third-party
       // send, which guards this with a retry — see PendingAnnounce there).
+      await requireAnnouncer(cfg, publicClient)
       const { cipherText, sharedSecret } = ml_kem768.encapsulate(meta.kemEk)
       const P = deriveStealthPubkey(meta.spendPub, sharedSecret)
       const addr = getAddress(toHex(ethAddressOfPoint(P)))
@@ -651,6 +652,7 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
         args: pkArgs,
       })
       const value = parseEther(receiveAmount as `${number}`)
+      await requireAnnouncer(cfg, publicClient)
       const payTx = await walletClient.sendTransaction({
         account: walletClient.account,
         chain: cfg.chain,
@@ -677,7 +679,10 @@ function PqSpend({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wallet; et
 
   const scan = async () => {
     setError(null)
-    if (!demoKem) return
+    if (!demoKem) {
+      setError('This deployment has no demo recipient seeds, so there is no viewing key to scan with.')
+      return
+    }
     setBusy('scan')
     try {
       const publicClient = publicClientFor(cfg)
@@ -962,6 +967,7 @@ function HybridSepoliaSpend({
     try {
       const publicClient = publicClientFor(cfg)
       const value = parseEther(receiveAmount as `${number}`)
+      await requireAnnouncer(cfg, publicClient)
       const payTx = await walletClient.sendTransaction({
         account: walletClient.account,
         chain: cfg.chain,

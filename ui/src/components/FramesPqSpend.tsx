@@ -43,7 +43,7 @@ import {
   SPONSORED_PQ_SIG_INDEX,
 } from '../../../js-client/src/frame-tx/actions.ts'
 import { ANNOUNCER_ABI } from '../../../js-client/src/sepolia.ts'
-import { fetchAnnouncements, type OnchainAnnouncement } from '../lib/announcements.ts'
+import { fetchAnnouncements, type OnchainAnnouncement, requireAnnouncer } from '../lib/announcements.ts'
 import { type ChainConfig, publicClientFor, SCHEME_ID } from '../lib/chain.ts'
 import { parseTxError } from '../lib/errors.ts'
 import { broadcastFrameTx, type FrameReceipt, frameFees, pendingNonce, TX_EXEC_GAS_CAP } from '../lib/frames.ts'
@@ -182,6 +182,7 @@ export function FramesPqSpend({
     setBusy('receive')
     try {
       const sp = requireSponsor()
+      await requireAnnouncer(cfg, publicClientFor(cfg))
       const fresh = await freshStealth()
       const account = fresh.account
       const value = parseEther(receiveAmount as `${number}`)
@@ -210,7 +211,10 @@ export function FramesPqSpend({
 
   const scan = async () => {
     setError(null)
-    if (!demoKem) return
+    if (!demoKem) {
+      setError('This deployment has no demo recipient seeds, so there is no viewing key to scan with.')
+      return
+    }
     setBusy('scan')
     try {
       const publicClient = publicClientFor(cfg)
