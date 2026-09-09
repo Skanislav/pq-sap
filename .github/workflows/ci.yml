@@ -43,6 +43,8 @@ jobs:
           cmp vectors/classical/v0/vectors.json "$RUNNER_TEMP/cvec/vectors.json"
           python vectors/generate_native_key_vectors.py --outdir "$RUNNER_TEMP/nkvec"
           cmp vectors/v0/native_key.json "$RUNNER_TEMP/nkvec/native_key.json"
+          python vectors/generate_commit_vectors.py --outdir "$RUNNER_TEMP/cmvec"
+          cmp vectors/v0/commit_vectors.json "$RUNNER_TEMP/cmvec/commit_vectors.json"
 
   # liboqs cross-check (audited ML-DSA verifier) — the Dockerfile builds
   # liboqs, so it runs the one test the plain job importorskips
@@ -110,6 +112,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:native-key
+      - run: npm run test:commit
       # forge build first: the anvil e2e tests read contracts/out/*.json
       - run: npm run build-contracts
       # forge tests: NTT-precompute spike + verify gas profile (D-022)

@@ -23,6 +23,7 @@ COPY pyproject.toml README.md ./
 COPY pq_stealth/ pq_stealth/
 COPY tests/ tests/
 COPY vectors/ vectors/
+COPY scripts/ scripts/
 COPY benchmarks/ benchmarks/
 RUN pip install --no-cache-dir -e ".[dev,audit,bench]"
 CMD ["pytest", "-q"]

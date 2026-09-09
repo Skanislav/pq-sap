@@ -51,7 +51,8 @@ recorded in the vectors' `sizes` field.
 
 | Object | Size (default set) | Notes |
 |---|---|---|
-| Meta-address | **5,633 B** | `1 + 32 + 4416 + 1184`; one-time registry/ENS cost |
+| Meta-address (format 0x01, Construction A) | **5,633 B** | `1 + 32 + 4416 + 1184`; one-time registry/ENS cost |
+| Meta-address (format 0x02, commitment; D-024) | **1,217 B** | `1 + 32 + 1184`; no lattice material |
 | Ephemeral pubkey `R` | 1,088 B | the ML-KEM ciphertext (33 B in EC DKSAP) |
 | View tag | 1 B | longer tags safe in this family; default stays 1 |
 | Stealth address | 20 B | Ethereum-style, `keccak256(pk)[12:]` |
@@ -69,6 +70,18 @@ order, matching FIPS 204's packing conventions. The meta-address MUST carry
 full-precision `t`, not the rounded `t1` of a standard public key:
 `Power2Round(A*s' + e' + t)` is only well-defined on the unrounded value.
 (The Rust `v2` prototype also keeps full `t` but never defined an encoding.)
+
+**Commitment meta-address, format `0x02`** (`pq_stealth/commit.py`,
+`js-client/src/commit-scheme.ts`, D-024): `version(1) || spend_key(32) ||
+kem_ek` — **1,217 B** at ML-KEM-768. `spend_key` is a 32-byte commitment to
+the spending public key (the key itself for SPHINCS- C13, a hash otherwise).
+Derivation: `opener = SHA-256(open_domain || ss)`, `commitment =
+keccak256(commit_domain || spend_key || opener)`, stealth address =
+`CREATE2(factory, 0, initcode(commitment, …))` of the account bound to the
+commitment (a *deployment binding*, not part of the meta-address). This is
+the key-exchange-only form: no lattice material, no per-address key
+derivation, nothing about the spend scheme at receive time. Vectors:
+`vectors/v0/commit_vectors.json`; Lean: `meta_address_zk_roundtrips_1217`.
 
 **Announcement**: ERC-5564 `Announcement` event fields with
 `ephemeralPubKey = R` (1,088 B ML-KEM ciphertext) and
