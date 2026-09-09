@@ -15,6 +15,22 @@ export interface OnchainAnnouncement extends AnnouncementData {
   txHash: string
 }
 
+/**
+ * The announcer must actually be a contract: `announce` returns nothing, so a
+ * call to a code-less address (a reset testnet, a stale config) *succeeds* and
+ * emits no log — the payment is then unfindable with no error anywhere. Fail
+ * before broadcasting instead.
+ */
+export async function requireAnnouncer(cfg: ChainConfig, publicClient: PublicClient): Promise<void> {
+  const code = await publicClient.getCode({ address: cfg.announcer })
+  if (code && code.length > 2) return
+  throw new Error(
+    `No contract at the announcer ${cfg.announcer} on ${cfg.label} — announcing there would emit no event and the ` +
+      `payment could never be found. The network was probably reset; redeploy the announcer and update ` +
+      `ui/src/lib/chain.ts (announcer + scanFromBlock).`,
+  )
+}
+
 export async function fetchAnnouncements(
   cfg: ChainConfig,
   publicClient: PublicClient,
@@ -23,6 +39,14 @@ export async function fetchAnnouncements(
   const latest = await publicClient.getBlockNumber()
   const fromBlock =
     cfg.scanFromBlock < 0n ? (latest + cfg.scanFromBlock < 0n ? 0n : latest + cfg.scanFromBlock) : cfg.scanFromBlock
+  // An empty range used to yield zero spans, zero logs and a cheerful "no
+  // payments found" — the signature of a chain reset, not of an empty chain.
+  // Not clamped to 0: the config is wrong and should say so.
+  if (fromBlock > latest)
+    throw new Error(
+      `scanFromBlock ${fromBlock} is past the head of ${cfg.label} (block ${latest}), so there is no range to scan. ` +
+        `The network was probably reset; update scanFromBlock (and the announcer address) in ui/src/lib/chain.ts.`,
+    )
   const spans: Array<[bigint, bigint]> = []
   if (cfg.logChunk == null) {
     spans.push([fromBlock, latest])

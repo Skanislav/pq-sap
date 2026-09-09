@@ -7,8 +7,11 @@
  *   2. ZKNOX_dilithium  — ERC-7913 ML-DSA verifier (ETHDILITHIUM @ df999ed)
  *   3. Stealth8141Factory(verifier, frameCtx) — CREATE2 stealth accounts
  *
- * The announcer is the one already in ui/src/lib/chain.ts (deployed earlier);
- * pass ANNOUNCER=0x… to override. Fees are explicit and tiny: the testnet's
+ * The announcer defaults to the one in ui/src/lib/chain.ts; pass ANNOUNCER=0x…
+ * to override. This testnet is reset without notice, which wipes every address
+ * above — so if the configured announcer has no code, a fresh ERC5564Announcer
+ * is deployed here (step 0) and printed for chain.ts. Fees are explicit and
+ * tiny: the testnet's
  * base fee is a few wei and its proposer accepts ~100-wei tips, so even the
  * nearly-drained shared dev key can pay (viem's auto-fee would overshoot).
  *
@@ -30,7 +33,7 @@ const RPC = process.env.FRAMES_RPC ?? 'https://rpc1.frames.ethrex.xyz'
 const CHAIN_ID = 81410
 const DEPLOYER_KEY =
   process.env.FRAMES_DEPLOYER_KEY ?? '0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31'
-const ANNOUNCER = getAddress(process.env.ANNOUNCER ?? '0x9fcf7d13d10dedf17d0f24c62f0cf4ed462f65b7')
+let ANNOUNCER = getAddress(process.env.ANNOUNCER ?? '0xb4b46bdaa835f8e4b4d8e208b6559cd267851051')
 const FEES = { maxFeePerGas: 1_000n, maxPriorityFeePerGas: 100n } // wei
 
 const OUT = here('../../js-client/contracts/out')
@@ -48,12 +51,29 @@ const walletClient = createWalletClient({ chain, transport: http(RPC), account }
 
 console.log(`deployer ${account.address}: ${formatEther(await publicClient.getBalance({ address: account.address }))} ETH`)
 
+/** block of the most recent deploy() — step 0 reports it as the new scanFromBlock */
+let lastDeployBlock = 0n
+
 async function deploy(name, art, args, gas) {
   const hash = await walletClient.deployContract({ abi: art.abi ?? [], bytecode: art.bytecode.object, args, gas, ...FEES })
   const rcpt = await publicClient.waitForTransactionReceipt({ hash })
   if (rcpt.status !== 'success') throw new Error(`${name}: deploy reverted (${hash})`)
   console.log(`  ${name.padEnd(18)} ${rcpt.contractAddress}  block ${rcpt.blockNumber}  gas ${rcpt.gasUsed}`)
+  lastDeployBlock = rcpt.blockNumber
   return getAddress(rcpt.contractAddress)
+}
+
+// Step 0 — the announcer. `announce` returns nothing, so announcing at a
+// code-less address SUCCEEDS and emits no log: every payment made against a
+// stale announcer is silently undiscoverable. Check, don't assume.
+let announcerDeployBlock = null
+const announcerCode = await publicClient.getCode({ address: ANNOUNCER })
+if (announcerCode && announcerCode.length > 2) {
+  console.log(`  ${'ERC5564Announcer'.padEnd(18)} ${ANNOUNCER}  (reused)`)
+} else {
+  console.log(`  no code at announcer ${ANNOUNCER} — the chain was reset; deploying a fresh one`)
+  ANNOUNCER = await deploy('ERC5564Announcer', artifact('ERC5564Announcer.sol/ERC5564Announcer.json'), [], 4_000_000n)
+  announcerDeployBlock = lastDeployBlock
 }
 
 // Contract creation is far pricier here than on mainnet (EIP-8037 state gas +
@@ -90,3 +110,16 @@ console.log(`\nwrote ${file}
   verifier  ${verifier}
   factory   ${factory}
 Run the signer service (\`npm run signer\`) and open the Spend tab on "Frames testnet".`)
+
+if (announcerDeployBlock !== null)
+  console.log(`
+A NEW announcer was deployed, so ui/src/lib/chain.ts must be edited by hand —
+the UI reads the announcer from there, not from frames-deployment.json:
+
+  frames: {
+    announcer: '${ANNOUNCER.toLowerCase()}',
+    scanFromBlock: ${announcerDeployBlock}n, // announcer deploy block
+  }
+
+Then re-run \`node scripts/deploy-frames-zk.mjs\` (and ZK_CIRCUIT=c13) so the ZK
+deployments pick up the new announcer from frames-deployment.json.`)

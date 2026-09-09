@@ -69,10 +69,10 @@ export const CHAINS: Record<ChainKey, ChainConfig> = {
     rpcUrl: 'https://rpc1.frames.ethrex.xyz',
     // minimal ERC-5564 announcer we deployed on this testnet (canonical
     // singleton isn't present); redeploy + update if the chain is reset.
-    announcer: '0x9fcf7d13d10dedf17d0f24c62f0cf4ed462f65b7',
+    announcer: '0xb4b46bdaa835f8e4b4d8e208b6559cd267851051',
     explorer: 'https://dora.frames.ethrex.xyz',
     frames: true,
-    scanFromBlock: 58_891n, // announcer deploy block
+    scanFromBlock: 30_775n, // announcer deploy block (chain reset 2026-09-09 wiped the previous one)
     logChunk: 10_000n,
   },
   sepolia: {
