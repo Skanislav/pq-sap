@@ -4,15 +4,17 @@ Client-side (wallet/frontend) scanning for the post-quantum ERC-5564
 stealth address scheme specified in
 [`docs/TECHNICAL_SPEC.md`](../docs/TECHNICAL_SPEC.md).
 
-What it does with only the **viewing key**: decapsulate each announcement's
-ML-KEM-768 ciphertext (`@noble/post-quantum`, audited), check the 1-byte
-view tag, re-derive the blinded ML-DSA-65 stealth key, and match the
-Ethereum address. Spending secrets never touch this code.
+The commitment route starts at `src/commit-scheme.ts`: decapsulate with the
+viewing key, compare the tag, derive the commitment and account address using
+the selected domains/deployment, then compare the announcement. It mirrors
+Python `pq_stealth/commit.py`; scanning requires no spending secret.
 
-`src/mldsa65.ts` is a minimal hand-port of the FIPS 204 polynomial layer
-(ExpandA, ExpandS, NTT, Power2Round, pk packing) — noble keeps these in
-module closures, so they are re-implemented from the spec and validated
-byte-for-byte against the Python reference vectors.
+`src/scheme.ts` and `src/mldsa65.ts` implement the separate Construction A
+route, including a hand-port of the polynomial layer checked against Python
+vectors. Spending helpers and account E2E tests are supporting research, not
+requirements for commitment-format scanning. See
+[ERC evidence](../docs/ERC_EVIDENCE.md) and
+[spending research](../docs/SPENDING_RESEARCH.md).
 
 ## Toolchain
 
@@ -27,7 +29,8 @@ relative imports carry explicit `.ts` extensions).
 nvm use
 npm install
 npm run typecheck       # tsc 7, noEmit
-npm test                # conformance: replay ../python/vectors/v0 (8 cases)
+npm run test:commit     # commitment-format Python vector replay
+npm test                # separate Construction A vector replay
 npm run build-contracts # forge build (requires foundry)
 npm run e2e             # spawns anvil, deploys the ERC-5564 announcer,
                         # announces the vectors on-chain, scans the logs
@@ -47,7 +50,7 @@ npm run e2e:fork        # Sepolia-fork rehearsals (announce/verify + spend);
 npm run e2e:fork:record # force a fresh recording
 ```
 
-The conformance test asserts that the JS-derived stealth public key is
+The Construction A conformance test asserts that the JS-derived stealth public key is
 byte-identical to the Python reference, and verifies the vectors'
 possession proof with noble's stock ML-DSA-65 verifier.
 

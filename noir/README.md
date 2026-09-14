@@ -1,5 +1,7 @@
 # Noir PoC — address-ownership proof (decode-in-reverse MLWE)
 
+This page documents the separate MLWE ownership circuit in `pq-stealth-ownership/`. The current browser demo uses `preimage-ownership/` (D-025); `sphincs-c13-verify/` is another signature experiment. None is required to implement key exchange. See [spending research](../docs/SPENDING_RESEARCH.md).
+
 Proof of concept for the **application-layer ZK** direction of the scheme:
 prove control of a stealth address by proving the *MLWE decode-in-reverse
 relation* — knowledge of a **short** secret `(s, e)` with `A·s + e = t (mod q)`

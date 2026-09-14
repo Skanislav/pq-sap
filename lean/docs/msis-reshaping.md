@@ -1,5 +1,7 @@
 # Spend forgery as matrix-SIS: the reshaping, its gaps, and the follow-up
 
+Scope: Construction A spending research. Ownership/SIS proofs are not a prerequisite for the key-exchange ERC and do not prove the commitment account. Current signature-layer limits: [Construction A security](../../docs/construction-a-security.md).
+
 Background for `PqStealth/Ownership.lean`.
 
 ## The search core

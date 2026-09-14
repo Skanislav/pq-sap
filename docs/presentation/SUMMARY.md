@@ -20,7 +20,7 @@ Fellow: **Skas** · Mentor: [Tamaghna](https://github.com/RazorClient)
 ## Stealth addresses: private payments on a public ledger
 
 - You publish **one** handle (a *meta-address*, e.g. via ENS).
-- Every sender derives a **fresh one-time address** from it — payments to you never link to your name or to each other.
+- Every sender derives a **fresh one-time address** from it — intended to conceal the recipient relationship; spending and metadata can still create links.
 - Already deployed and widely used on Ethereum: **ERC-5564** powers Fluidkey, Umbra, Cloaked.
 - Much cheaper and simpler than heavy privacy systems — privacy through *unlinkability*, with normal accounts.
 
@@ -42,37 +42,43 @@ A **post-quantum stealth address scheme** as a new ERC-5564 scheme ID:
 
 - **Drop-in**: works against the already-deployed ERC-5564 / ERC-6538 contracts — no protocol change.
 - **Discovery** (the urgent part) uses **ML-KEM-768**, NIST's standardized lattice KEM.
-- **Spending** stays future-proof: derived keys sign under stock FIPS 204 verifiers, with a zero-knowledge ownership proof as the cheaper path.
+- **Address derivation** uses a 1,217-byte commitment meta-address (D-024); spending is delegated to the account model.
+- **Browser demo** proves ownership of a secret (D-025); its current proof backend is not post-quantum sound.
 
-Deliverables: ERC draft · conformance vectors · reference library · security analysis · benchmarks & cost report.
+Evidence: conformance vectors · Python/TS libraries · scoped Lean results · security analysis · measured demos.
+
+Next deliverable: reviewer asset package and human-written ERC text.
+
+Key-exchange evidence: `docs/ERC_EVIDENCE.md`. Spending proofs and Lean tooling are separate supporting tracks.
 
 ---
 
 ## How it works, in one slide
 
 ```text
-Recipient   publish meta-address (PQ keys)          — once, via ENS / registry
+Recipient   publish spend commitment + KEM viewing key
+            as a meta-address via ENS / registry
 Sender      encapsulate → shared secret S
             derive one-time stealth address from S  — sender never sees a secret key
             announce(ciphertext, view tag)
-Recipient   scan announcements; a 1-byte view tag
-            rejects ~255/256 instantly; match ⇒ payment found
-Spend       one-time key signs (or proves ownership in ZK)
+Recipient   decapsulate each candidate; compare 1-byte view tag
+            reject mismatches; re-derive address on tag match
+Spend       account verifies its chosen authorization mechanism
 ```
 
 Same viewing/spending separation as today's schemes: a viewing key can *watch* payments, never spend them.
 
 ---
 
-## Status: the engineering is done
+## Status: implemented evidence, review still ahead
 
 - **Executable spec** (Python) + versioned **conformance vectors**, negative cases included
 - **TypeScript scanning client** — matches the vectors *byte-for-byte*, scans real logs
-- **Machine-checked security core** (Lean 4): correctness *and* the security-game reductions, no `sorry`s
-- **ZK ownership proof** prototype (Noir) and a **live receive-and-spend on Sepolia** through the real contracts
-- **ERC draft written**; benchmarks and on-chain costs measured
+- **Machine-checked Construction A core** (Lean 4): correctness and scoped security-game reductions under explicit assumptions
+- **Browser preimage-ownership demo** and recorded receive/spend evidence on the frames testnet (D-025)
+- **Commitment format implemented and vectored**; Construction A retained as another address form
 
-What remains is the part that gates the ERC: the **security write-up** and community review.
+Next: security review by route, a dependency-free vector checker, asset packaging, and community discussion. ERC text remains human-written and pre-freeze.
 
 ---
 
@@ -88,7 +94,9 @@ What remains is the part that gates the ERC: the **security write-up** and commu
 
 ![h:400](img/onchain-costs.png)
 
-2.5× today's announcement gas on L1 — and **sub-cent on L2s with blobs**, which dissolves the size tax.
+Historical announcement benchmark; costs depend on network pricing and data publication.
+
+Report registration, announcements, and spending separately; D-024 reduces the meta-address from 5,633 to 1,217 bytes.
 
 ---
 
@@ -103,8 +111,9 @@ What remains is the part that gates the ERC: the **security write-up** and commu
 ## Security: formally analyzed, honestly scoped
 
 - Unlinkability turns out to rest on KEM **anonymity** — a *different* property than the standard IND-CCA everyone verifies. Identifying and formalizing that gap is the project's research contribution.
-- The security **game layer and structural reductions** are machine-checked in Lean 4 / VCVio; the concrete lattice assumptions (SPR → MLWE, the RO step, ANO-CCA lift) remain paper-level, exactly as scoped in `lean/README.md`.
-- What's still open is stated plainly in the draft — the final write-up is the remaining core deliverable.
+- Construction A has machine-checked structural reductions, including an address-hash ROM query bound, with named assumptions.
+- Related-key ownership-witness security does not complete signature EUF-CMA security; the signature layer remains uncomposed.
+- Active ANO-CCA mapping and quantum random-oracle access are outside the established result. Commitment accounts and their proof backends need separate review. See `docs/ERC_EVIDENCE.md`; detailed Construction A results are supporting research.
 
 ---
 
@@ -119,14 +128,17 @@ The engineering landed early — including stretch goals (live testnet spend, ZK
 ## The roadmap I'll serve
 
 **To close the cohort**
-1. **Security analysis write-up** → the construction A/B verdict
-2. **Community review** (ethereum-magicians thread) → spec freeze
-3. **ERC PR** to `ethereum/ERCs` with a declared scheme ID + final report
+
+1. **Reviewer package** → commitment vectors, checker coverage, security boundaries
+2. **Community review** → human-written ERC text and format decisions
+3. **ERC submission** → self-contained assets and locally validated package
 
 **Beyond the cohort — where this plugs into the ecosystem**
+
 - Reference libraries wallets can adopt against the frozen vectors
 - **EIP-8304** WG: trustless light-client scanning (working PoC; view-tag index ≈ 256× bandwidth win)
-- ZK proofs to cheapen spending · native PQ spend via **EIP-8141** · the recipient scheme Native-UTXO proposals presuppose
+- Account-based spending experiments; evaluate **EIP-8288** aggregation as a prospective route
+- See `docs/research/eip-8288-summary.md`: integration work, privacy boundaries, and proposed versus measured costs
 
 ---
 

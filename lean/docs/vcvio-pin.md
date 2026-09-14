@@ -69,7 +69,7 @@ retracted on 2026-08-19 — VCVio's programming-oracle bridge exists at the pin.
    `inferInstanceAs (DecidableEq ByteArray)`). They belong beside the encoding.
 
 2. **De-privatize `byteEncode_size`.**
-   `LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`,
+   `.lake/packages/VCVio/LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`,
    `private theorem byteEncode_size (d : Nat) (f : Rq) : (byteEncode d f).size = 32 * d`.
    It is exactly the fact we need for the `v` half of the FIPS 203 ciphertext
    layout; because it is `private` we take that byte count from the standard

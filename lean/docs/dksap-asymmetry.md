@@ -1,5 +1,7 @@
 # DKSAP: sound classically, totally broken given a discrete-log oracle
 
+Scope: classical comparison research, outside the commitment-format implementation path. Start with [ERC evidence](../../docs/ERC_EVIDENCE.md) for the current proposal.
+
 Background for `PqStealth/DKSAP.lean`, `PqStealth/Controls.lean` (the broken
 variant) and `PqStealth/Demo.lean`.
 

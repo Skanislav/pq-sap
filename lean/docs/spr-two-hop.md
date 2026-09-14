@@ -1,5 +1,7 @@
 # KEM anonymity from SPR: the two-hop route, and what is missing upstream
 
+Scope: KEM anonymity foundations, relevant to key-exchange review. Dated gap descriptions below are research history; the current declaration map and limits are in [ERC evidence](../../docs/ERC_EVIDENCE.md) and the [Lean overview](../README.md).
+
 Background for `PqStealth/KEMAnonymity.lean`, `PqStealth/AnonymityFromSPR.lean`,
 `PqStealth/SharedSecretHiding.lean` and the ML-KEM modules. It records the
 lattice route the analysis takes, the caveats that route carries, and the exact
@@ -224,7 +226,7 @@ what honest K-PKE encryption actually emits.
 
 **Documented gap:** the matching `v`-half check is not machine-checked. VCVio
 proves it (`byteEncode_size`,
-`LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`) but that theorem and the
+`.lake/packages/VCVio/LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`) but that theorem and the
 `bitsToBytes` definition it rests on are `private`, so the fact is unavailable
 outside that module and the goal cannot even be stated in terms one can unfold.
 The `32 · dv` figure is therefore taken from FIPS 203 Algorithm 5 on the

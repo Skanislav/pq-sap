@@ -76,13 +76,13 @@ optimizer 10k runs, prague (identical under cancun):
 Two corrections to earlier notes:
 
 - **The "1.8× regression is exactly the per-verify `NTT(t1·2^d)`" explanation
-  in D-014 / `TECHNICAL_SPEC.md §7` was an inference, not a measurement, and it
+  in D-014 / `construction-a.md §7` was an inference, not a measurement, and it
   is wrong.** The key-dependent step is 1.4 M (10 %). Moving it to key setup
   (`PKContractNtt` + `ZKNOX_dilithium_ntt`, `NttPrecompute.t.sol`) takes the
   ERC-7913 verify from **14,911,249 to 13,678,091** (−8 %) and raises the
   one-time `PKContract` deploy from 5,145,320 to 7,310,211. The upstream README's
   own 13.5 M for `Dilithium` at this revision agrees with the precomputed
-  figure; the 8,176,453 in `TECHNICAL_SPEC.md §7` was measured on an earlier
+  figure; the 8,176,453 in `construction-a.md §7` was measured on an earlier
   upstream revision with a different key path and is not reproducible at
   `df999ed`.
 - **SHAKE256 in the EVM is the largest single cost: ≈ 5.0 M of 14.9 M (34 %).**
@@ -109,7 +109,7 @@ Two corrections to earlier notes:
    on the account's own funds. An option for the ERC draft's Future section,
    not for the reference route.
 5. **Proof-based** (Groth16/STARK of the verify, EIP-8288 aggregation): the
-   durable EVM-side fix, already cited in `TECHNICAL_SPEC.md §7b`; EIP-8288 is
+   durable EVM-side fix, already cited in `construction-a.md §7b`; EIP-8288 is
    still a stub.
 6. **Protocol-native validation** (§6): the only shape that makes the EVM
    verify disappear.

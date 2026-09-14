@@ -6,23 +6,25 @@ cited file.
 
 ## Project Overview
 
-Post-quantum stealth addresses for Ethereum, registered as a new
+Post-quantum stealth addresses for Ethereum, proposed as a new
 [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID (target ID `2`), working
 against deployed ERC-5564/ERC-6538 contracts with no protocol changes.
 
 - **Detection** (priority — "harvest now, decrypt later"): ML-KEM-768 (FIPS 203).
   The announcement's ephemeral key is a KEM ciphertext; the shared secret drives a
   one-byte view tag and the address derivation.
-- **Spending**: ML-DSA-65 (FIPS 204) key **additively blinded** by values derived from
-  the shared secret ("construction A" — see `docs/DECISIONS.md` D-003). Sender computes
-  the recipient's one-time address without learning any secret; signatures verify under
-  stock FIPS 204 verifiers with a widened bound `β' = τ·2η`. Interim spend routes:
-  ERC-4337 / ERC-7913; target route: EIP-8141 frame transactions (D-020). A
-  linkable-but-cheap SPHINCS-C13 ERC-7913 alternative exists in `js-client/` (D-018).
+- **Address derivation**: D-024 centers the commitment meta-address (`0x02`,
+  1,217 B), implemented in Python `commit.py` and TS `commit-scheme.ts`.
+  Sender derives the commitment and account address with an agreed deployment
+  binding; viewing-key holders scan. Final normative format selection is open.
+- **Spending research**: Construction A (`0x01`, 5,633 B), blinded ML-DSA,
+  C13, and account routes are separate supporting tracks. D-025's browser
+  preimage proof uses a non-PQ-sound UltraHonk backend.
 
-Design status: spec, ADR log, vectors, reference library, TS client, Lean core, and demo
-UI all exist. Remaining: security write-up, community review, ERC text freeze. Do not
-treat drafts as frozen.
+Start with `docs/ERC_EVIDENCE.md` for required claim evidence, existing proofs,
+and missing commitment-profile composition. `docs/SPENDING_RESEARCH.md` maps
+optional spending work; `lean/docs/tooling.md` covers maintainer tooling.
+The ERC draft is human-written only under D-024; do not generate or restore it.
 
 ## Architecture & Data Flow
 
@@ -33,6 +35,7 @@ mirrors docs.
 ```
 docs/*.md ──(wiki/scripts/sync.mjs)──> wiki/src/pages/** (generated, never hand-edited)
 
+Construction A supporting route (the commitment flow is in docs/TECHNICAL_SPEC.md):
 Recipient: gen_meta_address()  →  meta-address  = version(1) ‖ rho(32) ‖ pack23(t)(4,416) ‖ ML-KEM ek(1,184)  ≈ 5,633 B
 Sender:    decode → ML-KEM-768.encaps(ek) → (ss, ct 1,088 B)
            → derive_stealth_pk(rho, t, ss) → (stealth_pk, t0) → keccak256(stealth_pk)[12:] = stealth address
@@ -55,7 +58,8 @@ Spend:     derive_blinding(ss) → (s′, e′) → widened key (s1+s′, s2+e�
 
 Key module callouts:
 
-- `python/pq_stealth/__init__.py` — the entire public API (`send`, `scan`,
+- `python/pq_stealth/commit.py` — commitment-format API.
+- `python/pq_stealth/__init__.py` — the Construction A public API (`send`, `scan`,
   `derive_blinding`, `sign_blinded`, `prove_possession`, encoders). Every randomized
   step accepts optional seeds (`zeta`, `kem_d`, `kem_z`) so vectors reproduce.
 - `js-client/src/mldsa65.ts` — minimal ML-DSA-65 layer (NTT, `expandA`, `power2roundT1`,
@@ -68,7 +72,7 @@ Key module callouts:
 
 | Directory | Purpose |
 | --- | --- |
-| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-020 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
+| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-025 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
 | `python/` | Executable spec, conformance vectors (`python/vectors/v0/`, `vectors/classical/v0/`), benchmarks, scripts that generate fixtures for TS tests |
 | `js-client/` | TS scanning client, Foundry contracts (`js-client/contracts/`), anvil/fork e2e tests, devnet config |
 | `ui/` | Vite + React demo (receive/send/scan/spend/frames), dev-chain bootstrapping, signer service |
@@ -177,9 +181,9 @@ spec-to-proof-to-impl correspondence.
 
 | File | Why it matters |
 | --- | --- |
-| `docs/DECISIONS.md` | ADR log (D-001–D-020). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
+| `docs/DECISIONS.md` | ADR log (D-001–D-025). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
 | `docs/TECHNICAL_SPEC.md`, `docs/erc-draft.md` | Working spec / ERC text (pre-freeze) |
-| `python/pq_stealth/__init__.py` | Public API surface; the porting contract |
+| `python/pq_stealth/commit.py` | Commitment-format API; the key-exchange porting contract |
 | `python/vectors/v0/vectors.json` | Conformance vectors consumed by pytest, js-client tests, ui e2e, and `lean/scripts/check_sizes.py` — the cross-language glue |
 | `python/scripts/spendable_helper.py` | Blinded-key signer backing both TS spend paths |
 | `js-client/src/scheme.ts` | Core TS scheme — mirror of the Python spec |

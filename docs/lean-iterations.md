@@ -1,4 +1,8 @@
-# Lean 4 core — current state and upcoming iterations
+# Lean 4 core — historical iteration log
+
+Historical record, not the current ERC roadmap. See [ERC evidence](ERC_EVIDENCE.md)
+for the key-exchange scope and [Lean overview](../lean/README.md) for the current
+module map and proof boundaries. Spending and tooling backlog items are separate.
 
 This document tracks the formal-core work separately from the main ADR log so
 that the iteration queue can grow without renumbering `docs/DECISIONS.md`.

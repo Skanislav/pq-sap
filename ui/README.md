@@ -1,5 +1,7 @@
 # PQ Stealth Address demo UI
 
+Account-demo tooling. The current key-exchange browser proof is the D-025 preimage-ownership route; its UltraHonk backend is not PQ-sound. The deployment/spending instructions below support experiments and are not ERC conformance requirements. See [spending research](../docs/SPENDING_RESEARCH.md).
+
 A four-step demo wallet for the post-quantum stealth address scheme
 (ERC-5564 scheme `2`): **Recipient** (generate keys + meta-address),
 **Send** (encapsulate → pay → announce), **Scan** (detect payments with

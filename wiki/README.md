@@ -14,15 +14,16 @@ pnpm preview
 
 ## How pages get here
 
-Two kinds of pages:
+The landing page is sourced from `docs/overview.md`; `pnpm sync` writes its
+tracked `src/pages/index.mdx` copy. Edit the source, not that generated copy.
+The AI guide remains a hand-written page at `src/pages/ai-guide.mdx`.
 
-- **Hand-written** — `.mdx` files committed under `src/pages/` (the landing
-  page `index.mdx` and the AI guide `ai-guide.mdx`). Add more the same way.
-- **Mirrored** — copies of markdown that lives elsewhere in the repo (`plan.md`,
-  `docs/**`, `lean/README.md`, `lean/docs/*`, `python/README.md`, ...).
-  `scripts/sync.mjs` regenerates them (it runs before `dev` and `build`, or
-  via `pnpm sync`). They are git-ignored; **edit the source file, never the
-  copy**. Every mirrored page carries a banner naming its source.
+Other pages mirror markdown beside the code (`docs/**`, `lean/README.md`,
+`lean/docs/*`, `python/README.md`, etc.) into gitignored route directories.
+Every mirrored page names its source. The sidebar separates the key-exchange
+ERC, reference implementations, KEM foundations, spending/account research,
+Lean maintenance, and the complete generated proof browser. The browser covers
+all tracks; being listed there does not make a proof an ERC requirement.
 
 The sync script also:
 
@@ -33,8 +34,9 @@ The sync script also:
 - writes `src/sidebar.gen.ts`, which `vocs.config.ts` spreads into the sidebar.
 
 To add a mirrored doc, add it to `SECTIONS` in `scripts/sync.mjs` (files in a
-`glob` directory — `docs/research/`, `lean/docs/` — are picked up
-automatically; give them a short label in `titles`). If you add a new
+`glob` directory — currently `docs/research/` and `lean/docs-proofs/` — are
+picked up automatically unless excluded). Lean essays are explicitly grouped
+by purpose; keep their existing routes when moving them between sections. If you add a new
 top-level route directory, list it in `.gitignore`.
 
 ## Markdown for language models

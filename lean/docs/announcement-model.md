@@ -1,5 +1,7 @@
 # The announcement model
 
+Scope: generic announcement model with a Construction A instantiation. This essay does not instantiate the D-024 commitment/CREATE2 profile. Current claim boundaries and reading order: [ERC evidence](../../docs/ERC_EVIDENCE.md).
+
 Background for `PqStealth/Games.lean`, `PqStealth/KEMAnonymity.lean`,
 `PqStealth/ConstructionA.lean` and the game-layer controls. Everything here is
 design rationale: what the Lean model commits to, why, and what it deliberately

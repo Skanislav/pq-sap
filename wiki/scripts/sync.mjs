@@ -23,61 +23,82 @@ const BRANCH = 'main'
 // (override with `titles`).
 const SECTIONS = [
   {
-    text: 'Overview',
-    items: [['plan.md', 'overview/plan', 'Project plan']],
-  },
-  {
-    text: 'Specification',
+    text: 'Key-exchange ERC',
     items: [
-      ['docs/erc-draft.md', 'spec/erc-draft', 'ERC draft'],
-      ['docs/TECHNICAL_SPEC.md', 'spec/technical-spec', 'Technical spec'],
-      ['docs/DECISIONS.md', 'spec/decisions', 'Decisions & findings (ADR log)'],
-      ['docs/classical-spend-hybrid.md', 'spec/classical-spend-hybrid', 'Classical-spend hybrid'],
+      ['docs/overview.md', 'index', 'Overview'],
+      ['docs/TECHNICAL_SPEC.md', 'spec/technical-spec', 'Technical reference'],
+      ['docs/ERC_EVIDENCE.md', 'spec/erc-evidence', 'Evidence and proof scope'],
+      ['docs/SECURITY_ANALYSIS.md', 'spec/security-analysis', 'Security boundaries'],
+      ['docs/research/erc-submission-gap-analysis.md', 'research/erc-submission-gap-analysis', 'Submission roadmap'],
+      ['plan.md', 'overview/plan', 'Current plan'],
+      ['docs/DECISIONS.md', 'spec/decisions', 'Decision log'],
+      ['docs/erc-draft.md', 'spec/erc-draft', 'ERC text (human-written)'],
     ],
   },
   {
-    text: 'Research',
-    glob: 'docs/research',
-    route: 'research',
-    titles: {
-      'erc-submission-gap-analysis.md': 'ERC submission gap analysis',
-      'hash-based-key-exchange.md': 'Hash-based key exchange vs ML-KEM',
-      'hash-migration-blake2-binius.md': 'Hash policy after Poseidon',
-      'poseidon2-stark-discovery.md': 'Poseidon2 + STARK discovery layer',
-    },
+    text: 'Reference implementations',
+    items: [
+      ['python/README.md', 'impl/python', 'Python reference'],
+      ['js-client/README.md', 'impl/js-client', 'TypeScript client'],
+    ],
   },
   {
-    text: 'Proofs by module',
+    text: 'KEM proof foundations',
+    items: [
+      ['lean/README.md', 'lean/index', 'Proof scope and module map'],
+      ['lean/docs/announcement-model.md', 'lean/announcement-model', 'Generic announcement model'],
+      ['lean/docs/spr-two-hop.md', 'lean/spr-two-hop', 'KEM anonymity / SPR'],
+      ['lean/docs/encodings.md', 'lean/encodings', 'Encoding results'],
+    ],
+  },
+  {
+    text: 'Spending and account research',
+    items: [
+      ['docs/SPENDING_RESEARCH.md', 'research/spending', 'Spending research guide'],
+      ['docs/construction-a.md', 'research/construction-a', 'Construction A reference'],
+      ['docs/construction-a-security.md', 'research/construction-a-security', 'Construction A security'],
+      ['lean/docs/msis-reshaping.md', 'lean/msis-reshaping', 'Ownership / SIS research'],
+      ['docs/research/eip-8288-summary.md', 'research/eip-8288-summary', 'EIP-8288 assessment'],
+      ['docs/research/zk-sphincs-frames.md', 'research/zk-sphincs-frames', 'C13 ZK experiment'],
+      [
+        'docs/research/prefix-deploy-native-keys.md',
+        'research/prefix-deploy-native-keys',
+        'Deployment / native-key experiments',
+      ],
+      ['docs/classical-spend-hybrid.md', 'spec/classical-spend-hybrid', 'Classical-spend hybrid'],
+      ['noir/README.md', 'impl/noir', 'MLWE ownership circuit'],
+      ['docs/pointer-signatures-poc.md', 'impl/pointer-signatures-poc', 'Pointer-signature experiment'],
+    ],
+  },
+  {
+    text: 'Lean tooling and maintenance',
+    items: [
+      ['lean/docs/tooling.md', 'lean/tooling', 'Maintainer guide'],
+      ['lean/docs/vcvio-pin.md', 'lean/vcvio-pin', 'VCVio pin'],
+      ['lean/docs/vcvio-upstream.md', 'lean/vcvio-upstream', 'Upstream work'],
+      ['lean/docs/lean-study-notes.md', 'lean/lean-study-notes', 'Study notes'],
+      ['lean/docs/etheorem-lessons.md', 'lean/etheorem-lessons', 'Engineering lessons'],
+      ['lean/docs/improvements.md', 'lean/improvements', 'Historical improvement log'],
+    ],
+  },
+  {
+    text: 'Other research and history',
+    items: [['lean/docs/dksap-asymmetry.md', 'lean/dksap-asymmetry', 'Classical comparison']],
+    glob: 'docs/research',
+    route: 'research',
+    exclude: [
+      'erc-submission-gap-analysis.md',
+      'eip-8288-summary.md',
+      'zk-sphincs-frames.md',
+      'prefix-deploy-native-keys.md',
+    ],
+    titles: { 'original-project-plan.md': 'Original cohort plan (historical)' },
+  },
+  {
+    text: 'Generated proof browser (all tracks)',
     glob: 'lean/docs-proofs',
     route: 'lean/proofs',
     titles: {},
-  },
-  {
-    text: 'Proofs (Lean 4 / VCVio)',
-    items: [['lean/README.md', 'lean/index', 'Overview']],
-    glob: 'lean/docs',
-    route: 'lean',
-    titles: {
-      'announcement-model.md': 'The announcement model',
-      'dksap-asymmetry.md': 'DKSAP asymmetry',
-      'encodings.md': 'Encodings',
-      'etheorem-lessons.md': 'Lessons from etheorem',
-      'improvements.md': 'Proposed improvements',
-      'lean-study-notes.md': 'Lean 4 study notes',
-      'msis-reshaping.md': 'Spend forgery as MSIS',
-      'spr-two-hop.md': 'KEM anonymity from SPR',
-      'vcvio-pin.md': 'Tracking the VCVio pin',
-      'vcvio-upstream.md': 'VCVio upstream findings',
-    },
-  },
-  {
-    text: 'Implementations',
-    items: [
-      ['python/README.md', 'impl/python', 'Python executable spec'],
-      ['js-client/README.md', 'impl/js-client', 'TypeScript scanning client'],
-      ['noir/README.md', 'impl/noir', 'Noir ownership circuit'],
-      ['docs/pointer-signatures-poc.md', 'impl/pointer-signatures-poc', 'POC: (v, r, s) as pointers'],
-    ],
   },
 ]
 
@@ -93,7 +114,7 @@ function collect() {
       const dir = join(ROOT, section.glob)
       // index.md first so a section's landing page heads its sidebar group.
       const names = readdirSync(dir)
-        .filter((f) => f.endsWith('.md'))
+        .filter((f) => f.endsWith('.md') && !section.exclude?.includes(f))
         .sort()
       for (const name of [...names.filter((n) => n === 'index.md'), ...names.filter((n) => n !== 'index.md')]) {
         const source = posix.join(section.glob, name)
@@ -120,7 +141,7 @@ function firstH1(body) {
 }
 
 /** Route for a page path: 'lean/index' -> '/lean', 'spec/decisions' -> '/spec/decisions'. */
-const href = (route) => `/${route.replace(/\/index$/, '')}`
+const href = (route) => (route === 'index' ? '/' : `/${route.replace(/\/index$/, '')}`)
 
 function rewriteLinks(body, source, bySource) {
   const sourceDir = posix.dirname(source)
@@ -212,11 +233,11 @@ function main() {
   const bySource = new Map(entries.map((e) => [e.source, e]))
 
   // Wipe previously generated route directories so deleted sources disappear.
-  const generatedDirs = new Set(entries.map((e) => e.route.split('/')[0]))
+  const generatedDirs = new Set(entries.filter((e) => e.route.includes('/')).map((e) => e.route.split('/')[0]))
   for (const d of generatedDirs) rmSync(join(PAGES, d), { recursive: true, force: true })
 
   for (const e of entries) {
-    const dest = join(PAGES, `${e.route}.md`)
+    const dest = join(PAGES, `${e.route}.${e.route === 'index' ? 'mdx' : 'md'}`)
     mkdirSync(dirname(dest), { recursive: true })
     writeFileSync(dest, render(e, bySource))
     e.label ??= firstH1(readFileSync(join(ROOT, e.source), 'utf8')) ?? e.route

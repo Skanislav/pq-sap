@@ -11,7 +11,7 @@ export default defineConfig({
   basePath: process.env.WIKI_BASE_PATH || undefined,
   title: 'PQ Stealth Addresses',
   description:
-    'Post-quantum stealth addresses as an ERC-5564 scheme extension: spec, decisions, research, Lean proofs and reference implementations.',
+    'Post-quantum stealth addresses as an ERC-5564 scheme extension: key-exchange evidence, reference implementations, and separate spending research.',
   renderStrategy: 'full-static',
   codeHighlight: { langs: [lean4] },
   markdown: { remarkPlugins: [leanLinks] },
@@ -31,9 +31,9 @@ export default defineConfig({
     },
   ],
   topNav: [
-    { text: 'Spec', link: '/spec/erc-draft' },
+    { text: 'Key exchange', link: '/spec/technical-spec' },
     { text: 'Decisions', link: '/spec/decisions' },
-    { text: 'Proofs', link: '/lean' },
+    { text: 'Evidence', link: '/spec/erc-evidence' },
     { text: 'AI guide', link: '/ai-guide' },
   ],
   socials: [{ icon: 'github', link: repo }],

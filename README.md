@@ -1,6 +1,6 @@
 # Post-Quantum Stealth Addresses
 
-A post-quantum stealth-address scheme for Ethereum, registered as a new
+A proposed post-quantum stealth-address scheme for Ethereum, targeting a new
 [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID and working
 against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
 
@@ -11,33 +11,54 @@ Docs site: <https://skanislav.github.io/pq-sap>
   KEM ciphertext; the shared secret drives a one-byte view tag and the address
   derivation. This is the part "harvest now, decrypt later" threatens, so it is
   the priority.
-- **Spending** — an ML-DSA-65 (FIPS 204) key additively blinded by values
-  derived from the shared secret. The sender computes the recipient's
-  one-time address without learning any secret, exactly as in the secp256k1
-  scheme, and the resulting signatures verify under stock FIPS 204 verifiers.
-  A hash-based alternative — SPHINCS- C13 behind ERC-7913 signers, ~77×
-  cheaper to verify on-chain but linkable to the recipient at spend time —
-  is implemented and measured in `js-client/` (D-018).
+- **Address derivation** — the commitment format (`0x02`) pairs a 32-byte
+  spending-key commitment with the ML-KEM viewing key: **1,217 bytes** total.
+  The sender derives a fresh commitment and account address using the shared
+  secret and an agreed deployment configuration, without learning the spending
+  secret. Construction A (`0x01`, 5,633 bytes) remains available for accounts
+  using a per-address blinded ML-DSA key. Whether `0x02` becomes the only
+  normative format remains a decision for the ERC draft (D-024).
+- **Spending** — delegated to the account model. The browser demo proves
+  knowledge of a spending secret and commitment opener (D-025). Its current
+  UltraHonk backend is **not post-quantum sound**. Direct SPHINCS-C13 and
+  blinded ML-DSA routes provide separate implementation evidence, with their
+  own privacy and security boundaries.
+
+The proposal's focus is **ML-KEM-secured discovery and sender-computable
+addresses under existing ERC-5564 announcements**. Spending integrations have
+additional account and network requirements. See the
+[EIP-8288 summary](docs/research/eip-8288-summary.md) for a prospective
+aggregation route and the [security analysis](docs/SECURITY_ANALYSIS.md) for
+the current key-exchange review boundaries. Start with the
+[ERC evidence map](docs/ERC_EVIDENCE.md); spending specialists can follow the
+[separate research guide](docs/SPENDING_RESEARCH.md).
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| [`docs/erc-draft.md`](docs/erc-draft.md) | ERC draft text (target scheme ID `2`) |
+| [`docs/erc-draft.md`](docs/erc-draft.md) | Reserved for human-written ERC text (target scheme ID `2`) |
 | [`docs/TECHNICAL_SPEC.md`](docs/TECHNICAL_SPEC.md) | Working technical specification |
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | Dated ADR log of design decisions |
 | [`python/`](python/) | Executable Python spec, reference library, test vectors, benchmarks |
 | [`js-client/`](js-client/) | TypeScript scanning client that reproduces the vectors byte for byte |
 | [`ui/`](ui/) | Demo web UI (Vite + React): receive, scan, and spend (EOA + ERC-4337 routes) |
-| [`lean/`](lean/) | Machine-checked Lean 4 / VCVio core (blinding identity, bounds, security games) |
+| [`docs/ERC_EVIDENCE.md`](docs/ERC_EVIDENCE.md) | Required claim evidence, relevant proofs, and open commitment-profile composition |
+| [`docs/SPENDING_RESEARCH.md`](docs/SPENDING_RESEARCH.md) | Optional account, signature, and ZK research |
+| [`lean/`](lean/) | Generic KEM results, Construction A research, and maintainer tooling |
 | [`wiki/`](wiki/) | Mirrored documentation site source |
 
 ## Status
 
-The technical spec, ADR log, v0 test vectors (with negative cases), the Python
-reference library, the TypeScript client, and the Lean 4 core all exist and are
-in the repository. What remains is the security write-up, community review,
-and then the ERC text freeze — see [`docs/research/erc-submission-gap-analysis.md`](docs/research/erc-submission-gap-analysis.md).
+The reference libraries, deterministic vectors for both address formats,
+generic KEM results, Construction A security analysis, and browser ownership-proof
+demo exist. Python defines the byte-level behavior; TypeScript reproduces the
+vectors; Lean supports specifically scoped mathematical statements.
+
+Next: review the security boundaries of each route, prepare a self-contained
+vector checker and ERC assets, and bring the proposal to community review.
+The ERC text is human-written only under D-024 and is not frozen. See the
+[submission gap analysis](docs/research/erc-submission-gap-analysis.md).
 
 The conformance vectors and checker are intended to enter the
 [`ethereum/ERCs`](https://github.com/ethereum/ERCs) asset tree under CC0 when

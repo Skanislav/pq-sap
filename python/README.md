@@ -1,13 +1,16 @@
 # pq-stealth — executable spec
 
-Reference implementation of the post-quantum ERC-5564 stealth address
-scheme described in [`docs/TECHNICAL_SPEC.md`](../docs/TECHNICAL_SPEC.md):
-ML-KEM key exchange + additive ML-DSA key blinding (construction A) with a
-fresh error term per stealth key.
+Python is the byte-level source of truth for the
+[key-exchange technical reference](../docs/TECHNICAL_SPEC.md).
+Start with `pq_stealth/commit.py`: ML-KEM viewing keys, commitment-format
+meta-addresses, sender derivation, and viewing-key scanning (D-024/D-025).
+`pq_stealth/__init__.py` exposes the separate Construction A API; it is not
+the commitment-format entry point.
 
-Pure Python (`kyber-py`, `dilithium-py`) — this is the spec and vector
-generator, not a production library. The audited `liboqs` backend is used
-as a cross-check verifier in the test suite.
+Construction A's ML-DSA blinding/signing modules, classical hybrid, and spend
+helpers are supporting implementations. See [ERC evidence](../docs/ERC_EVIDENCE.md)
+and [spending research](../docs/SPENDING_RESEARCH.md) for their boundaries.
+The Python library is an executable reference, not a hardened production signer.
 
 ## Setup
 
@@ -19,7 +22,10 @@ pip install -e ".[dev]"          # add .[audit] for the liboqs cross-check
 ## Run
 
 ```sh
-pytest                            # 18 tests, ~3 s
+pytest                            # full reference suite
+pytest tests/test_commit.py        # commitment format / scan behavior
+python vectors/generate_commit_vectors.py --outdir /tmp/pq-commit-vectors
+cmp vectors/v0/commit_vectors.json /tmp/pq-commit-vectors/commit_vectors.json
 python vectors/generate_vectors.py   # regenerate vectors/v0/vectors.json
                                      # (deterministic: byte-identical output)
 ```
@@ -31,7 +37,7 @@ Self-contained image with the liboqs cross-check backend built in
 
 ```sh
 docker build -t pq-stealth-py .
-docker run --rm pq-stealth-py        # test suite (18 tests)
+docker run --rm pq-stealth-py        # full reference test suite
 
 # conformance vectors: regenerate and confirm byte-identical
 docker run --rm pq-stealth-py sh -c \
@@ -44,6 +50,7 @@ docker run --rm pq-stealth-py sh -c \
 
 | Module | Contents |
 |---|---|
+| `pq_stealth/commit.py` | commitment-format key exchange and address derivation (start here) |
 | `pq_stealth/params.py` | parameter sets (default ML-KEM-768 + ML-DSA-65) |
 | `pq_stealth/blinding.py` | the algebraic core: `t' = A·s' + e' + t` |
 | `pq_stealth/encoding.py` | meta-address / full-`t` / blinded-sk packing, keccak addresses |
@@ -53,11 +60,10 @@ docker run --rm pq-stealth-py sh -c \
 | `pq_stealth/signing.py` | blinded FIPS 204 signing, proof of possession |
 | `pq_stealth/classical/` | classical-spend hybrid (secp256k1 + ML-KEM); see below |
 
-**Warning:** value sent to these stealth addresses is unspendable on-chain
-until protocol-level post-quantum signature support exists. No send-value
-flow is shipped. The classical-spend hybrid below is the deployable-today
-counterpart: a normal EOA output, spendable now with a plain ECDSA
-transaction.
+Account spendability depends on the selected deployment and verifier. The
+reference functions derive announcements/addresses; transaction execution is
+handled by the separate account integrations. A raw Construction A ML-DSA
+public-key hash is not an ECDSA-controlled EOA.
 
 ## Classical-spend hybrid (secp256k1)
 

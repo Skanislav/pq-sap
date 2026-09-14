@@ -1,5 +1,64 @@
 # ERC submission gap analysis — what ethereum/ERCs requires, what we have, what we will contribute
 
+## Current scope update — 2026-09-14
+
+[D-024/D-025](../DECISIONS.md) supersede this report's original assumption
+that Construction A alone defines the submission. The focus is key exchange
+and address derivation, with spending delegated to the account model.
+Format `0x02` is implemented; whether it is the only normative format is still
+for the human-written ERC text to settle. Agents must not generate or restore
+`docs/erc-draft.md` under D-024.
+
+The sections below preserve the **2026-08-07 historical assessment**, including
+its then-current draft, vector inventory, process observations, and estimates.
+They are not a current draft audit. Revalidate upstream submission requirements
+and numbering when preparing the package.
+
+### Updated package work
+
+| Deliverable | Current basis | Work remaining |
+| --- | --- | --- |
+| Commitment-format vectors | `python/vectors/v0/commit_vectors.json`, Python `commit.py`, TS `commit-scheme.ts` | Select and document the profile coverage for the human-written submission |
+| Construction A vectors | `python/vectors/v0/vectors.json` | Include if that address form is in scope; retain its distinct security boundaries |
+| Dependency-free checker | Historical design in §5 | Extend the plan to commitment derivation and deployment binding; state partial coverage explicitly |
+| Security overview | Construction A analysis plus D-018/D-023/D-025 route limitations | Present a route-by-route claims table; account proofs need their own review |
+| Prospective spending | EIP-8141 experiments; EIP-8288 assessment | Keep protocol-dependent experiments separate from key-exchange conformance |
+| ERC text and discussion | Human-written text under D-024 | Resolve normative formats, metadata, discussion link, and asset references with the author |
+
+### Checker acceptance criteria
+
+The commitment checker should recompute meta-address encoding and lengths,
+`SHA-256(ss)` view tags, profile-specific opener and commitment hashes, and
+CREATE2 addresses from explicit deployment inputs. Pin the domain strings,
+factory, creation code, constructor arguments, and salt; do not silently rename
+the C13 domains or substitute the preimage profile. Python is authoritative.
+
+Use deterministic fixture intermediates in a separately versioned export if
+needed. Keep the committed v0 vectors unchanged. Any fixture secrets must be
+public test values. SHA-256/SHAKE256 are in Python's stdlib; Ethereum Keccak-256
+is distinct from `hashlib.sha3_256` and needs a reviewed, permissively licensed
+implementation bundled with the checker and checked against known answers.
+
+Report negative cases by what can actually be checked: malformed encodings,
+wrong view tags, altered commitments, and changed deployment bindings can be
+recomputed from supplied inputs. Wrong-recipient and corrupted-ciphertext
+outcomes require real KEM decapsulation; supplied shared secrets do not verify
+that relationship. Construction A's lattice algebra likewise remains the job
+of the reference implementations. The checker must distinguish structural
+rejection, derivation mismatch, and cases requiring the full implementation.
+
+Acceptance: a clean Python environment can check the exported assets; full
+Python/TS replay agrees; every case documents its coverage; the human-written
+spec links the chosen asset profile. This update plans that work and does not
+claim the checker is implemented.
+
+See the [EIP-8288 summary](eip-8288-summary.md) for the prospective spending
+integration. Its estimated charges are not submission conformance requirements.
+
+---
+
+## Historical assessment — 2026-08-07
+
 *2026-08-07. Model: [ethereum/ERCs PR #1932](https://github.com/ethereum/ERCs/pull/1932) (ERC-8373, "Post-Quantum Anchored Key-Binding"), a current PQ-topic submission with all 9 CI checks green. Sources: PR metadata and file list via `gh`, raw `erc-8373.md` from the PR branch, ethereum/ERCs repo root listing, README, `erc-template.md`, the rendered EIP-5564 page, and `gh pr checks 1932`.*
 
 **Settled decisions (this session):** deliverable for now is this report only; the future in-assets checker takes the vectors-with-intermediates + stdlib-Python approach; the scheme ID we declare is **`2`** (monotonic, per ERC-5564's own recommendation), replacing the `0x5567` placeholder.

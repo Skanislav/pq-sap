@@ -1,5 +1,11 @@
 # Decisions & Findings (ADR-style log)
 
+Reading guide (2026-09-14): D-024/D-025 define the current key-exchange focus.
+Earlier entries preserve dated research decisions and measurements. The
+[current technical reference](TECHNICAL_SPEC.md) and [ERC evidence](ERC_EVIDENCE.md)
+separate those from spending/tooling work. Detailed former technical sections
+are retained in [Construction A](construction-a.md).
+
 Locked decisions and empirical findings for the post-quantum ERC-5564 stealth
 address project. Each entry is dated and states the rationale so the reasoning
 survives, not just the conclusion. Newest context wins; superseded entries are
@@ -259,7 +265,7 @@ modules to 18 content modules plus the root and `Axioms.lean`. The full
 freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
 `MultiUnlink`, `MultiRecipient`, `KEMAnonymity`, `ConstructionA`,
 
-**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-021 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/SECURITY_ANALYSIS.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
+**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-021 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/construction-a-security.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
 
 **Update (2026-09-02).** All of those obligations are discharged; `lean/PqStealth/` is sorry-free
 again and every new theorem is guarded. Along the way several of the frozen statements turned out
@@ -269,7 +275,7 @@ gate was too narrow for a `2η`-short `s₂`, the key-restoration game identitie
 related-key spend game was a unit stub with advantage `0` (now a real search-witness game with a
 proven `q`-fold offset-subtraction reduction), the ROM bad-query bound had no query bound on the
 adversary, and the ML-DSA point-mass bound was unprovable for an opaque `Prims`. See
-`docs/SECURITY_ANALYSIS.md` for the current statements and their hypotheses.
+`docs/construction-a-security.md` for the current statements and their hypotheses.
 
 `BlindingROM`, `ROMUpToBad`, `SharedSecretHiding`, `AnonymityFromSPR`,
 `MLKEM`, `SPRTwoHop`, `Ownership`, `Soundness`, `DKSAPOracle`, `Controls`,
@@ -712,7 +718,7 @@ generation, changes who can compute the destination and is documented only as a
 separate account-transfer protocol; it does not share the Construction A scheme
 ID or claim.
 
-The security argument for Construction A is recorded in `docs/SECURITY_ANALYSIS.md`
+The security argument for Construction A is recorded in `docs/construction-a-security.md`
 and in `lean/PqStealth/ConstructionASecurity.lean`.  It is contingent on the
 explicit named assumptions listed there (ROM/PRF, seeded-MLWE, SelfTargetMSIS,
 XOF idealization, widened-transcript distance, CMA-to-NMA, and unbounded-signing

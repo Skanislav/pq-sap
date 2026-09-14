@@ -1,5 +1,7 @@
 # Encodings: what is concrete in Lean and what is still a parameter
 
+Scope: abstract encoding results for several formats. The commitment roundtrip does not prove account derivation or privacy. Current evidence and checker coverage: [ERC evidence](../../docs/ERC_EVIDENCE.md).
+
 Companion to `PqStealth/Invariants.lean` §3 (issue #10 in `improvements.md`).
 
 ## The two wire formats
@@ -64,7 +66,7 @@ This is forced by the pinned VCVio (`a5f474fd`), not a modelling shortcut:
   `simpleBitPackPoly`, `bitPackPoly`) return `ByteArray` — no length index — and
   carry no roundtrip lemma. There is no `pack23` upstream at all.
 * `MLKEM.Encoding.EncodedTHat` is likewise abstract, concretely `ByteArray`, and
-  `mlkem768EncodingLaws` (`MLKEM/Concrete/Instance.lean:133`) proves only the
+  `mlkem768EncodingLaws` (`.lake/packages/VCVio/LatticeCrypto/MLKEM/Concrete/Instance.lean:133`) proves only the
   ciphertext/message laws — `byteDecode12Vec_byteEncode12Vec` is a field of the
   encoding bundle, but again at `ByteArray`, not `Bytes 1184`.
 
