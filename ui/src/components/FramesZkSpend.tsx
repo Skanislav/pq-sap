@@ -35,7 +35,7 @@ import {
 } from '../../../js-client/src/commit-scheme.ts'
 import { buildAnnounceTransfer, buildSponsoredPqTx, defaultFrame, SPONSORED_PQ_SIG_INDEX } from '../../../js-client/src/frame-tx/actions.ts'
 import { ANNOUNCER_ABI } from '../../../js-client/src/sepolia.ts'
-import { fetchAnnouncements, type OnchainAnnouncement } from '../lib/announcements.ts'
+import { fetchAnnouncements, type OnchainAnnouncement, requireAnnouncer } from '../lib/announcements.ts'
 import { type ChainConfig, publicClientFor, SCHEME_ID } from '../lib/chain.ts'
 import { parseTxError } from '../lib/errors.ts'
 import { broadcastFrameTx, type FrameReceipt, frameFees, pendingNonce } from '../lib/frames.ts'
@@ -207,6 +207,7 @@ export function FramesZkSpend({ cfg, ethUsd, wallet }: { cfg: ChainConfig; ethUs
     try {
       const sp = requireSponsor()
       if (!recipient) throw new Error('Recipient not ready.')
+      await requireAnnouncer(cfg, publicClientFor(cfg))
       const d = deployment()
       const { cipherText, sharedSecret } = ml_kem768.encapsulate(recipient.kem.publicKey)
       const commitment = deriveCommitment(recipient.spendKey, deriveOpener(sharedSecret, PREIMAGE_DOMAINS), PREIMAGE_DOMAINS)
@@ -241,7 +242,10 @@ export function FramesZkSpend({ cfg, ethUsd, wallet }: { cfg: ChainConfig; ethUs
 
   const scan = async () => {
     setError(null)
-    if (!recipient) return
+    if (!recipient) {
+      setError('The ZK recipient identity is not ready, so there is no viewing key to scan with.')
+      return
+    }
     setBusy('scan')
     try {
       const d = deployment()

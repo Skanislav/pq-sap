@@ -16,6 +16,7 @@ import {
   stealthAddressOf,
 } from '../../../js-client/src/scheme.ts'
 import { ANNOUNCER_ABI } from '../../../js-client/src/sepolia.ts'
+import { requireAnnouncer } from '../lib/announcements.ts'
 import { type ChainConfig, publicClientFor, SCHEME_ID } from '../lib/chain.ts'
 import { parseTxError } from '../lib/errors.ts'
 import { fromHex, toHex } from '../lib/hex.ts'
@@ -108,6 +109,7 @@ export function SendTab({
     const walletClient = wallet.clientFor(cfg)
     if (!walletClient?.account) throw new Error('Wallet not ready.')
     const publicClient = publicClientFor(cfg)
+    await requireAnnouncer(cfg, publicClient)
     const announceTx = await walletClient.writeContract({
       account: walletClient.account,
       chain: cfg.chain,
@@ -172,6 +174,10 @@ export function SendTab({
     try {
       setSent(null)
       setStep('derive')
+      // Before paying: a code-less announcer would take the announce call
+      // without emitting anything, stranding the funds at an address nobody
+      // can discover. Cheaper to learn that now than after the transfer.
+      await requireAnnouncer(cfg, publicClient)
       // fresh encapsulation → shared secret → one-time stealth address
       const meta = decodeMetaAddress(metaCheck.bytes)
       const { cipherText, sharedSecret } = ml_kem768.encapsulate(meta.kemEk)
