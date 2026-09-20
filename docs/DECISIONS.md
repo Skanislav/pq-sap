@@ -457,7 +457,10 @@ set is unchanged.
   2025-09) blesses the combiner shape. Not in liboqs/OpenSSL — irrelevant
   to us; both our stacks compose it from parts we already carry.
 - **Normative consequences imported into the ERC**: hybrid meta-address
-  version `0x02` with the 1,216-B X-Wing encapsulation key;
+  version `0x03` with the 1,216-B X-Wing encapsulation key (**amended
+  2026-09-20**: this was `0x02` until D-024 assigned that byte to the
+  1,217-byte commitment meta-address; the hybrid moved up one so the version
+  byte stays a unique key — see D-027);
   `ephemeralPubKey` = 1,120-B X-Wing ciphertext; the decapsulation key
   MUST be stored/exchanged only as the 32-byte seed (X-Wing's
   MAL-BIND-K-{PK,CT} properties fail for expanded keys — Schmieg, eprint
@@ -1039,7 +1042,7 @@ author of the hand-written ERC draft (D-024: agents do not write
 (sender-uncomputable in 8250's Security Considerations; state gas in the D-020
 ask) to the authors.
 
-## D-027 — The on-chain key exchange is a format/registry contract; encapsulation stays off-chain; the contract is modelled and proved in Lean — **FINDING / pending reconciliation with D-024 (2026-09-07; renumbered from a second D-021 on 2026-09-09)**
+## D-027 — The on-chain key exchange is a format/registry contract; encapsulation stays off-chain; the contract is modelled and proved in Lean — **FINDING / reconciled with D-024 (2026-09-07; renumbered from a second D-021 on 2026-09-09; X-Wing moved to `0x03` on 2026-09-20)**
 
 Question (2026-09-07, user): can the key exchange be separated into the
 Solidity code, and can Lean be set up to verify that contract?
@@ -1079,20 +1082,40 @@ Cost: 2,065 gas execution over a direct singleton `announce` (Foundry,
 D-011. Nothing about the scheme changes: same event, same scheme ID, same
 bytes on the wire; wallets may keep calling the singleton directly.
 
-**Reconciliation with D-024 (open, 2026-09-09).** This record predates
-D-024. The contract's meta-address table follows D-017: version `0x01` for
+**Reconciliation with D-024 (settled 2026-09-20).** This record predates
+D-024. The contract's meta-address table followed D-017: version `0x01` for
 the Construction A forms (5,633 B at ML-KEM-768 / ML-DSA-65) and `0x02` for
 the X-Wing hybrid (5,665 B). D-024 then assigned `0x02` to the 1,217-byte
-commitment meta-address, so `main` now carries two meanings of `0x02`, and
-`kemOfMetaAddress` rejects a D-024 meta-address with
-`UnsupportedMetaAddress(1217, 0x02)`. The announcement path is unaffected —
-`announce` takes only the ciphertext and metadata, and a format-`0x02`
-payment produces the same 1,088-byte ML-KEM-768 ciphertext — so the typing
-table is the only part to settle: either X-Wing moves to `0x03` (a one-line
-change in D-017, the contract, its Lean model and the vectors) or the table
-types by total length alone, which is unambiguous today (1,217 / 5,633 /
-5,665 B are pairwise distinct). That choice belongs to the author of the
-hand-written draft; this record stays a finding until it is made.
+commitment meta-address, so `main` carried two meanings of `0x02`, and
+`kemOfMetaAddress` rejected a D-024 meta-address with
+`UnsupportedMetaAddress(1217, 0x02)`. The announcement path was never
+affected — `announce` takes only the ciphertext and metadata, and a
+format-`0x02` payment produces the same 1,088-byte ML-KEM-768 ciphertext —
+so only the typing table was in question.
+
+Decision (user, 2026-09-20): **X-Wing moves to `0x03`**, and `0x02` is
+D-024's commitment meta-address alone. D-017 is amended; the contract, its
+Lean model and the Foundry suite follow. The vectors do not move: X-Wing
+appears under `python/benchmarks/` only and never in `python/vectors/`, so
+nothing regenerates.
+
+The alternative — typing by total length alone — was rejected. It reads as
+unambiguous across the post-quantum-only forms (1,217 / 5,633 / 5,665 B are
+pairwise distinct), but the classical-spend hybrid
+(`docs/classical-spend-hybrid.md`, `python/pq_stealth/classical/`) encodes
+`0x01 ‖ compressed secp256k1 pk(33) ‖ ML-KEM ek`, which is **1,218 B** at
+ML-KEM-768 — one byte away from D-024's 1,217. Dropping the version byte
+would leave a single byte of length as the only thing separating a
+post-quantum-only commitment address from a classical hybrid one, so a
+truncated or padded meta-address would retype silently and the sender would
+derive against the wrong form. Keeping `(version, length)` as the key
+preserves that distinction, and `0x03` keeps the byte unique.
+
+Still open: this contract's table does not carry the classical hybrid at
+all, so a 1,218-B `0x01` meta-address reverts with
+`UnsupportedMetaAddress(1218, 0x01)`. The hybrid keeps its own registry
+(`StealthKeyRegistry`), so nothing regresses today, but a table meant to
+cover both address forms has to add it.
 
 **Lean verification of the contract.** `js-client/contracts/lean/` is a
 second, dependency-free Lean package (`StealthKeyExchange`, same toolchain

@@ -181,8 +181,12 @@ no deployed spec — noted as the research-grade option, not proposed.
 
 *User decision 2026-08-27: X-Wing is offered as an optional hybrid
 parameter set; the default stays ML-KEM-768. Folded into the ERC draft
-(Parameter sets `0x02` variant, Rationale, Security Considerations) and
+(Parameter sets `0x03` variant, Rationale, Security Considerations) and
 `docs/DECISIONS.md` D-017. Original assessment below.*
+
+*Amended 2026-09-20: the hybrid variant is `0x03`, not `0x02`. D-024 took
+`0x02` for the 1,217-byte commitment meta-address; D-027 records why the
+version byte moved rather than the table dropping to length-only typing.*
 
 X-Wing is the **best-value second-assumption play in the whole measured
 design space**: cheaper on scan than any non-MLWE family including NTRU,

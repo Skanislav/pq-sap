@@ -56,7 +56,7 @@ def Kem.packedTBytes : Kem → Nat
 def metaVersionMlkem : UInt8 := 0x01
 
 /-- Meta-address version byte of the hybrid set (`META_VERSION_XWING`). -/
-def metaVersionXwing : UInt8 := 0x02
+def metaVersionXwing : UInt8 := 0x03
 
 /-- Meta-address version byte of a set (`metaAddressVersion`). -/
 def Kem.metaAddressVersion : Kem → UInt8

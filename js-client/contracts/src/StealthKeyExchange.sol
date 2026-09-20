@@ -81,9 +81,11 @@ contract StealthKeyExchange {
     uint256 public constant XWING_EK_BYTES = 1216;
     uint256 public constant XWING_CT_BYTES = 1120;
 
-    /// @notice Meta-address version byte: `0x01` for the FIPS 203 sets, `0x02` for X-Wing.
+    /// @notice Meta-address version byte: `0x01` for the FIPS 203 sets, `0x03` for X-Wing.
+    ///         `0x02` is D-024's commitment meta-address and is deliberately absent:
+    ///         this contract does not implement that form, so it must not claim its byte.
     uint8 public constant META_VERSION_MLKEM = 0x01;
-    uint8 public constant META_VERSION_XWING = 0x02;
+    uint8 public constant META_VERSION_XWING = 0x03;
 
     // Full-precision `t` of the paired ML-DSA set: k * 256 * 23 / 8 bytes.
     uint256 public constant PACKED_T_BYTES_MLDSA44 = 2944;

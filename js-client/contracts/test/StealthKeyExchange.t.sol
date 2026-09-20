@@ -78,7 +78,7 @@ contract StealthKeyExchangeTest is Test {
         assertEq(kx.metaAddressBytes(StealthKeyExchange.Kem.XWING), 5665);
         assertEq(kx.ciphertextBytes(StealthKeyExchange.Kem.XWING), 1120);
         assertEq(kx.encapsulationKeyBytes(StealthKeyExchange.Kem.XWING), 1216);
-        assertEq(kx.metaAddressVersion(StealthKeyExchange.Kem.XWING), 0x02);
+        assertEq(kx.metaAddressVersion(StealthKeyExchange.Kem.XWING), 0x03);
     }
 
     function test_kemOfCiphertextLength_roundtrips() public view {
@@ -196,13 +196,20 @@ contract StealthKeyExchangeTest is Test {
 
     function test_kemOfMetaAddress_rejects_bad_version_and_length() public {
         bytes memory meta = _metaA();
-        meta[0] = 0x02; // X-Wing version with an ML-KEM-768 length
-        vm.expectRevert(abi.encodeWithSelector(StealthKeyExchange.UnsupportedMetaAddress.selector, 5633, 2));
+        meta[0] = 0x03; // X-Wing version with an ML-KEM-768 length
+        vm.expectRevert(abi.encodeWithSelector(StealthKeyExchange.UnsupportedMetaAddress.selector, 5633, 3));
         kx.kemOfMetaAddress(meta);
 
         bytes memory xw = new bytes(5665);
-        xw[0] = 0x02;
+        xw[0] = 0x03;
         assertEq(uint8(kx.kemOfMetaAddress(xw)), uint8(StealthKeyExchange.Kem.XWING));
+
+        // `0x02` is D-024's commitment meta-address, a form this contract does not
+        // implement. It must be rejected rather than silently typed as a hybrid.
+        bytes memory commit = new bytes(1217);
+        commit[0] = 0x02;
+        vm.expectRevert(abi.encodeWithSelector(StealthKeyExchange.UnsupportedMetaAddress.selector, 1217, 2));
+        kx.kemOfMetaAddress(commit);
 
         vm.expectRevert(abi.encodeWithSelector(StealthKeyExchange.UnsupportedMetaAddress.selector, 0, 0));
         kx.kemOfMetaAddress("");
