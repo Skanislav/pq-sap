@@ -55,6 +55,7 @@ const SECTIONS = [
     text: 'Spending and account research',
     items: [
       ['docs/SPENDING_RESEARCH.md', 'research/spending', 'Spending research guide'],
+      ['docs/ml-dsa-commit-profile.md', 'research/ml-dsa-commit-profile', 'ML-DSA-44 committed-key profile'],
       ['docs/construction-a.md', 'research/construction-a', 'Construction A reference'],
       ['docs/construction-a-security.md', 'research/construction-a-security', 'Construction A security'],
       ['lean/docs/msis-reshaping.md', 'lean/msis-reshaping', 'Ownership / SIS research'],

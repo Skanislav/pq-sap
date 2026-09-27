@@ -40,6 +40,18 @@ the KEM choice, hash domains, chain, or account deployment configuration.
 Those inputs must be agreed separately; their distribution/profile selection
 is an ERC review item, not a solved negotiation mechanism.
 
+Since D-026 the implementation makes that selection explicit: an **account
+profile** (`python/pq_stealth/profiles.py`, `js-client/src/profiles.ts`) names
+the KEM, the hash domains, the authorization scheme with its message
+convention, and the deployment-binding layout, and `select_profile` /
+`selectProfile` accept only the known profiles and a shape-validated binding
+for one chain. Three identifiers keep distinct roles: the version byte `0x02`
+describes the encoding, the ERC-5564 scheme ID describes announcement
+interpretation, and the profile describes the selected authorization and
+deployment behaviour. A profile name is trusted configuration, not
+authentication of the factory or verifier behind it. Details:
+[ML-DSA-44 committed-key profile](ml-dsa-commit-profile.md).
+
 ## 3. Implemented receive and scan flow
 
 ```text
@@ -70,11 +82,17 @@ make externally supplied account configuration trustworthy.
 
 | Profile | `open_domain` | `commit_domain` |
 | --- | --- | --- |
-| C13 commitment | `pq-stealth/sphincs-c13/open/v0` | `pq-stealth/sphincs-c13/commit/v0` |
-| Preimage demo | `pq-stealth/preimage/open/v0` | `pq-stealth/preimage/commit/v0` |
+| C13 commitment (`sphincs-c13-commit/v0`) | `pq-stealth/sphincs-c13/open/v0` | `pq-stealth/sphincs-c13/commit/v0` |
+| Preimage demo (`preimage/v0`) | `pq-stealth/preimage/open/v0` | `pq-stealth/preimage/commit/v0` |
+| ML-DSA-44 committed key (`ml-dsa-44-commit/v0`) | `pq-stealth/ml-dsa-44/open/v0` | `pq-stealth/ml-dsa-44/commit/v0` |
 
 For the preimage demo, `spend_key = keccak256("pq-stealth/preimage/key/v0" || sk)`
 with a 32-byte secret. The C13 profile uses its 32-byte public key directly.
+For the ML-DSA-44 profile, `spend_key = keccak256("pq-stealth/ml-dsa-44/key/v0" || pk)`
+with `pk` the canonical 1,312-byte FIPS 204 ML-DSA-44 public key (hashed once;
+the outer commitment hashes that value with the opener). The parameter set is
+part of the profile and of the domain strings; ML-DSA-65 would be a different
+profile with a different verifier.
 The existing names are byte-level inputs; changing them changes destinations.
 Ethereum Keccak-256 is not SHA3-256.
 
@@ -112,6 +130,12 @@ security conclusions from a successful roundtrip.
 D-025's browser demo proves knowledge of a spending secret and opener with
 UltraHonk. Its current proof backend is not PQ-sound. C13, blinded ML-DSA,
 and other account routes are supporting experiments with distinct assumptions.
+The direct ML-DSA-44 committed-key route (D-026) has a reference verifier in
+both languages and a local contract path over the vendored ZKNOX ML-DSA-44
+verifier; its on-chain key setup relies on a trusted registrar, nothing is
+deployed, and a spend reveals the key and links that recipient's spent
+addresses. Construction A's revealed stealth key exposes the recipient's `rho`
+(D-026). See the [profile record](ml-dsa-commit-profile.md).
 The [spending research guide](SPENDING_RESEARCH.md) records those boundaries.
 They do not require changing the KEM announcement format, but they have their
 own deployment and network requirements.

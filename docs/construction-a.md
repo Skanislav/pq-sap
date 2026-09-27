@@ -115,6 +115,18 @@ enters the `r0` bound below. Construction A
 has its own conditional unlinkability analysis; see
 [the security analysis](construction-a-security.md).
 
+**Retained `rho` (finding, D-026).** `stealth_pk = pack_pk(rho, t1')` keeps the
+recipient's matrix seed unchanged, and `rho` is published in the `0x01`
+meta-address. The announcement exposes only `keccak256(stealth_pk)[12:]`, so
+this does not affect receive-time unlinkability; but wherever the full stealth
+public key is revealed — an on-chain ML-DSA verify, a deployed `PKContract`
+(whose `aHat = ExpandA(rho)`), a pointer-signature key table, the demo
+fixtures — `rho` identifies the recipient among all registered meta-addresses.
+Blinding hides `t`, not `rho`; it does not by itself give unlinkability after
+key disclosure. Pinned by `python/tests/test_construction_a_rho.py`. No
+repair (changing `rho` independently of the matrix, or a common seed) is
+proposed here; either needs its own analysis.
+
 ### 4.2 Signing with the blinded key
 
 FIPS 204 Algorithm 7 over `(s1', s2', t0')` with the rejection bounds

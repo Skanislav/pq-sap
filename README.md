@@ -20,9 +20,11 @@ Docs site: <https://skanislav.github.io/pq-sap>
   normative format remains a decision for the ERC draft (D-024).
 - **Spending** — delegated to the account model. The browser demo proves
   knowledge of a spending secret and commitment opener (D-025). Its current
-  UltraHonk backend is **not post-quantum sound**. Direct SPHINCS-C13 and
-  blinded ML-DSA routes provide separate implementation evidence, with their
-  own privacy and security boundaries.
+  UltraHonk backend is **not post-quantum sound**. Direct SPHINCS-C13,
+  blinded ML-DSA, and a direct ML-DSA-44 committed-key profile
+  ([D-026](docs/ml-dsa-commit-profile.md), local contract path only) provide
+  separate implementation evidence, with their own privacy and security
+  boundaries; the direct routes reveal the key at spend time.
 
 The proposal's focus is **ML-KEM-secured discovery and sender-computable
 addresses under existing ERC-5564 announcements**. Spending integrations have

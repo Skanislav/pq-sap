@@ -119,8 +119,10 @@ export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wa
         Three spend routes: the <strong>classical hybrid</strong> spends from a plain EOA with one ECDSA transaction
         (ecrecover, ~21k gas, quantum-vulnerable ownership); the <strong>PQ route</strong> spends through a smart
         account that verifies the blinded ML-DSA key on-chain (~15M gas); the <strong>key-exchange route</strong>{' '}
-        uses the 1,217-byte commitment meta-address and spends with a zero-knowledge proof of a SPHINCS- signature
-        (~4.2M gas, key never revealed; frames testnet only).
+        uses the 1,217-byte commitment meta-address and spends with a browser-made zero-knowledge proof of the
+        spending secret and commitment opener (D-025; ~2.9M gas verify, secret never revealed; frames testnet only).
+        Its UltraHonk backend is not post-quantum sound. The direct ML-DSA-44 committed-key route (D-026) is
+        reference and local-contract only and is not exposed here.
       </p>
       <div className="segmented" role="tablist" aria-label="Spend route">
         <button

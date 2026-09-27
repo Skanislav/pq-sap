@@ -96,7 +96,8 @@ contract SphincsC13Signer7913 is SphincsC13SignerBase {
 ///
 ///         What it does and does not hide: `ss` is 256 bits of KEM output, so the
 ///         commitment reveals nothing about `pk` before the first spend — unspent
-///         stealth addresses stay unlinkable exactly as in the ML-DSA scheme. A
+///         stealth addresses stay unlinkable, as blinded ML-DSA addresses do while
+///         their key is unrevealed (a revealed blinded key exposes `rho`; D-026). A
 ///         spend opens the commitment on-chain: it reveals `pk`, which is the
 ///         recipient's registered key, so every SPENT address of one recipient is
 ///         linkable to that recipient from that point. This is the row-B trade-off

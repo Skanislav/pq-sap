@@ -50,6 +50,7 @@ from Python/TS tests, not that checker.
 | Shared proof infrastructure | `Reorder`, `ROMUpToBad`, `Controls`, `Axioms` | Supports and audits the development; not normative protocol behavior |
 | Tooling and upstream work | Lean build pin, citation/size scripts, generated theorem browser, VCVio notes | Maintainer workflow; not reviewer installation requirements |
 | Account and ZK experiments | ERC-4337/7913/8141 routes, Noir circuits, UI | Feasibility evidence with independent security and network assumptions |
+| Explicit account profiles | `profiles.py` / `profiles.ts`, [ML-DSA-44 profile record](ml-dsa-commit-profile.md), `mldsa44_commit_vectors.json` | Receive/scan conformance per profile; optional spend-profile conformance is separate and, for ML-DSA-44, local-only |
 
 The [Lean overview](../lean/README.md) maps all modules; the
 [spending guide](SPENDING_RESEARCH.md) maps the account experiments.

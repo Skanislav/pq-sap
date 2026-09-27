@@ -59,6 +59,10 @@ Spend:     derive_blinding(ss) → (s′, e′) → widened key (s1+s′, s2+e�
 Key module callouts:
 
 - `python/pq_stealth/commit.py` — commitment-format API.
+- `python/pq_stealth/profiles.py` — explicit account profiles over `0x02`
+  (`sphincs-c13-commit/v0`, `preimage/v0`, `ml-dsa-44-commit/v0`), ML-DSA-44 key
+  commitment and the `pk || opener || sig` authorization payload; mirrored by
+  `js-client/src/profiles.ts` (D-026, `docs/ml-dsa-commit-profile.md`).
 - `python/pq_stealth/__init__.py` — the Construction A public API (`send`, `scan`,
   `derive_blinding`, `sign_blinded`, `prove_possession`, encoders). Every randomized
   step accepts optional seeds (`zeta`, `kem_d`, `kem_z`) so vectors reproduce.
@@ -72,7 +76,7 @@ Key module callouts:
 
 | Directory | Purpose |
 | --- | --- |
-| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-025 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
+| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-026 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
 | `python/` | Executable spec, conformance vectors (`python/vectors/v0/`, `vectors/classical/v0/`), benchmarks, scripts that generate fixtures for TS tests |
 | `js-client/` | TS scanning client, Foundry contracts (`js-client/contracts/`), anvil/fork e2e tests, devnet config |
 | `ui/` | Vite + React demo (receive/send/scan/spend/frames), dev-chain bootstrapping, signer service |
@@ -93,6 +97,7 @@ pytest -q                       # full suite (~18 tests)
 ruff check .
 python vectors/generate_vectors.py            # MUST be byte-identical to committed vectors/v0/vectors.json
 python vectors/generate_classical_vectors.py  # same for vectors/classical/v0/vectors.json
+python vectors/generate_mldsa44_commit_vectors.py  # same for vectors/v0/mldsa44_commit_vectors.json
 
 # js-client/  (Node ≥26, npm)
 nvm use && npm install
@@ -100,7 +105,8 @@ npm run typecheck               # tsc; "lint" is also just tsc
 npm test                        # replays ../python/vectors/v0 — byte-for-byte
 npm run build-contracts         # forge build --root contracts (needs Foundry)
 npm run e2e                     # anvil-backed e2e (auto-boots anvil via test/util/anvil.ts)
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig
+npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-mldsa44
+npm run test:commit | test:mldsa44   # commitment-format / ML-DSA-44 profile vector replay
 npm run e2e:fork                # offline Sepolia fork replay; e2e:fork:record to re-record
 
 # ui/  (Node ≥22.12, npm; needs ../js-client npm-installed)
@@ -181,7 +187,7 @@ spec-to-proof-to-impl correspondence.
 
 | File | Why it matters |
 | --- | --- |
-| `docs/DECISIONS.md` | ADR log (D-001–D-025). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
+| `docs/DECISIONS.md` | ADR log (D-001–D-026). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
 | `docs/TECHNICAL_SPEC.md`, `docs/erc-draft.md` | Working spec / ERC text (pre-freeze) |
 | `python/pq_stealth/commit.py` | Commitment-format API; the key-exchange porting contract |
 | `python/vectors/v0/vectors.json` | Conformance vectors consumed by pytest, js-client tests, ui e2e, and `lean/scripts/check_sizes.py` — the cross-language glue |

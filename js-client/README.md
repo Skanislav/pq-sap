@@ -30,6 +30,8 @@ nvm use
 npm install
 npm run typecheck       # tsc 7, noEmit
 npm run test:commit     # commitment-format Python vector replay
+npm run test:mldsa44    # ml-dsa-44-commit/v0 profile vector replay; every authorization
+                        # payload re-verified with @noble/post-quantum ml_dsa44
 npm test                # separate Construction A vector replay
 npm run build-contracts # forge build (requires foundry)
 npm run e2e             # spawns anvil, deploys the ERC-5564 announcer,
@@ -40,6 +42,10 @@ npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
 npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
                         # verifies through the vendored Verity-verified verifier,
                         # raw-key and committed ERC-7913 signers, same account
+npm run e2e-mldsa44     # ml-dsa-44-commit/v0 (D-026): trusted-registrar key setup,
+                        # committed-key ERC-7913 verify through the vendored ZKNOX
+                        # ML-DSA-44 verifier, executeFrame through the unchanged
+                        # Stealth8141ZkAccount; local only, nothing deployed
 npm run e2e-pointer-sig # (v, r, s) pointer signatures with r = the C13 key
                         # (0x52) or its commitment (0x53); ML-DSA 0x50/0x51
                         # at recover level. Value lives in the vault — see
@@ -103,6 +109,21 @@ git -C contracts/lib/ETHDILITHIUM checkout --recurse-submodules df999ed
 
 `contracts/lib/ETHDILITHIUM/VENDORED_REV.txt` records the pinned rev of a
 restored tree.
+
+## ML-DSA-44 committed key (D-026)
+
+`src/profiles.ts` mirrors `python/pq_stealth/profiles.py`: explicit account
+profiles over the 0x02 format, `spendKeyFromMlDsaPk`, `buildAuthorization`
+(`pk || opener || sig`, pure ML-DSA-44, empty context, over the account's 32-byte
+digest) and the reference `verifyAuthorization`. On chain,
+`contracts/src/MlDsa44CommitSigner7913.sol` is the ERC-7913 verifier (`key` =
+commitment), `contracts/src/MlDsa44KeyRegistry.sol` the one-time key setup
+(recomputes `tr` and `t1` from the key bytes; **trusts its registrar for the
+expanded matrix** because on-chain `ExpandA` costs ≈ 40 M gas with the vendored
+SHAKE), and `contracts/src/frames/MlDsa44CommitFrameVerifier.sol` the adapter
+that lets the existing `Stealth8141ZkFactory` bind it. A spend reveals the key
+and links that recipient's spent addresses. Record, costs, and open items:
+`docs/ml-dsa-commit-profile.md`.
 
 ## Vendored verifier (committed): SPHINCS- C13
 
