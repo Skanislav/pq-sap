@@ -1,6 +1,6 @@
 # ML-DSA authorization under format 0x02 — the `ml-dsa-44-commit/v0` profile
 
-Implementation record for D-026 (2026-09-22). Python defines the bytes
+Implementation record for D-027 (2026-09-22). Python defines the bytes
 (`python/pq_stealth/profiles.py`); TypeScript mirrors them
 (`js-client/src/profiles.ts`); the contracts under `js-client/contracts/src`
 implement the account side. This is supporting implementation documentation:

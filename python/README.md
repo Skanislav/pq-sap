@@ -54,7 +54,7 @@ docker run --rm pq-stealth-py sh -c \
 | Module | Contents |
 |---|---|
 | `pq_stealth/commit.py` | commitment-format key exchange and address derivation (start here) |
-| `pq_stealth/profiles.py` | explicit account profiles over `0x02`; ML-DSA-44 key commitment and `pk ‖ opener ‖ sig` authorization (D-026) |
+| `pq_stealth/profiles.py` | explicit account profiles over `0x02`; ML-DSA-44 key commitment and `pk ‖ opener ‖ sig` authorization (D-027) |
 | `pq_stealth/params.py` | parameter sets (default ML-KEM-768 + ML-DSA-65) |
 | `pq_stealth/blinding.py` | the algebraic core: `t' = A·s' + e' + t` |
 | `pq_stealth/encoding.py` | meta-address / full-`t` / blinded-sk packing, keccak addresses |

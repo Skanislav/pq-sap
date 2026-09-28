@@ -42,7 +42,7 @@ npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
 npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
                         # verifies through the vendored Verity-verified verifier,
                         # raw-key and committed ERC-7913 signers, same account
-npm run e2e-mldsa44     # ml-dsa-44-commit/v0 (D-026): trusted-registrar key setup,
+npm run e2e-mldsa44     # ml-dsa-44-commit/v0 (D-027): trusted-registrar key setup,
                         # committed-key ERC-7913 verify through the vendored ZKNOX
                         # ML-DSA-44 verifier, executeFrame through the unchanged
                         # Stealth8141ZkAccount; local only, nothing deployed
@@ -110,7 +110,7 @@ git -C contracts/lib/ETHDILITHIUM checkout --recurse-submodules df999ed
 `contracts/lib/ETHDILITHIUM/VENDORED_REV.txt` records the pinned rev of a
 restored tree.
 
-## ML-DSA-44 committed key (D-026)
+## ML-DSA-44 committed key (D-027)
 
 `src/profiles.ts` mirrors `python/pq_stealth/profiles.py`: explicit account
 profiles over the 0x02 format, `spendKeyFromMlDsaPk`, `buildAuthorization`

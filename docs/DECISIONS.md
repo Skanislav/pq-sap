@@ -540,7 +540,7 @@ are carrier-independent and stand.)*
   every **spent** address of that recipient is linkable to the recipient
   (unspent addresses stay unlinkable — `ss` is 256 bits of KEM output and
   the commitment hides). Blinded ML-DSA has no such identifying event.
-  *(Correction 2026-09-22, D-026: that last sentence holds only while no
+  *(Correction 2026-09-22, D-027: that last sentence holds only while no
   blinded stealth public key is revealed. `stealth_pk = pack_pk(rho, t1')`
   carries the recipient's meta-address `rho` verbatim, so any route that
   discloses the full key — an on-chain ML-DSA verify, a `PKContract`, a
@@ -939,7 +939,13 @@ the demo derives it from a seed in the page and never transmits it. This is the
 demo's spend route, not a normative choice for the ERC — that text is
 hand-written.
 
-## D-026 — Explicit account profiles over format 0x02; ML-DSA-44 committed-key profile implemented with a trusted-registrar key setup; Construction A `rho` exposure confirmed — **FINDING / implementation (2026-09-22)**
+## D-026 — reserved — **PENDING**
+
+Held for the frame-transaction nonce record proposed in issue #15 (EIP-8266 for
+the spend, EIP-8250 only where a nullifier is real), so that it keeps the number
+its discussion already uses. Not a decision until that text lands here.
+
+## D-027 — Explicit account profiles over format 0x02; ML-DSA-44 committed-key profile implemented with a trusted-registrar key setup; Construction A `rho` exposure confirmed — **FINDING / implementation (2026-09-22)**
 
 Full record: `docs/ml-dsa-commit-profile.md`. Code: `python/pq_stealth/profiles.py`,
 `js-client/src/profiles.ts`, `python/vectors/v0/mldsa44_commit_vectors.json`,

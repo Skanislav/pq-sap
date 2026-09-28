@@ -7,7 +7,7 @@ the key-exchange ERC's core receive/scan evidence. Start with
 
 | Track | Implementation and records | Security and deployment boundary |
 | --- | --- | --- |
-| Construction A | [Derivation/signing reference](construction-a.md), [security analysis](construction-a-security.md), Python blinded signer | Format `0x01`; stock signature-format compatibility does not complete related-key signature security; a revealed stealth key exposes the recipient's `rho` (D-026) |
+| Construction A | [Derivation/signing reference](construction-a.md), [security analysis](construction-a-security.md), Python blinded signer | Format `0x01`; stock signature-format compatibility does not complete related-key signature security; a revealed stealth key exposes the recipient's `rho` (D-027) |
 | Direct ML-DSA-44 committed key | [Profile record](ml-dsa-commit-profile.md), `profiles.py` / `profiles.ts`, `MlDsa44CommitSigner7913`, forge + anvil tests | Format `0x02`, ML-DSA-44 only; key revealed at spend (linkable); on-chain key setup trusts a registrar; nothing deployed |
 | ERC-4337/7913 accounts | [TS client and E2E commands](../js-client/README.md), vendored ZKNOX verifier | Verifier profiles and account address rules differ; raw ML-DSA-key hashes are not ECDSA EOAs |
 | Direct SPHINCS-C13 | D-018 in [decisions](DECISIONS.md), C13 verifier and committed signer | Recipient key revealed at spend time; spend-time linkability remains |

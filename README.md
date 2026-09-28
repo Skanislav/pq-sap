@@ -22,7 +22,7 @@ Docs site: <https://skanislav.github.io/pq-sap>
   knowledge of a spending secret and commitment opener (D-025). Its current
   UltraHonk backend is **not post-quantum sound**. Direct SPHINCS-C13,
   blinded ML-DSA, and a direct ML-DSA-44 committed-key profile
-  ([D-026](docs/ml-dsa-commit-profile.md), local contract path only) provide
+  ([D-027](docs/ml-dsa-commit-profile.md), local contract path only) provide
   separate implementation evidence, with their own privacy and security
   boundaries; the direct routes reveal the key at spend time.
 

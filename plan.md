@@ -25,7 +25,7 @@ ERC-5564/ERC-6538 contracts. The original cohort plan is preserved as
 | Key exchange and address derivation | Python `commit.py`, TS `commit-scheme.ts`, deterministic commitment vectors | Agreed profile/deployment binding in the human-written specification |
 | Portable conformance | Reference tests and cross-language replay | Standalone checker and self-contained assets |
 | Security | Generic KEM/announcement Lean results; Construction A analysis | Concrete commitment-profile privacy argument and explicit assumptions |
-| Deployment feasibility | Account routes, browser preimage demo, explicit account profiles with an ML-DSA-44 committed-key reference and local contract path (D-026) | Separate route review; trustless ML-DSA key setup and any ML-DSA-65 verifier remain open; not a prerequisite to describe KEM conformance |
+| Deployment feasibility | Account routes, browser preimage demo, explicit account profiles with an ML-DSA-44 committed-key reference and local contract path (D-027) | Separate route review; trustless ML-DSA key setup and any ML-DSA-65 verifier remain open; not a prerequisite to describe KEM conformance |
 | Documentation | Key-exchange review path, research and tooling separated | Keep public claims aligned with actual evidence |
 
 Start with the [technical reference](docs/TECHNICAL_SPEC.md),

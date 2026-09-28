@@ -115,7 +115,7 @@ enters the `r0` bound below. Construction A
 has its own conditional unlinkability analysis; see
 [the security analysis](construction-a-security.md).
 
-**Retained `rho` (finding, D-026).** `stealth_pk = pack_pk(rho, t1')` keeps the
+**Retained `rho` (finding, D-027).** `stealth_pk = pack_pk(rho, t1')` keeps the
 recipient's matrix seed unchanged, and `rho` is published in the `0x01`
 meta-address. The announcement exposes only `keccak256(stealth_pk)[12:]`, so
 this does not affect receive-time unlinkability; but wherever the full stealth

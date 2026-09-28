@@ -19,7 +19,7 @@ it is supporting research, not the security theorem for format `0x02`.
 | Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages | Concrete joint derivation, recipient spend-key binding, deployment metadata, and CREATE2 composition are not discharged by Construction A's blinding proof |
 | Reliable detection and rejection | Negative vectors; generic conditional soundness results in `Soundness.lean` | A one-byte tag is a filter after decapsulation, not a payment authenticator or a universal false-positive guarantee |
 | Byte-level interoperability | Deterministic commitment vectors, encoding tests; abstract 1,217-byte roundtrip in `Invariants.lean` | Serialization facts are not cryptographic security or a proof of the Python/TS implementation |
-| Explicit profile selection | Typed profiles and fail-closed `select_profile` in Python/TS (D-026) | A profile name and its binding are trusted configuration; nothing authenticates a substituted factory, verifier, or registrar |
+| Explicit profile selection | Typed profiles and fail-closed `select_profile` in Python/TS (D-027) | A profile name and its binding are trusted configuration; nothing authenticates a substituted factory, verifier, or registrar |
 
 The exact sources and proof-reading order are in [ERC evidence](ERC_EVIDENCE.md).
 “Needed” here means evidence needed to support our claims; it does not mean
@@ -61,7 +61,7 @@ spending route. They are not removed by narrowing the ERC's scope.
   signature EUF-CMA layer remains uncomposed and widened HVZK currently has
   the trivial bound `1`.
 - Direct C13 spending exposes the recipient key and can link spends.
-- Direct ML-DSA-44 committed-key spending (D-026) likewise reveals `pk`,
+- Direct ML-DSA-44 committed-key spending (D-027) likewise reveals `pk`,
   whose hash is the published `spend_key`; spent addresses of one recipient
   are linkable from the first spend. Its local contract path trusts a key
   registrar for the expanded matrix; it is not a trustless or deployed route.
