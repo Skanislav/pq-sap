@@ -2,7 +2,10 @@
 
 A proposed post-quantum stealth-address scheme for Ethereum, targeting a new
 [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID and working
-against the deployed ERC-5564 / ERC-6538 contracts with no protocol changes.
+against the deployed ERC-5564 announcer with no protocol changes.
+Meta-address distribution (naming services, off-chain sharing) and the
+ERC-6538 registry are outside the proposal's scope (D-014 scope update,
+2026-09-28).
 
 Repository: <https://github.com/Skanislav/pq-sap> ·
 Docs site: <https://skanislav.github.io/pq-sap>

@@ -291,6 +291,18 @@ Hegotá, ERC-7913 is the **interim** spend/registry encoding (pre-Hegotá
 chains and L2s without type `0x06`), not the destination — see D-020. The
 measurements and the EIP-3860 finding below stand.
 
+*Scope update (2026-09-28, user, after the ethresear.ch discussion
+"PQ anonymity for stealth address protocol"):* the **ERC-6538 registry is out
+of scope for the proposal.** The registry-authentication ratchet recommended
+below (an ERC-7913-authorized update path so the old ecrecover key cannot
+overwrite a PQ meta-address) is withdrawn from the ERC text: binding a PQ key
+to a registry entry that is still governed by ecrecover does not close the
+overwrite hole, and fixing the registry is a separate contract with its own
+migration. Meta-addresses are distributed through naming services (ENS and
+the `.gwei`/`.wei` names the demo already uses) or shared off chain; a wallet
+may still read ERC-6538 as one source among others but the proposal makes no
+claim about it. The ERC-5564 announcer stays in scope. Follow-up in issue #36.
+
 ERC-7913 (Signature Verifiers, Final 2025) represents a signer as the byte
 string `verifier || key` and checks it via
 `IERC7913SignatureVerifier(verifier).verify(key, bytes32 hash, signature) → 0x024ad318`;

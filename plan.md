@@ -2,7 +2,8 @@
 
 Current scope follows D-024/D-025. Deliver a reviewable proposal for ML-KEM
 key exchange and sender-computable stealth destinations using existing
-ERC-5564/ERC-6538 contracts. The original cohort plan is preserved as
+ERC-5564 announcements; the ERC-6538 registry is out of scope (D-014 scope
+update, 2026-09-28). The original cohort plan is preserved as
 [historical context](docs/research/original-project-plan.md).
 
 ## Core deliverable

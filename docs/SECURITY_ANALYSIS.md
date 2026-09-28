@@ -46,7 +46,10 @@ formal result. Quantum random-oracle access is also outside that result.
 
 The deployment binding is public and supplied separately from the meta-address.
 Its distribution must prevent substitution and must identify the intended
-chain/account profile. A profile shared by few recipients may itself narrow
+chain/account profile. The ERC-6538 registry does not provide that (its
+entries are ecrecover-governed and overwritable by the classical key) and is
+out of scope; the trust in a naming service or an off-chain channel is the
+application's, not the scheme's. A profile shared by few recipients may itself narrow
 an observer's candidate set. This requires explicit treatment even when the
 commitment hash is modeled ideally.
 

@@ -38,7 +38,13 @@ key. Python also exposes other ML-KEM parameter sets for experiments. The
 reference profile here is ML-KEM-768; format `0x02` does not itself encode
 the KEM choice, hash domains, chain, or account deployment configuration.
 Those inputs must be agreed separately; their distribution/profile selection
-is an ERC review item, not a solved negotiation mechanism.
+is an ERC review item, not a solved negotiation mechanism. The ERC-6538
+registry is not that mechanism and is out of the proposal's scope: it is
+governed by ecrecover, so an entry can be overwritten by the classical key it
+was registered under, and binding a PQ key to it does not change that. The
+meta-address and the deployment binding travel through naming services or are
+shared off chain; the announcer (ERC-5564) is the only deployed contract the
+proposal depends on.
 
 Since D-027 the implementation makes that selection explicit: an **account
 profile** (`python/pq_stealth/profiles.py`, `js-client/src/profiles.ts`) names

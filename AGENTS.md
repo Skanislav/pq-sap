@@ -8,7 +8,10 @@ cited file.
 
 Post-quantum stealth addresses for Ethereum, proposed as a new
 [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID (target ID `2`), working
-against deployed ERC-5564/ERC-6538 contracts with no protocol changes.
+against the deployed ERC-5564 announcer with no protocol changes. The ERC-6538
+registry and meta-address distribution are out of the proposal's scope (D-014
+scope update, 2026-09-28): naming services or off-chain sharing carry the
+meta-address and the deployment binding.
 
 - **Detection** (priority — "harvest now, decrypt later"): ML-KEM-768 (FIPS 203).
   The announcement's ephemeral key is a KEM ciphertext; the shared secret drives a
