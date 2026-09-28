@@ -120,7 +120,8 @@ digest) and the reference `verifyAuthorization`. On chain,
 commitment), `contracts/src/MlDsa44KeyRegistry.sol` the one-time key setup
 (recomputes `tr` and `t1` from the key bytes; **trusts its registrar for the
 expanded matrix** because on-chain `ExpandA` costs ≈ 40 M gas with the vendored
-SHAKE), and `contracts/src/frames/MlDsa44CommitFrameVerifier.sol` the adapter
+SHAKE; the registrar can `replace` a wrong binding, so that trust is ongoing),
+and `contracts/src/frames/MlDsa44CommitFrameVerifier.sol` the adapter
 that lets the existing `Stealth8141ZkFactory` bind it. A spend reveals the key
 and links that recipient's spent addresses. Record, costs, and open items:
 `docs/ml-dsa-commit-profile.md`.

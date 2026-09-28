@@ -101,8 +101,18 @@ test('ml-dsa-44-commit/v0: committed ML-DSA-44 key spends through the frame acco
       address: signer.address, abi: signerArt.abi, functionName: 'verify', args: [key, h, sig],
     });
     assert.equal(await verify(commitment, digest, payload), ERC7913_MAGIC, 'genuine authorization');
-    // gas: send the view call as a transaction (the wrapper never reverts, so an
-    // estimate would binary-search down to the out-of-gas FAIL path)
+    // the signer reverts (VerifierCallFailed) when the inner ML-DSA verify runs out of
+    // gas instead of answering "invalid", so estimation lands on the real cost
+    const verifyEstimate = await publicClient.estimateContractGas({
+      address: signer.address, abi: signerArt.abi, functionName: 'verify', args: [commitment, digest, payload], account: wallet.account,
+    });
+    assert.ok(verifyEstimate > 10_000_000n, `estimate must reflect the real verify cost, got ${verifyEstimate}`);
+    console.log(`    MlDsa44CommitSigner7913.verify estimateGas: ${verifyEstimate}`);
+    // and a call under a tight cap surfaces the exhaustion rather than a 0xffffffff
+    await assert.rejects(publicClient.simulateContract({
+      address: signer.address, abi: signerArt.abi, functionName: 'verify', args: [commitment, digest, payload],
+      account: wallet.account, gas: 2_000_000n,
+    }), /VerifierCallFailed/);
     const verifyTx = await wallet.writeContract({
       address: signer.address, abi: signerArt.abi, functionName: 'verify', args: [commitment, digest, payload], gas: 30_000_000n,
     });

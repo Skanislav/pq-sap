@@ -15,7 +15,7 @@ import { hexToBytes, keccak256, type Address, type Hex } from 'viem';
 
 import { accountAddress, decodeCommitMetaAddress, deriveCommitment, deriveOpener, type CommitAnnouncementData, type Deployment } from '../src/commit-scheme.ts';
 import {
-  bindingForChain, buildAuthorization, checkWithProfile, mlDsa44Recipient, parseAuthorization, profileName, selectProfile,
+  bindingForChain, buildAuthorization, checkWithProfile, mlDsaRecipient, parseAuthorization, profileName, selectProfile,
   sendWithProfile, spendKeyFromMlDsaPk, verifyAuthorization, ML_DSA_44_COMMIT_V0, ML_DSA_44_DOMAINS, ML_DSA_44_KEY_DOMAIN,
   PROFILES, ProfileError,
 } from '../src/profiles.ts';
@@ -55,6 +55,11 @@ test('profile constants agree with the Python reference', () => {
   assert.equal(ML_DSA_44_COMMIT_V0.authorization.sigBytes, doc.profile.sig_bytes);
   assert.equal(ml_dsa44.lengths.publicKey, doc.profile.pk_bytes);
   assert.equal(ml_dsa44.lengths.signature, doc.profile.sig_bytes);
+  // the profile carries its own signature implementation; signing/verification dispatch on it
+  assert.equal(ML_DSA_44_COMMIT_V0.authorization.dsa, ml_dsa44);
+  assert.equal(PROFILES.get('preimage/v0')!.authorization.dsa, null);
+  assert.throws(() => buildAuthorization(new Uint8Array(2560), new Uint8Array(1312), `0x${'00'.repeat(32)}`, new Uint8Array(32), PROFILES.get('preimage/v0')!), ProfileError);
+  assert.equal(verifyAuthorization(`0x${'00'.repeat(32)}`, new Uint8Array(32), new Uint8Array(3764), PROFILES.get('sphincs-c13-commit/v0')!), false);
 });
 
 test('profile selection fails closed', () => {
@@ -76,7 +81,7 @@ test('recipient keys: spend key is one keccak over the domain and the canonical 
     const buf = new Uint8Array(dom.length + pk.length); buf.set(dom); buf.set(pk, dom.length);
     assert.equal(keccak256(buf), r.spend_key);
     // noble's FIPS 204 keygen from the same seed yields the same key as dilithium-py
-    const rec = mlDsa44Recipient(hexToBytes(r.zeta as Hex));
+    const rec = mlDsaRecipient(hexToBytes(r.zeta as Hex), ML_DSA_44_COMMIT_V0);
     assert.deepEqual(rec.publicKey, pk);
     assert.equal(rec.spendKey, r.spend_key);
     const meta = decodeCommitMetaAddress(hexToBytes(r.meta_address as Hex));
@@ -117,7 +122,7 @@ for (const a of doc.authorizations) {
       assert.ok(ml_dsa44.verify(sig, digest, pk));
       assert.equal(deriveCommitment(spendKeyFromMlDsaPk(pk), opener, ML_DSA_44_DOMAINS), a.commitment);
       // the TS signer reproduces the deterministic Python signature byte for byte
-      const rec = mlDsa44Recipient(hexToBytes(doc.recipients.m.zeta as Hex));
+      const rec = mlDsaRecipient(hexToBytes(doc.recipients.m.zeta as Hex), ML_DSA_44_COMMIT_V0);
       assert.deepEqual(buildAuthorization(rec.secretKey, rec.publicKey, opener, digest, ML_DSA_44_COMMIT_V0, true), payload);
     }
   });

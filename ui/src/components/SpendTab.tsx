@@ -120,7 +120,8 @@ export function SpendTab({ cfg, wallet, ethUsd }: { cfg: ChainConfig; wallet: Wa
         (ecrecover, ~21k gas, quantum-vulnerable ownership); the <strong>PQ route</strong> spends through a smart
         account that verifies the blinded ML-DSA key on-chain (~15M gas); the <strong>key-exchange route</strong>{' '}
         uses the 1,217-byte commitment meta-address and spends with a browser-made zero-knowledge proof of the
-        spending secret and commitment opener (D-025; ~2.9M gas verify, secret never revealed; frames testnet only).
+        spending secret and commitment opener (D-025: 2,942,272 gas for executeFrame in forge, secret never revealed;
+        frames testnet only).
         Its UltraHonk backend is not post-quantum sound. The direct ML-DSA-44 committed-key route (D-026) is
         reference and local-contract only and is not exposed here.
       </p>

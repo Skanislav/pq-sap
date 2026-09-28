@@ -38,8 +38,13 @@ export const ML_DSA_44_SIG_BYTES = 2420;
 export const OPENER_BYTES = 32;
 export const DIGEST_BYTES = 32;
 
+/** An ML-DSA implementation from @noble/post-quantum (`ml_dsa44`, `ml_dsa65`, `ml_dsa87` share this shape). */
+export type MlDsa = typeof ml_dsa44;
+
 export interface Authorization {
   scheme: string;
+  /** The signature implementation for signature profiles (mirrors Python's `dsa`); null otherwise. */
+  dsa: MlDsa | null;
   /** spendKey = keccak256(keyDomain || pk); absent for the raw-key C13 profile. */
   keyDomain: string | null;
   pkBytes: number | null;
@@ -75,7 +80,7 @@ export const SPHINCS_C13_COMMIT_V0: AccountProfile = {
   profileId: 'sphincs-c13-commit', revision: 0, metaAddressVersion: COMMIT_META_ADDRESS_VERSION, kem: 'ML-KEM-768',
   domains: SPHINCS_C13_DOMAINS,
   authorization: {
-    scheme: 'SPHINCS- C13 (raw 32-byte key is the spend_key)', keyDomain: null, pkBytes: 32, sigBytes: 3688,
+    scheme: 'SPHINCS- C13 (raw 32-byte key is the spend_key)', dsa: null, keyDomain: null, pkBytes: 32, sigBytes: 3688,
     messageConvention: 'C13 H_msg over the 32-byte digest, no envelope',
   },
   bindingLayout: BINDING_LAYOUT_8141,
@@ -86,7 +91,7 @@ export const PREIMAGE_V0: AccountProfile = {
   profileId: 'preimage', revision: 0, metaAddressVersion: COMMIT_META_ADDRESS_VERSION, kem: 'ML-KEM-768',
   domains: PREIMAGE_DOMAINS,
   authorization: {
-    scheme: 'preimage ZK proof of (sk, opener); spend_key = keccak256(KEY || sk)', keyDomain: PREIMAGE_KEY_DOMAIN,
+    scheme: 'preimage ZK proof of (sk, opener); spend_key = keccak256(KEY || sk)', dsa: null, keyDomain: PREIMAGE_KEY_DOMAIN,
     pkBytes: null, sigBytes: null,
     messageConvention: 'UltraHonk public inputs [digest_hi, digest_lo, commitment_hi, commitment_lo]; backend not PQ-sound',
   },
@@ -104,7 +109,7 @@ export const ML_DSA_44_COMMIT_V0: AccountProfile = {
   profileId: 'ml-dsa-44-commit', revision: 0, metaAddressVersion: COMMIT_META_ADDRESS_VERSION, kem: 'ML-KEM-768',
   domains: ML_DSA_44_DOMAINS,
   authorization: {
-    scheme: 'ML-DSA-44 (FIPS 204), canonical 1,312-byte public key', keyDomain: ML_DSA_44_KEY_DOMAIN,
+    scheme: 'ML-DSA-44 (FIPS 204), canonical 1,312-byte public key', dsa: ml_dsa44, keyDomain: ML_DSA_44_KEY_DOMAIN,
     pkBytes: ML_DSA_44_PK_BYTES, sigBytes: ML_DSA_44_SIG_BYTES, messageConvention: 'pure/empty-ctx/digest32',
   },
   bindingLayout: BINDING_LAYOUT_8141,
@@ -171,12 +176,21 @@ export function spendKeyFromMlDsaPk(pk: Uint8Array, profile: AccountProfile = ML
   return keccak256(concat(utf8(keyDomain), pk));
 }
 
-/** Recipient: an ML-DSA-44 keypair from a 32-byte seed (FIPS 204 keygen) and its spend key. */
-export function mlDsa44Recipient(zeta: Uint8Array): { publicKey: Uint8Array; secretKey: Uint8Array; spendKey: Hex } {
-  if (zeta.length !== 32) throw new ProfileError('zeta must be 32 bytes');
-  const { publicKey, secretKey } = ml_dsa44.keygen(zeta);
-  return { publicKey, secretKey, spendKey: spendKeyFromMlDsaPk(publicKey) };
+function signatureScheme(profile: AccountProfile): MlDsa {
+  const { dsa } = profile.authorization;
+  if (dsa === null) throw new ProfileError(`profile ${profileName(profile)} is not a signature profile`);
+  return dsa;
 }
+
+/** Recipient: an ML-DSA keypair from a 32-byte seed (FIPS 204 keygen) under the profile's parameter set, and its spend key. */
+export function mlDsaRecipient(zeta: Uint8Array, profile: AccountProfile = ML_DSA_44_COMMIT_V0): { publicKey: Uint8Array; secretKey: Uint8Array; spendKey: Hex } {
+  if (zeta.length !== 32) throw new ProfileError('zeta must be 32 bytes');
+  const { publicKey, secretKey } = signatureScheme(profile).keygen(zeta);
+  return { publicKey, secretKey, spendKey: spendKeyFromMlDsaPk(publicKey, profile) };
+}
+
+/** @deprecated alias of `mlDsaRecipient(zeta, ML_DSA_44_COMMIT_V0)`. */
+export const mlDsa44Recipient = (zeta: Uint8Array) => mlDsaRecipient(zeta, ML_DSA_44_COMMIT_V0);
 
 export function encodeProfileMetaAddress(spendKey: Hex, kemEk: Uint8Array, profile: AccountProfile): Uint8Array {
   if (profile.metaAddressVersion !== COMMIT_META_ADDRESS_VERSION) throw new ProfileError('profile is not a 0x02 profile');
@@ -215,13 +229,14 @@ export function buildAuthorization(
   secretKey: Uint8Array, publicKey: Uint8Array, opener: Hex, digest: Uint8Array,
   profile: AccountProfile = ML_DSA_44_COMMIT_V0, deterministic = false,
 ): Uint8Array {
+  const dsa = signatureScheme(profile);
   const { pkBytes, sigBytes } = profile.authorization;
   if (pkBytes === null || sigBytes === null) throw new ProfileError(`profile ${profileName(profile)} is not a signature profile`);
   if (publicKey.length !== pkBytes) throw new ProfileError(`public key must be ${pkBytes} bytes`);
   const op = hexToBytes(opener);
   if (op.length !== OPENER_BYTES) throw new ProfileError('opener must be 32 bytes');
   if (digest.length !== DIGEST_BYTES) throw new ProfileError('digest must be 32 bytes');
-  const sig = ml_dsa44.sign(digest, secretKey, deterministic ? { extraEntropy: false } : {});
+  const sig = dsa.sign(digest, secretKey, deterministic ? { extraEntropy: false } : {});
   if (sig.length !== sigBytes) throw new ProfileError('unexpected signature length');
   return concat(publicKey, op, sig);
 }
@@ -245,13 +260,14 @@ export function parseAuthorization(payload: Uint8Array, profile: AccountProfile 
 export function verifyAuthorization(
   commitment: Hex, digest: Uint8Array, payload: Uint8Array, profile: AccountProfile = ML_DSA_44_COMMIT_V0,
 ): boolean {
-  if (profile.authorization.keyDomain === null || profile.authorization.pkBytes === null) return false;
+  const { dsa, keyDomain, pkBytes } = profile.authorization;
+  if (dsa === null || keyDomain === null || pkBytes === null) return false;
   if (!/^0x[0-9a-fA-F]{64}$/.test(commitment) || digest.length !== DIGEST_BYTES) return false;
   let parts: AuthorizationParts;
   try { parts = parseAuthorization(payload, profile); } catch { return false; }
   const spendKey = spendKeyFromMlDsaPk(parts.pk, profile);
   if (deriveCommitment(spendKey, parts.opener, profile.domains).toLowerCase() !== commitment.toLowerCase()) return false;
-  try { return ml_dsa44.verify(parts.sig, digest, parts.pk); } catch { return false; }
+  try { return dsa.verify(parts.sig, digest, parts.pk); } catch { return false; }
 }
 
 /** Opener under the selected profile's domain (sender- and scanner-known; not a credential). */

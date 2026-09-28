@@ -968,9 +968,9 @@ on-chain verifier in the tree is ZKNOX `df999ed` (`k = l = 4`, D-006); the
 profile rejects 65-sized inputs by length and no 65 claim is made. Python
 (`dilithium-py` 1.4.0) and TypeScript (`@noble/post-quantum` 0.6.1) agree byte
 for byte on meta-address, key commitment, opener, commitment, tag, address and
-deterministic signatures; 14 negative authorization vectors cover wrong digest /
-commitment / opener / signature / key / lengths / domain profile and
-sender-derived keys.
+deterministic signatures; 2 valid and 12 invalid authorization vectors cover
+wrong digest / commitment / opener / signature / key / lengths / domain profile
+and sender-derived keys.
 
 **Verifier identity (measured, local).** `ZKNOX_dilithium` at `df999ed`
 (NIST/SHAKE profile) accepts stock FIPS 204 ML-DSA-44 signatures with `tr` and
@@ -988,6 +988,22 @@ but trusts its REGISTRAR for `aHat`. The contract path is a reviewed-registrar
 local integration behind a clean adapter boundary (`IMlDsa44ExpandedKeys`), not
 a working trustless spend route. D-014's stateless raw-key verifier remains the
 unclaimed deliverable.
+
+*(Review follow-ups, same day.)* The registry gained a registrar-only
+`replace(pk, aHat)`: without it a registrar *bug* would strand every account
+committed to a key (signer, adapter and account addresses all pin the registry,
+so a fresh registry means fresh addresses). The cost is stated in the contract:
+registrar trust becomes ongoing rather than one-shot. `MlDsa44CommitSigner7913`
+now reverts with `VerifierCallFailed` when the ~15 M-gas inner verify does not
+complete (out of gas, malformed return) instead of answering `0xffffffff`, so a
+gas-capped ERC-1271 caller sees exhaustion, not "invalid", and gas estimation
+lands on the real cost; OpenZeppelin's `ERC7913Utils` and
+`Stealth8141ZkAccount._verify` still swallow reverts into "not authorized" by
+their own design. The adapter's public-input guards are unit-tested directly.
+Unrelated but in the same change set: `js-client/scripts/rpc-proxy.mjs` answers
+a replay miss on `eth_getBalance`/`eth_getTransactionCount`/`eth_getCode` from
+the recorded `eth_getAccountInfo` entry (and vice versa), because anvil picks
+between the two fetch shapes non-deterministically and CI replays failed on it.
 
 **Privacy.** Direct ML-DSA spends reveal `pk`, whose hash is the published
 `spend_key`: spent addresses of one recipient are linkable from the first spend

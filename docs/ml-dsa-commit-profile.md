@@ -119,8 +119,8 @@ another key over the recipient's `pk`.
 | Contract | Role |
 | --- | --- |
 | `ZKNOX_dilithium` (vendored, `lib/ETHDILITHIUM` @ `df999ed`) | The real ML-DSA-44 verifier. Expanded-key form: reads `(aHat, tr, t1)` from a `PKContract` pointer |
-| `TrustedMlDsa44KeyRegistry` (new) | One-time key setup: `keccak256(pk) → PKContract`. Recomputes `tr = SHAKE256(pk, 64)` and unpacks `t1` from the key bytes on chain; **trusts its registrar for `aHat = ExpandA(rho)`** |
-| `MlDsa44CommitSigner7913` (new) | ERC-7913 verifier: `key` = commitment, `signature` = payload; steps 1–4 above, uniform `0xffffffff` on any failure |
+| `TrustedMlDsa44KeyRegistry` (new) | Key setup: `keccak256(pk) → PKContract`. Recomputes `tr = SHAKE256(pk, 64)` and unpacks `t1` from the key bytes on chain; **trusts its registrar for `aHat = ExpandA(rho)`**. `register` binds once; registrar-only `replace` corrects a wrong binding (each binding is its own CREATE2 `PKContract`, salted by `pk` and `aHat`) |
+| `MlDsa44CommitSigner7913` (new) | ERC-7913 verifier: `key` = commitment, `signature` = payload; steps 1–4 above. Uniform `0xffffffff` for a bad payload or an invalid signature; **reverts** with `VerifierCallFailed` if the inner verify does not complete (out of gas, malformed return) |
 | `MlDsa44CommitFrameVerifier` (new) | `IProofVerifier` adapter so the unchanged `Stealth8141ZkAccount` / `Stealth8141ZkFactory` bind `(commitment, adapter, frameCtx)` |
 | `Stealth7913Account` / `Stealth7913Account4337` (existing) | Hold `verifier ‖ commitment` (52 B) as OpenZeppelin `SignerERC7913` signer bytes; exercised through ERC-1271 |
 
@@ -146,6 +146,12 @@ ExpandA(pk[0:32])`); nothing on chain does. Consequently:
 
 * the contract path is a **local, reviewed-registrar integration**, not a
   working trustless spend route and not a deployment;
+* the registrar's trust is **ongoing**: `replace` exists so that a registrar
+  *mistake* does not strand funds (every account address pins the registry
+  through the signer and adapter, so "deploy a new registry" is not a remedy
+  for money already at a counterfactual address), which means a registrar
+  compromised later can re-bind a key and spend. Both events are logged; a
+  deployment that prefers immutability can retire the registrar address;
 * removing the trust needs either a staged on-chain expansion (≈ 16
   transactions per recipient key), a cheaper SHAKE, or a verifier that takes
   the raw key — D-014's still-open "stateless raw-key verifier";
@@ -174,7 +180,11 @@ testnet measurement, and nothing here says anything about ML-DSA-65.
 | Complete spend (`executeFrame`: adapter + signer + verify + call) | 15,013,931 internal; 15,291,722 tx-level | forge / anvil |
 
 The per-spend cost is the ZKNOX verify (D-022's 14.9 M) plus ≈ 60 k for the
-commitment check and calldata. The previously circulated "Fireblocks 1.23 M"
+commitment check and calldata. Because the signer reverts rather than
+returning `0xffffffff` when the inner verify runs out of gas, `eth_estimateGas`
+on `verify` reports the real cost (15,274,775 on anvil) instead of settling on
+a cheap failure path; callers of wrappers that swallow reverts (OpenZeppelin
+`ERC7913Utils`, `Stealth8141ZkAccount`) must budget that gas themselves. The previously circulated "Fireblocks 1.23 M"
 figure is not used here: no primary source, commit, parameter set, hash
 functions, key representation or reproducible benchmark for it was evaluated
 in this work, so it is not evidence.
@@ -239,7 +249,13 @@ implementation may claim the former without the latter.
 
 ## 7. Open items
 
-* Trustless key setup or a raw-key ML-DSA-44 verifier (§4).
+* Trustless key setup or a raw-key ML-DSA-44 verifier (§4). Until then the
+  registrar is a live trust assumption with a correction path, not a one-shot
+  ceremony; a deployment must decide who holds that role and how it is retired.
+* Gas-exhaustion semantics across the stack: the signer reverts, but the
+  OpenZeppelin and frame-account wrappers convert any revert into "not
+  authorized"; an integrator under a gas cap cannot tell the two apart at
+  those layers.
 * An ML-DSA-65 verifier and profile; nothing measured here transfers.
 * ERC-4337 binding: `Stealth7913Account4337` accepts the same signer bytes, but
   its constructor layout differs from the `Deployment` record, so no

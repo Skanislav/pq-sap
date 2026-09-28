@@ -91,6 +91,7 @@ contract MlDsa44CommitAccountTest is Test {
                 assertEq(stored.t1[i][w], fixtureT1[i][w], "t1 word");
             }
         }
+        assertEq(pointer, registry.pointerFor(pk, aHat), "pointer is CREATE2 of (pk, aHat)");
         // a second registration of the same key is refused; a wrong caller too
         vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.AlreadyRegistered.selector, keccak256(pk)));
         registry.register(pk, aHat);
@@ -100,6 +101,26 @@ contract MlDsa44CommitAccountTest is Test {
         bytes memory shortPk = new bytes(1311);
         vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.BadKeyLength.selector, 1311));
         registry.register(shortPk, aHat);
+    }
+
+    function testRegistrarCanCorrectABinding() public {
+        // a wrong matrix (here: the honest one with one word flipped) leaves the
+        // recipient unable to spend; `replace` is the correction path, registrar only
+        uint256[][][] memory wrong = aHat;
+        wrong[0][0][0] ^= 1;
+        address bad = registry.register(pk, wrong);
+        bytes memory key = abi.encodePacked(commitment);
+        assertEq(signer.verify(key, digest, payload), FAIL, "wrong aHat: recipient cannot spend");
+        vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.NotRegistered.selector, keccak256("never")));
+        registry.replace("never", aHat);
+        vm.prank(address(0xbeef));
+        vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.NotRegistrar.selector, address(0xbeef)));
+        registry.replace(pk, aHat);
+        address good = registry.replace(pk, aHat);
+        assertTrue(good != bad, "corrected binding has its own PKContract");
+        assertEq(registry.expandedKey(keccak256(pk)), good);
+        assertGt(bad.code.length, 0, "the old PKContract stays deployed, just unmapped");
+        assertEq(signer.verify(key, digest, payload), MAGIC_7913, "recipient can spend after the correction");
     }
 
     // ---------------------------------------------------- ERC-7913 signer
@@ -147,6 +168,47 @@ contract MlDsa44CommitAccountTest is Test {
         assertEq(signer.verify(key, digest, ""), FAIL, "empty");
         // an ML-DSA-65-sized payload (1952 + 32 + 3309) is a different parameter set: rejected by length
         assertEq(signer.verify(key, digest, new bytes(1952 + 32 + 3309)), FAIL, "ML-DSA-65 sizes");
+    }
+
+    function testVerifierOutOfGasRevertsInsteadOfInvalid() public {
+        _register();
+        bytes memory key = abi.encodePacked(commitment);
+        // a gas cap far below the ~15 M the ML-DSA-44 verify needs: the inner call
+        // runs out of gas, and the signer must surface that, not report "invalid"
+        vm.expectRevert(abi.encodeWithSelector(MlDsa44CommitSigner7913.VerifierCallFailed.selector, bytes("")));
+        signer.verify{gas: 2_000_000}(key, digest, payload);
+        // steps 1-3 still answer 0xffffffff cheaply, without reaching the verifier
+        assertEq(signer.verify{gas: 200_000}(key, otherDigest, senderPayload), FAIL);
+    }
+
+    // ------------------------------------------------- frame adapter guards
+    function testAdapterPublicInputPacking() public {
+        _register();
+        bytes32[] memory pubs = new bytes32[](4);
+        pubs[0] = bytes32(uint256(uint128(bytes16(digest))));
+        pubs[1] = bytes32(uint256(uint128(uint256(digest))));
+        pubs[2] = bytes32(uint256(uint128(bytes16(commitment))));
+        pubs[3] = bytes32(uint256(uint128(uint256(commitment))));
+        assertTrue(adapter.verify(payload, pubs), "hi/lo halves reassemble digest and commitment");
+        // swapped halves are a different digest
+        (pubs[0], pubs[1]) = (pubs[1], pubs[0]);
+        assertFalse(adapter.verify(payload, pubs), "swapped digest halves");
+        (pubs[0], pubs[1]) = (pubs[1], pubs[0]);
+        // a half with its upper 128 bits set is malformed, even if the low bits are right
+        pubs[2] = bytes32(uint256(pubs[2]) | (uint256(1) << 200));
+        assertFalse(adapter.verify(payload, pubs), "dirty upper bits");
+        pubs[2] = bytes32(uint256(uint128(bytes16(commitment))));
+        // wrong count
+        bytes32[] memory three = new bytes32[](3);
+        (three[0], three[1], three[2]) = (pubs[0], pubs[1], pubs[2]);
+        assertFalse(adapter.verify(payload, three), "three public inputs");
+        bytes32[] memory five = new bytes32[](5);
+        (five[0], five[1], five[2], five[3]) = (pubs[0], pubs[1], pubs[2], pubs[3]);
+        assertFalse(adapter.verify(payload, five), "five public inputs");
+        // and the account builds exactly these inputs
+        acct = Stealth8141ZkAccount(payable(factory.createAccount(commitment)));
+        bytes32[] memory fromAccount = acct.publicInputs(digest);
+        for (uint256 i = 0; i < 4; i++) assertEq(fromAccount[i], pubs[i]);
     }
 
     // ------------------------------------------------ frame account spend

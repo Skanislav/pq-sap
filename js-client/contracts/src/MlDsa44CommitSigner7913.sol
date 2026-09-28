@@ -30,13 +30,21 @@ interface IMlDsa44Erc7913Verifier {
 ///         recipient recovers `opener` on detection. Neither the shared secret nor the
 ///         opener is a credential: step 4 below needs the ML-DSA-44 signing key.
 ///
-///         Verification, in order (any failure is a uniform 0xffffffff, no revert on
-///         well-typed input):
+///         Verification, in order:
 ///           1. exact lengths for ML-DSA-44 (`key` 32 B, `signature` 3,764 B);
 ///           2. recompute `spend_key` and the commitment; must equal `key`;
 ///           3. resolve the expanded key for `keccak256(pk)` through KEYS (see
 ///              `TrustedMlDsa44KeyRegistry` for the trust assumption this carries);
 ///           4. verify `sig` over `hash` under that key with the ZKNOX ML-DSA-44 verifier.
+///         Steps 1-3 and a verifier that answers "invalid" return a uniform 0xffffffff.
+///         Step 4 costs ~15 M gas; if the verifier call itself fails (out of gas, or
+///         a verifier that returns garbage) this contract REVERTS with
+///         `VerifierCallFailed` instead of returning 0xffffffff, so a caller under a
+///         gas cap sees resource exhaustion, not "signature invalid", and gas
+///         estimation cannot settle on the cheap failure path. Wrappers that swallow
+///         reverts (OpenZeppelin's `ERC7913Utils.isValidSignatureNow`,
+///         `Stealth8141ZkAccount._verify`) collapse it back to "not authorized";
+///         that is their contract, and callers of those must budget the gas.
 ///         Nonce, replay, chain, destination and value binding are the account's job:
 ///         they are what `hash` commits to. This contract never hashes `hash` again.
 ///
@@ -59,6 +67,10 @@ contract MlDsa44CommitSigner7913 is IERC7913SignatureVerifier {
 
     IMlDsa44Erc7913Verifier public immutable VERIFIER;
     IMlDsa44ExpandedKeys public immutable KEYS;
+
+    /// @notice The ML-DSA-44 verifier call did not complete (out of gas, or a
+    ///         malformed return); distinct from an invalid signature.
+    error VerifierCallFailed(bytes returnData);
 
     constructor(IMlDsa44Erc7913Verifier verifier, IMlDsa44ExpandedKeys keys) {
         VERIFIER = verifier;
@@ -90,7 +102,7 @@ contract MlDsa44CommitSigner7913 is IERC7913SignatureVerifier {
         (bool ok, bytes memory ret) = address(VERIFIER).staticcall(
             abi.encodeWithSelector(IMlDsa44Erc7913Verifier.verify.selector, abi.encodePacked(pointer), hash, sig)
         );
-        if (!ok || ret.length < 32) return FAIL;
+        if (!ok || ret.length != 32) revert VerifierCallFailed(ret);
         return abi.decode(ret, (bytes4)) == MAGIC ? MAGIC : FAIL;
     }
 }

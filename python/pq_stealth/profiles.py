@@ -49,7 +49,6 @@ received from a counterparty.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 from dilithium_py.ml_dsa import ML_DSA_44
@@ -87,6 +86,7 @@ ML_DSA_44_PK_BYTES = 1312
 ML_DSA_44_SIG_BYTES = 2420
 OPENER_BYTES = 32
 DIGEST_BYTES = 32
+COMMITMENT_BYTES = 32  # keccak256 output: the account's bound commitment
 
 
 @dataclass(frozen=True)
@@ -303,10 +303,16 @@ def gen_ml_dsa_recipient(
     dsa = profile.authorization.dsa
     if dsa is None:
         raise ProfileError(f"profile {profile.name} is not a signature profile")
-    zeta = zeta if zeta is not None else os.urandom(32)
-    if len(zeta) != 32:
-        raise ProfileError("zeta must be 32 bytes")
-    dsa_pk, dsa_sk = dsa._keygen_internal(zeta)
+    if zeta is None:
+        dsa_pk, dsa_sk = dsa.keygen()  # public API for the random case
+    else:
+        if len(zeta) != 32:
+            raise ProfileError("zeta must be 32 bytes")
+        # FIPS 204 Algorithm 6 (ML-DSA.KeyGen_internal) from a caller-supplied
+        # seed, for deterministic vectors only. dilithium-py exposes it as a
+        # private method (the rest of this package already relies on the same
+        # surface for Construction A); pinned to the 1.4.x series in pyproject.
+        dsa_pk, dsa_sk = dsa._keygen_internal(zeta)
     meta, kem_dk = gen_commit_meta_address(
         spend_key_from_ml_dsa_pk(dsa_pk, profile), profile.kem, kem_d, kem_z
     )
@@ -413,7 +419,7 @@ def verify_authorization(
     auth = profile.authorization
     if auth.dsa is None:
         return False
-    if len(commitment) != SPEND_KEY_BYTES or len(digest) != DIGEST_BYTES:
+    if len(commitment) != COMMITMENT_BYTES or len(digest) != DIGEST_BYTES:
         return False
     try:
         pk, opener, sig = parse_authorization(payload, profile)
@@ -424,7 +430,9 @@ def verify_authorization(
         return False
     try:
         return bool(auth.dsa.verify(pk, digest, sig, ctx=b""))
-    except Exception:  # malformed signature bytes never raise
+    except Exception:
+        # dilithium-py raises assorted exception types on malformed signature
+        # bytes; any of them means "invalid", never an error for the caller
         return False
 
 
