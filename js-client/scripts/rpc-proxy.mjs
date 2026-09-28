@@ -79,6 +79,29 @@ async function fetchUpstreamCode(req) {
   }
 }
 
+/** anvil fetches a forked account either with one eth_getAccountInfo call or
+ *  with the legacy trio eth_getBalance / eth_getTransactionCount / eth_getCode,
+ *  and which one it picks is not deterministic across runs (it depends on how
+ *  its upstream-capability probe raced the proxy). The recorded data is the
+ *  same either way, so a miss on one shape is answered from the other. */
+const ACCOUNT_FIELD = { eth_getBalance: 'balance', eth_getTransactionCount: 'nonce', eth_getCode: 'code' };
+const fromEquivalentAccountEntry = (req) => {
+  const params = req.params ?? [];
+  if (params.length !== 2) return null;
+  const argKey = JSON.stringify(params);
+  if (req.method in ACCOUNT_FIELD) {
+    const info = entries.get(`eth_getAccountInfo ${argKey}`);
+    const value = info?.result?.[ACCOUNT_FIELD[req.method]];
+    return value === undefined ? null : { result: value };
+  }
+  if (req.method === 'eth_getAccountInfo') {
+    const parts = Object.entries(ACCOUNT_FIELD).map(([m, f]) => [f, entries.get(`${m} ${argKey}`)?.result]);
+    if (parts.some(([, v]) => v === undefined)) return null;
+    return { result: Object.fromEntries(parts) };
+  }
+  return null;
+};
+
 /** Answer one JSON-RPC request object from the cache (replay mode).
  *  eth_getCode at the pinned fork block is a historical read; anvil/viem
  *  sometimes issue it in a non-deterministic order, so on a cache miss we
@@ -87,6 +110,10 @@ const fromCache = async (req) => {
   const hit = entries.get(keyOf(req));
   if (hit !== undefined) {
     return { jsonrpc: '2.0', id: req.id, ...hit };
+  }
+  const equivalent = fromEquivalentAccountEntry(req);
+  if (equivalent) {
+    return { jsonrpc: '2.0', id: req.id, ...equivalent };
   }
   if (req.method === 'eth_getCode') {
     const fallback = await fetchUpstreamCode(req);
