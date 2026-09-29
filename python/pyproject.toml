@@ -9,7 +9,7 @@ description = "Executable spec / reference implementation of a post-quantum ERC-
 requires-python = ">=3.10"
 dependencies = [
     "kyber-py>=1.2.0",
-    "dilithium-py>=1.4.0",
+    "dilithium-py>=1.4.0,<1.5",  # private keygen/expansion surface pinned to 1.4.x
     "pycryptodome>=3.20",
 ]
 

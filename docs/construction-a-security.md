@@ -221,6 +221,11 @@ It explicitly excludes:
 
 - Timing and retry-count leakage.
 - Quantum random-oracle access.
+- Disclosure of the stealth public key after receipt: the transcript model
+  covers announcements, and `stealth_pk` carries the recipient's `rho`, so a
+  spend or key deployment that reveals the full key is linkable to the
+  meta-address (D-027, `construction-a.md` §4.1). No theorem here covers that
+  post-disclosure setting.
 - Side-channel analysis of the reference implementation.
 - HNF absorption / ring-specific uniform-MSIS reductions for the ownership reshaping.
 

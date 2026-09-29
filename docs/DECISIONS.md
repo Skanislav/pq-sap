@@ -291,6 +291,18 @@ Hegotá, ERC-7913 is the **interim** spend/registry encoding (pre-Hegotá
 chains and L2s without type `0x06`), not the destination — see D-020. The
 measurements and the EIP-3860 finding below stand.
 
+*Scope update (2026-09-28, user, after the ethresear.ch discussion
+"PQ anonymity for stealth address protocol"):* the **ERC-6538 registry is out
+of scope for the proposal.** The registry-authentication ratchet recommended
+below (an ERC-7913-authorized update path so the old ecrecover key cannot
+overwrite a PQ meta-address) is withdrawn from the ERC text: binding a PQ key
+to a registry entry that is still governed by ecrecover does not close the
+overwrite hole, and fixing the registry is a separate contract with its own
+migration. Meta-addresses are distributed through naming services (ENS and
+the `.gwei`/`.wei` names the demo already uses) or shared off chain; a wallet
+may still read ERC-6538 as one source among others but the proposal makes no
+claim about it. The ERC-5564 announcer stays in scope. Follow-up in issue #36.
+
 ERC-7913 (Signature Verifiers, Final 2025) represents a signer as the byte
 string `verifier || key` and checks it via
 `IERC7913SignatureVerifier(verifier).verify(key, bytes32 hash, signature) → 0x024ad318`;
@@ -540,6 +552,12 @@ are carrier-independent and stand.)*
   every **spent** address of that recipient is linkable to the recipient
   (unspent addresses stay unlinkable — `ss` is 256 bits of KEM output and
   the commitment hides). Blinded ML-DSA has no such identifying event.
+  *(Correction 2026-09-22, D-027: that last sentence holds only while no
+  blinded stealth public key is revealed. `stealth_pk = pack_pk(rho, t1')`
+  carries the recipient's meta-address `rho` verbatim, so any route that
+  discloses the full key — an on-chain ML-DSA verify, a `PKContract`, a
+  pointer-signature key table — is an identifying event for Construction A
+  too; see `python/tests/test_construction_a_rho.py`.)*
   So SPHINCS- is the right spend signer for (a) registry authentication,
   (b) co-signer / recovery, (c) the key *behind* a D-012 ZK ownership
   proof — where a keccak/hash-preimage STARK is what makes the spend side
@@ -932,3 +950,93 @@ A revealed secret would be catastrophic, so the secret is only ever a witness;
 the demo derives it from a seed in the page and never transmits it. This is the
 demo's spend route, not a normative choice for the ERC — that text is
 hand-written.
+
+## D-026 — reserved — **PENDING**
+
+Held for the frame-transaction nonce record proposed in issue #15 (EIP-8266 for
+the spend, EIP-8250 only where a nullifier is real), so that it keeps the number
+its discussion already uses. Not a decision until that text lands here.
+
+## D-027 — Explicit account profiles over format 0x02; ML-DSA-44 committed-key profile implemented with a trusted-registrar key setup; Construction A `rho` exposure confirmed — **FINDING / implementation (2026-09-22)**
+
+Full record: `docs/ml-dsa-commit-profile.md`. Code: `python/pq_stealth/profiles.py`,
+`js-client/src/profiles.ts`, `python/vectors/v0/mldsa44_commit_vectors.json`,
+`js-client/contracts/src/{MlDsa44CommitSigner7913,MlDsa44KeyRegistry}.sol`,
+`js-client/contracts/src/frames/MlDsa44CommitFrameVerifier.sol`,
+`contracts/test/MlDsa44CommitAccount.t.sol`, `js-client/test/e2e-mldsa44-commit.test.ts`.
+
+**Profiles are explicit.** The `0x02` layout is unchanged (1,217 B). The 32-byte
+`spend_key` stays opaque — no scheme flag inside it, no repurposed version byte,
+no new or reused ERC-5564 scheme ID. What interprets it is a typed *account
+profile* (`profile_id/vN`: KEM, hash domains, authorization scheme and message
+convention, deployment-binding layout, spend-route status) that the application
+selects before send/scan from trusted configuration; `select_profile` accepts
+only `sphincs-c13-commit/v0`, `preimage/v0`, `ml-dsa-44-commit/v0`, validates
+the binding's shape, and fails closed on chain conflicts. A profile ID is not
+an authentication of the factory/verifier behind it. The C13 and preimage
+profiles keep their exact domains and fixtures; `0x01` support is untouched.
+
+**ML-DSA-44, named as such.** `spend_key = keccak256("pq-stealth/ml-dsa-44/key/v0"
+‖ pk)` for the canonical 1,312-byte FIPS 204 key; opener/commitment under
+`pq-stealth/ml-dsa-44/{open,commit}/v0`; the same CREATE2 binding as the ZK
+account. Authorization payload `pk ‖ opener ‖ sig` (3,764 B), pure ML-DSA-44,
+empty context, over the account's 32-byte digest (frame `sig_hash` /
+`userOpHash`), never hashed twice. ML-DSA-44 because the only executable
+on-chain verifier in the tree is ZKNOX `df999ed` (`k = l = 4`, D-006); the
+profile rejects 65-sized inputs by length and no 65 claim is made. Python
+(`dilithium-py` 1.4.0) and TypeScript (`@noble/post-quantum` 0.6.1) agree byte
+for byte on meta-address, key commitment, opener, commitment, tag, address and
+deterministic signatures; 2 valid and 12 invalid authorization vectors cover
+wrong digest / commitment / opener / signature / key / lengths / domain profile
+and sender-derived keys.
+
+**Verifier identity (measured, local).** `ZKNOX_dilithium` at `df999ed`
+(NIST/SHAKE profile) accepts stock FIPS 204 ML-DSA-44 signatures with `tr` and
+`t1` derived on chain from the key bytes: signer verify 14,966,788 (forge) /
+15,038,028 tx-level (anvil); `executeFrame` through the unchanged
+`Stealth8141ZkAccount` 15,013,931 / 15,291,722; account deploy 704,195; key
+setup 10.8–11.8 M once per recipient key. forge/anvil 1.4.1, solc 0.8.30,
+prague. Nothing deployed.
+
+**Blocked: trustless key setup.** The verifier reads an expanded key
+`(aHat, tr, t1)`; binding it to the committed `pk` needs `ExpandA(rho)` on
+chain, ≈ 40 M gas with the vendored Keccak-f (one SHAKE256 over 1,312 B is
+4.4 M). `TrustedMlDsa44KeyRegistry` therefore recomputes `tr` and `t1` on chain
+but trusts its REGISTRAR for `aHat`. The contract path is a reviewed-registrar
+local integration behind a clean adapter boundary (`IMlDsa44ExpandedKeys`), not
+a working trustless spend route. D-014's stateless raw-key verifier remains the
+unclaimed deliverable.
+
+*(Review follow-ups, same day.)* The registry gained a registrar-only
+`replace(pk, aHat)`: without it a registrar *bug* would strand every account
+committed to a key (signer, adapter and account addresses all pin the registry,
+so a fresh registry means fresh addresses). The cost is stated in the contract:
+registrar trust becomes ongoing rather than one-shot. `MlDsa44CommitSigner7913`
+now reverts with `VerifierCallFailed` when the ~15 M-gas inner verify does not
+complete (out of gas, malformed return) instead of answering `0xffffffff`, so a
+gas-capped ERC-1271 caller sees exhaustion, not "invalid", and gas estimation
+lands on the real cost; OpenZeppelin's `ERC7913Utils` and
+`Stealth8141ZkAccount._verify` still swallow reverts into "not authorized" by
+their own design. The adapter's public-input guards are unit-tested directly.
+Unrelated but in the same change set: `js-client/scripts/rpc-proxy.mjs` answers
+a replay miss on `eth_getBalance`/`eth_getTransactionCount`/`eth_getCode` from
+the recorded `eth_getAccountInfo` entry (and vice versa), because anvil picks
+between the two fetch shapes non-deterministically and CI replays failed on it.
+
+**Privacy.** Direct ML-DSA spends reveal `pk`, whose hash is the published
+`spend_key`: spent addresses of one recipient are linkable from the first spend
+(same boundary as D-018's C13 commit form; demonstrated in tests and vectors).
+Construction A: `stealth_pk` carries the recipient's `rho` verbatim (test
+`test_construction_a_rho.py`), so full-key disclosure at spend or `PKContract`
+deployment identifies the recipient of a `0x01` meta-address; D-018's "no such
+identifying event" is corrected in place. Receive-time hiding, key disclosure,
+signing security, proof-system soundness and account safety are documented as
+separate properties. The D-025 preimage demo is untouched and remains the
+browser route; it is not an ML-DSA demo and its UltraHonk backend is not
+PQ-sound. Per-address key rotation and a PQ-sound proof backend are separate
+work.
+
+**Not decided here.** Sole-normative `0x02` / retirement of `0x01`; whether a
+linkable direct-ML-DSA route belongs in the ERC; scheme IDs; whether `0x01` is
+kept with the `rho` linkability stated or reworked (no algebraic repair was
+attempted). The ERC text stays human-written.

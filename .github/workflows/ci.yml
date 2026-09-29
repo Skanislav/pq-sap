@@ -45,6 +45,8 @@ jobs:
           cmp vectors/v0/native_key.json "$RUNNER_TEMP/nkvec/native_key.json"
           python vectors/generate_commit_vectors.py --outdir "$RUNNER_TEMP/cmvec"
           cmp vectors/v0/commit_vectors.json "$RUNNER_TEMP/cmvec/commit_vectors.json"
+          python vectors/generate_mldsa44_commit_vectors.py --outdir "$RUNNER_TEMP/mdvec"
+          cmp vectors/v0/mldsa44_commit_vectors.json "$RUNNER_TEMP/mdvec/mldsa44_commit_vectors.json"
 
   # liboqs cross-check (audited ML-DSA verifier) — the Dockerfile builds
   # liboqs, so it runs the one test the plain job importorskips
@@ -113,6 +115,7 @@ jobs:
       - run: npm test
       - run: npm run test:native-key
       - run: npm run test:commit
+      - run: npm run test:mldsa44
       # forge build first: the anvil e2e tests read contracts/out/*.json
       - run: npm run build-contracts
       # forge tests: NTT-precompute spike + verify gas profile (D-022)
@@ -122,6 +125,7 @@ jobs:
       - run: npm run e2e-7913-classical
       - run: npm run e2e-7913-sphincs
       - run: npm run e2e-pointer-sig
+      - run: npm run e2e-mldsa44
       - run: npm run e2e:fork
 
   # ------------------------------------------------------------------ noir

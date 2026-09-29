@@ -24,6 +24,9 @@ pip install -e ".[dev]"          # add .[audit] for the liboqs cross-check
 ```sh
 pytest                            # full reference suite
 pytest tests/test_commit.py        # commitment format / scan behavior
+pytest tests/test_profiles.py      # explicit profiles, ML-DSA-44 key commitment, authorization
+python vectors/generate_mldsa44_commit_vectors.py --outdir /tmp/pq-mldsa44
+cmp vectors/v0/mldsa44_commit_vectors.json /tmp/pq-mldsa44/mldsa44_commit_vectors.json
 python vectors/generate_commit_vectors.py --outdir /tmp/pq-commit-vectors
 cmp vectors/v0/commit_vectors.json /tmp/pq-commit-vectors/commit_vectors.json
 python vectors/generate_vectors.py   # regenerate vectors/v0/vectors.json
@@ -51,6 +54,7 @@ docker run --rm pq-stealth-py sh -c \
 | Module | Contents |
 |---|---|
 | `pq_stealth/commit.py` | commitment-format key exchange and address derivation (start here) |
+| `pq_stealth/profiles.py` | explicit account profiles over `0x02`; ML-DSA-44 key commitment and `pk ‖ opener ‖ sig` authorization (D-027) |
 | `pq_stealth/params.py` | parameter sets (default ML-KEM-768 + ML-DSA-65) |
 | `pq_stealth/blinding.py` | the algebraic core: `t' = A·s' + e' + t` |
 | `pq_stealth/encoding.py` | meta-address / full-`t` / blinded-sk packing, keccak addresses |

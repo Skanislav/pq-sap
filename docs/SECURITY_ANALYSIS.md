@@ -19,6 +19,7 @@ it is supporting research, not the security theorem for format `0x02`.
 | Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages | Concrete joint derivation, recipient spend-key binding, deployment metadata, and CREATE2 composition are not discharged by Construction A's blinding proof |
 | Reliable detection and rejection | Negative vectors; generic conditional soundness results in `Soundness.lean` | A one-byte tag is a filter after decapsulation, not a payment authenticator or a universal false-positive guarantee |
 | Byte-level interoperability | Deterministic commitment vectors, encoding tests; abstract 1,217-byte roundtrip in `Invariants.lean` | Serialization facts are not cryptographic security or a proof of the Python/TS implementation |
+| Explicit profile selection | Typed profiles and fail-closed `select_profile` in Python/TS (D-027) | A profile name and its binding are trusted configuration; nothing authenticates a substituted factory, verifier, or registrar |
 
 The exact sources and proof-reading order are in [ERC evidence](ERC_EVIDENCE.md).
 “Needed” here means evidence needed to support our claims; it does not mean
@@ -45,7 +46,10 @@ formal result. Quantum random-oracle access is also outside that result.
 
 The deployment binding is public and supplied separately from the meta-address.
 Its distribution must prevent substitution and must identify the intended
-chain/account profile. A profile shared by few recipients may itself narrow
+chain/account profile. The ERC-6538 registry does not provide that (its
+entries are ecrecover-governed and overwritable by the classical key) and is
+out of scope; the trust in a naming service or an off-chain channel is the
+application's, not the scheme's. A profile shared by few recipients may itself narrow
 an observer's candidate set. This requires explicit treatment even when the
 commitment hash is modeled ideally.
 
@@ -60,6 +64,15 @@ spending route. They are not removed by narrowing the ERC's scope.
   signature EUF-CMA layer remains uncomposed and widened HVZK currently has
   the trivial bound `1`.
 - Direct C13 spending exposes the recipient key and can link spends.
+- Direct ML-DSA-44 committed-key spending (D-027) likewise reveals `pk`,
+  whose hash is the published `spend_key`; spent addresses of one recipient
+  are linkable from the first spend. Its local contract path trusts a key
+  registrar for the expanded matrix; it is not a trustless or deployed route.
+- Construction A's blinded stealth key carries the recipient's `rho`
+  verbatim (`python/tests/test_construction_a_rho.py`). Receive-time
+  announcements reveal only a hashed address, but any full-key disclosure at
+  spend or key-contract deployment identifies the `0x01` recipient. Blinding
+  alone does not guarantee unlinkability after key disclosure.
 - The D-023/D-025 ZK demos use a non-PQ-sound proof backend. The intended
   witness privacy and ownership statement do not change that assumption.
 - Prospective aggregation does not automatically supply zero knowledge,

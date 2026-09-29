@@ -1,7 +1,7 @@
 # Post-Quantum Stealth Addresses
 
 ML-KEM key exchange and sender-computable stealth destinations under existing
-ERC-5564/ERC-6538 announcements. The proposed ERC focuses on detection privacy
+ERC-5564 announcements (the ERC-6538 registry is out of scope). The proposed ERC focuses on detection privacy
 and address derivation. Spending belongs to the selected account model.
 
 The implemented commitment meta-address is **1,217 bytes**: version, a 32-byte
