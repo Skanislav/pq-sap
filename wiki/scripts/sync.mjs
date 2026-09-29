@@ -93,7 +93,10 @@ const SECTIONS = [
       'zk-sphincs-frames.md',
       'prefix-deploy-native-keys.md',
     ],
-    titles: { 'original-project-plan.md': 'Original cohort plan (historical)' },
+    titles: {
+      'original-project-plan.md': 'Original cohort plan (historical)',
+      'keyed-nonces-as-nullifiers.md': 'Keyed nonces as nullifiers (EIP-8250/8266)',
+    },
   },
   {
     text: 'Generated proof browser (all tracks)',
