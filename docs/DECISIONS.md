@@ -475,7 +475,11 @@ set is unchanged.
   2025-09) blesses the combiner shape. Not in liboqs/OpenSSL — irrelevant
   to us; both our stacks compose it from parts we already carry.
 - **Normative consequences imported into the ERC**: hybrid meta-address
-  version `0x02` with the 1,216-B X-Wing encapsulation key;
+  version `0x02` with the 1,216-B X-Wing encapsulation key *(superseded:
+  D-024 assigned `0x02` to the commitment form, and D-028 makes the version
+  byte name the layout — `0x01` Construction A, `0x02` commitment — with the
+  KEM typed by total length, so X-Wing needs no version byte of its own; the
+  hybrid itself remains unimplemented, issue #37)*;
   `ephemeralPubKey` = 1,120-B X-Wing ciphertext; the decapsulation key
   MUST be stored/exchanged only as the 32-byte seed (X-Wing's
   MAL-BIND-K-{PK,CT} properties fail for expanded keys — Schmieg, eprint
@@ -1146,3 +1150,85 @@ work.
 linkable direct-ML-DSA route belongs in the ERC; scheme IDs; whether `0x01` is
 kept with the `rho` linkability stated or reworked (no algebraic repair was
 attempted). The ERC text stays human-written.
+
+## D-028 — The on-chain key exchange is a shape-checking announcer with a Lean model; the version byte names the layout and the KEM is typed by length; the viewing-key registry is an experiment outside the proposal — **FINDING (2026-09-07; renumbered from D-021 on 2026-09-09 and from D-027 on 2026-09-29; reconciled with D-024 and D-014's scope update on 2026-09-29)**
+
+Question (2026-09-07, user): can the key exchange be separated into the
+Solidity code, and can Lean be set up to verify that contract? Landed via
+PR #22's successor (this record's earlier text is in that PR's history).
+
+**What "the key exchange on-chain" can be.** The EVM computes in public. An
+on-chain `ML-KEM.Encaps` would publish the shared secret `ss` in the
+transaction trace, and with it the view tag and every derivation downstream
+of `ss` — the announcement would name its recipient to anyone reading the
+chain. So encapsulation and decapsulation are off-chain by necessity, and the
+chain's whole share of the handshake is (a) the recipient's encapsulation key
+and (b) the sender's ciphertext riding as the ERC-5564 `ephemeralPubKey`.
+`js-client/contracts/src/StealthKeyExchange.sol` carries that share,
+separated from the spend side (accounts, verifiers, factories):
+
+- `announce(stealthAddress, ciphertext, metadata)`: checks the announcement's
+  SHAPE — a ciphertext of a supported set's length (768 / 1,088 / 1,568 B for
+  ML-KEM-512/768/1024, 1,120 B for X-Wing; pairwise distinct, so the
+  ciphertext types itself) and `metadata[0]` present — and forwards it byte
+  for byte under scheme ID `2` to the ERC-5564 singleton. Scanners reading
+  the singleton with `caller == StealthKeyExchange` see only well-formed
+  announcements; the truncated-ciphertext vector is rejected on chain
+  (`UnsupportedCiphertextLength(1087)`) instead of being skipped by every
+  scanner. `announce` takes no recipient-identifying input by construction.
+  A format-`0x02` payment (D-024) produces the same 1,088-byte ML-KEM-768
+  ciphertext, so the announcement path serves both meta-address layouts.
+  Cost: 2,065 gas over a direct singleton call (`test_announce_overhead_gas`),
+  ~3 % of D-011's 67,580-gas EIP-7623 floor. Wallets may keep calling the
+  singleton directly; nothing about the scheme changes.
+- the pure parameter table (`ciphertextBytes`, `encapsulationKeyBytes`,
+  `metaAddressBytes(kem, form)`, `kemOfMetaAddress`, `isValidAnnouncement`)
+  wallets can call to pre-check what the contract will accept.
+- a write-once, index-referenced registry of encapsulation keys (SSTORE2,
+  typed by length). **This is an implementation experiment, not part of the
+  proposal**: meta-address distribution and the ERC-6538 registry are out of
+  the ERC's scope (D-014 scope update, 2026-09-28; issue #36). It stays
+  because the Lean model covers it and nothing else depends on it.
+
+**Reconciliation with D-024 (done).** The record's earlier table followed
+D-017 (`0x01` for Construction A, `0x02` for the X-Wing hybrid) and rejected
+every D-024 meta-address with `UnsupportedMetaAddress(1217, 0x02)`. The
+table now follows what D-024 and D-027 already imply: **the version byte
+names the layout** — `0x01` is Construction A (`version ‖ rho ‖ pack23(t) ‖
+ek`), `0x02` the commitment form (`version ‖ spend_key(32) ‖ ek`) — and
+**within a layout the KEM is typed by total length**. The eight lengths
+(3,777 / 5,633 / 7,489 / 5,665 and 833 / 1,217 / 1,601 / 1,249) are pairwise
+distinct (`Kem.metaAddressBytes_injective`), so the length alone identifies
+both set and layout and the version byte is a consistency check; a
+commitment-length string under `0x01`, or a Construction A length under
+`0x02`, is rejected. X-Wing therefore needs no version byte of its own
+(D-017's `0x02` note is superseded in place); the hybrid remains
+unimplemented off chain (issue #37). Format `0x02` still does not say which
+KEM it carries by any field — only by length — which is the point issue #37
+has to settle before a second KEM is offered.
+
+**Lean verification of the contract.** `js-client/contracts/lean/` is a
+second, dependency-free Lean package (`StealthKeyExchange`, the `lean/`
+toolchain pin, no Mathlib, no VCVio; seconds on x86): a functional model of
+the contract with one line per `if`/`revert`, and theorems over all inputs —
+`announce_toBool` (succeeds iff `isValidAnnouncement`), `announce_ok`
+(exactly one log entry appended, scheme ID 2, address / ciphertext / metadata
+unchanged, registry untouched), `announce_no_registry_read` (the announcement
+path is the same function for every registry content), `registerViewingKey_ok`
+/ `viewingKeyOf_after_register` (append-only, read-back),
+`kemOfMetaAddress_ok_iff` (typed exactly by layout byte and length), the
+table's injectivity, and an axiom audit (`Axioms.lean`, `#guard_msgs` on
+`#print axioms`). Model and bytecode are tied three ways: `Vectors.lean`
+(generated from the v0 and commitment vectors) replays every conformance
+case through the model as build-checked `#guard`s, the Foundry suite replays
+the same vectors and fuzzes `announce` against `isValidAnnouncement` on the
+real contract, and `scripts/check_constants.py` fails CI if the parameter
+table drifts between Solidity, Lean, the TS client and both vector files.
+
+**What is and is not claimed.** The proofs are about the model; its
+faithfulness rests on line-by-line correspondence plus the shared tests — the
+same footing as `lean/` vs. `python/`. A mechanized link to the compiled
+bytecode (Nethermind's Clear, Yul → Lean 4, or an EVM semantics such as
+EvmYul) is the upgrade path; both need Mathlib and belong in the multi-hour
+`lean.yml` lane, not the seconds-fast `ci.yml` job this package runs in.
+Nothing here is deployed.
