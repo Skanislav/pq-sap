@@ -27,7 +27,7 @@ Grouped by what the change would cost on VCVio's side.
    instances beside `mlkem768EncodingLaws`.
 
 2. **De-privatize `byteEncode_size`.**
-   `LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`:
+   `.lake/packages/VCVio/LatticeCrypto/MLKEM/Concrete/Encoding.lean:242`:
    `private theorem byteEncode_size (d : Nat) (f : Rq) : (byteEncode d f).size = 32 * d`.
    It is exactly the fact needed for the `v` half of the FIPS 203
    ciphertext layout (`32·dv = 128` bytes at ML-KEM-768). Because it is

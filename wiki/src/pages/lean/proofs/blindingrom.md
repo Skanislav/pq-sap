@@ -13,10 +13,13 @@ degenerate identical-until-bad case, no address query ⇒ advantage `0`.
 Proved in addition: identical-until-bad (`blindingAdvantageRO_le_blindBadProb`),
 against VCVio's programming-oracle engine via `ROMUpToBad`.
 
-Assumed / NOT closed: TWO things — that `blindGameRO` is `auxKeyIndependence`
-after the mask hop (a standalone abstraction, NOT identified with it here), and
-the bound on `Pr[bad]` (`blindBadProb`), which needs a query bound and a
-min-entropy hypothesis. See `docs/announcement-model.md`.
+Closed downstream: the bound on `Pr[bad]` (`blindBadProb ≤ qH · β`) is
+`BlindingEntropy.blindBadProb_le_queryBound`, under a query bound on the
+adversary and the point-mass hypothesis `BlindPointMassBound`.
+
+Assumed / NOT closed: that `blindGameRO` is `auxKeyIndependence` after the
+mask hop (a standalone abstraction, NOT identified with it here). See
+`docs/announcement-model.md`.
 
 ## `addrSpec`
 
@@ -27,7 +30,7 @@ Oracle interface of the ROM model: uniform sampling plus the address hash.
 
 ```
 
-[`BlindingROM.lean:35-36 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L35-L36)
+[`BlindingROM.lean:38-39 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L38-L39)
 
 ## `ROMComp`
 
@@ -36,7 +39,7 @@ abbrev ROMComp (Bytes Addr : Type) := OracleComp (addrSpec Bytes Addr)
 
 ```
 
-[`BlindingROM.lean:38-39 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L38-L39)
+[`BlindingROM.lean:41-42 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L41-L42)
 
 ## `hashAddrRO`
 
@@ -48,7 +51,7 @@ def hashAddrRO (x : Bytes) : ROMComp Bytes Addr Addr :=
 
 ```
 
-[`BlindingROM.lean:43-45 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L43-L45)
+[`BlindingROM.lean:46-48 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L46-L48)
 
 ## `romImpl`
 
@@ -62,7 +65,7 @@ noncomputable def romImpl :
 
 ```
 
-[`BlindingROM.lean:50-53 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L50-L53)
+[`BlindingROM.lean:53-56 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L53-L56)
 
 ## `simulateQ_romImpl_liftComp`
 
@@ -83,7 +86,7 @@ theorem simulateQ_romImpl_liftComp {β : Type} (ob : ProbComp β) :
 
 :::
 
-[`BlindingROM.lean:55-60 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L55-L60)
+[`BlindingROM.lean:58-63 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L58-L63)
 
 ## `run_hashAddrRO_empty`
 
@@ -109,7 +112,7 @@ theorem run_hashAddrRO_empty {α : Type} (x : Bytes) (f : Addr → ROMComp Bytes
 
 :::
 
-[`BlindingROM.lean:64-74 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L64-L74)
+[`BlindingROM.lean:67-77 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L67-L77)
 
 ### 1. The oracle interface
 
@@ -123,7 +126,7 @@ abbrev BlindAdvRO (Tag Addr Bytes : Type) := Tag × Addr → ROMComp Bytes Addr 
 
 ```
 
-[`BlindingROM.lean:87-88 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L87-L88)
+[`BlindingROM.lean:90-91 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L90-L91)
 
 ## `blindTraceRO`
 
@@ -138,7 +141,7 @@ noncomputable def blindTraceRO (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : T
 
 ```
 
-[`BlindingROM.lean:91-98 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L91-L98)
+[`BlindingROM.lean:94-101 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L94-L101)
 
 ## `blindGameRO`
 
@@ -151,7 +154,7 @@ noncomputable def blindGameRO (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Ta
 
 ```
 
-[`BlindingROM.lean:100-105 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L100-L105)
+[`BlindingROM.lean:103-108 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L103-L108)
 
 ## `blindingAdvantageRO`
 
@@ -162,7 +165,7 @@ noncomputable def blindingAdvantageRO (P : Prims R Rho Bytes T1 Tag Addr K k l) 
 
 ```
 
-[`BlindingROM.lean:108-111 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L108-L111)
+[`BlindingROM.lean:111-114 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L111-L114)
 
 ## `blindGameRO_eq`
 
@@ -189,7 +192,7 @@ theorem blindGameRO_eq (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
 
 :::
 
-[`BlindingROM.lean:116-127 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L116-L127)
+[`BlindingROM.lean:119-130 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L119-L130)
 
 ## `blindingAdvantageRO_eq_zero_of_no_query`
 
@@ -219,7 +222,7 @@ theorem blindingAdvantageRO_eq_zero_of_no_query
 
 :::
 
-[`BlindingROM.lean:131-145 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L131-L145)
+[`BlindingROM.lean:134-148 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L134-L148)
 
 ### 2. The blinding game in the ROM
 
@@ -235,7 +238,7 @@ noncomputable def blindPrefix : ProbComp ((Fin k → R) × Addr) := do
 
 ```
 
-[`BlindingROM.lean:155-159 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L155-L159)
+[`BlindingROM.lean:158-162 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L158-L162)
 
 ## `blindPoint`
 
@@ -246,7 +249,7 @@ def blindPoint (P : Prims R Rho Bytes T1 Tag Addr K k l) (rho : Bool → Rho)
 
 ```
 
-[`BlindingROM.lean:161-164 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L161-L164)
+[`BlindingROM.lean:164-167 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L164-L167)
 
 ## `blindBadQuery`
 
@@ -259,7 +262,7 @@ noncomputable def blindBadQuery (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : 
 
 ```
 
-[`BlindingROM.lean:167-172 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L167-L172)
+[`BlindingROM.lean:170-175 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L170-L175)
 
 ## `blindBadProb`
 
@@ -271,7 +274,7 @@ noncomputable def blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : T
 
 ```
 
-[`BlindingROM.lean:174-178 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L174-L178)
+[`BlindingROM.lean:177-181 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L177-L181)
 
 ## `blindGameROFree`
 
@@ -282,7 +285,7 @@ noncomputable def blindGameROFree (tg : Tag) (adv : BlindAdvRO Tag Addr Bytes) :
 
 ```
 
-[`BlindingROM.lean:180-183 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L180-L183)
+[`BlindingROM.lean:183-186 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L183-L186)
 
 ## `boolDistAdvantage_blindGameRO_blindGameROFree_le`
 
@@ -312,7 +315,7 @@ theorem boolDistAdvantage_blindGameRO_blindGameROFree_le
 
 :::
 
-[`BlindingROM.lean:185-201 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L185-L201)
+[`BlindingROM.lean:188-204 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L188-L204)
 
 ## `blindingAdvantageRO_le_blindBadProb`
 
@@ -345,7 +348,7 @@ theorem blindingAdvantageRO_le_blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K
 
 :::
 
-[`BlindingROM.lean:205-222 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L205-L222)
+[`BlindingROM.lean:208-225 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L208-L225)
 
 ## `mlweAdvOfBlindAdvRO`
 
@@ -366,4 +369,4 @@ noncomputable def mlweAdvOfBlindAdvRO (P : Prims R Rho Bytes T1 Tag Addr K k l)
 
 ```
 
-[`BlindingROM.lean:235-244 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L235-L244)
+[`BlindingROM.lean:239-248 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/BlindingROM.lean#L239-L248)
