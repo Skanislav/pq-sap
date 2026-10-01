@@ -8,15 +8,17 @@ Client-side (wallet/frontend) scanning for the post-quantum ERC-5564
 stealth address scheme specified in
 [`docs/TECHNICAL_SPEC.md`](/spec/technical-spec).
 
-What it does with only the **viewing key**: decapsulate each announcement's
-ML-KEM-768 ciphertext (`@noble/post-quantum`, audited), check the 1-byte
-view tag, re-derive the blinded ML-DSA-65 stealth key, and match the
-Ethereum address. Spending secrets never touch this code.
+The commitment route starts at `src/commit-scheme.ts`: decapsulate with the
+viewing key, compare the tag, derive the commitment and account address using
+the selected domains/deployment, then compare the announcement. It mirrors
+Python `pq_stealth/commit.py`; scanning requires no spending secret.
 
-`src/mldsa65.ts` is a minimal hand-port of the FIPS 204 polynomial layer
-(ExpandA, ExpandS, NTT, Power2Round, pk packing) — noble keeps these in
-module closures, so they are re-implemented from the spec and validated
-byte-for-byte against the Python reference vectors.
+`src/scheme.ts` and `src/mldsa65.ts` implement the separate Construction A
+route, including a hand-port of the polynomial layer checked against Python
+vectors. Spending helpers and account E2E tests are supporting research, not
+requirements for commitment-format scanning. See
+[ERC evidence](/spec/erc-evidence) and
+[spending research](/research/spending).
 
 ## Toolchain
 
@@ -31,7 +33,10 @@ relative imports carry explicit `.ts` extensions).
 nvm use
 npm install
 npm run typecheck       # tsc 7, noEmit
-npm test                # conformance: replay ../python/vectors/v0 (8 cases)
+npm run test:commit     # commitment-format Python vector replay
+npm run test:mldsa44    # ml-dsa-44-commit/v0 profile vector replay; every authorization
+                        # payload re-verified with @noble/post-quantum ml_dsa44
+npm test                # separate Construction A vector replay
 npm run build-contracts # forge build (requires foundry)
 npm run e2e             # spawns anvil, deploys the ERC-5564 announcer,
                         # announces the vectors on-chain, scans the logs
@@ -41,6 +46,15 @@ npm run e2e-7913        # ERC-7913 spend route (D-014): blinded sig verifies
 npm run e2e-7913-sphincs # hash-based spend (D-018): SPHINCS- C13 signature
                         # verifies through the vendored Verity-verified verifier,
                         # raw-key and committed ERC-7913 signers, same account
+npm run e2e-mldsa44     # ml-dsa-44-commit/v0 (D-027): trusted-registrar key setup,
+                        # committed-key ERC-7913 verify through the vendored ZKNOX
+                        # ML-DSA-44 verifier, executeFrame through the unchanged
+                        # Stealth8141ZkAccount; local only, nothing deployed
+npm run test-contracts  # forge test: the key-exchange contract against the
+                        # v0 vectors (needs foundry)
+npm run e2e-key-exchange # register an ML-KEM ek, announce the vectors through
+                        # StealthKeyExchange.sol (truncated ct rejected
+                        # on-chain), scan the singleton's log
 npm run e2e-pointer-sig # (v, r, s) pointer signatures with r = the C13 key
                         # (0x52) or its commitment (0x53); ML-DSA 0x50/0x51
                         # at recover level. Value lives in the vault — see
@@ -51,9 +65,28 @@ npm run e2e:fork        # Sepolia-fork rehearsals (announce/verify + spend);
 npm run e2e:fork:record # force a fresh recording
 ```
 
-The conformance test asserts that the JS-derived stealth public key is
+The Construction A conformance test asserts that the JS-derived stealth public key is
 byte-identical to the Python reference, and verifies the vectors'
 possession proof with noble's stock ML-DSA-65 verifier.
+
+## The key-exchange contract (D-028)
+
+`contracts/src/StealthKeyExchange.sol` is the on-chain half of the ML-KEM
+handshake, separated from the spend-side contracts: an `announce` that checks
+the announcement's shape (ciphertext of a supported length, view tag present)
+and forwards it byte for byte to the ERC-5564 singleton under scheme ID 2, a
+parameter table in which the meta-address version byte names the layout
+(`0x01` Construction A, `0x02` the D-024 commitment form) and the KEM is typed
+by total length, and a write-once registry of encapsulation keys (SSTORE2,
+typed by length) that is an implementation experiment outside the proposal
+(the ERC-6538 registry and meta-address distribution are out of scope, D-014
+scope update). Encapsulation itself never runs on-chain — the EVM computes in
+public and would publish the shared secret. `src/key-exchange.ts` is the
+client (ABI, the parameter table, `kemOfMetaAddressLength`,
+`announceViaKeyExchange`, `registerViewingKey`);
+`contracts/test/StealthKeyExchange.t.sol` replays the v0 and commitment
+vectors on the bytecode; `contracts/lean/` is a dependency-free Lean 4 model
+of the contract with proofs (see its README).
 
 ## Reproducible fork state
 
@@ -104,6 +137,22 @@ git -C contracts/lib/ETHDILITHIUM checkout --recurse-submodules df999ed
 
 `contracts/lib/ETHDILITHIUM/VENDORED_REV.txt` records the pinned rev of a
 restored tree.
+
+## ML-DSA-44 committed key (D-027)
+
+`src/profiles.ts` mirrors `python/pq_stealth/profiles.py`: explicit account
+profiles over the 0x02 format, `spendKeyFromMlDsaPk`, `buildAuthorization`
+(`pk || opener || sig`, pure ML-DSA-44, empty context, over the account's 32-byte
+digest) and the reference `verifyAuthorization`. On chain,
+`contracts/src/MlDsa44CommitSigner7913.sol` is the ERC-7913 verifier (`key` =
+commitment), `contracts/src/MlDsa44KeyRegistry.sol` the one-time key setup
+(recomputes `tr` and `t1` from the key bytes; **trusts its registrar for the
+expanded matrix** because on-chain `ExpandA` costs ≈ 40 M gas with the vendored
+SHAKE; the registrar can `replace` a wrong binding, so that trust is ongoing),
+and `contracts/src/frames/MlDsa44CommitFrameVerifier.sol` the adapter
+that lets the existing `Stealth8141ZkFactory` bind it. A spend reveals the key
+and links that recipient's spent addresses. Record, costs, and open items:
+`docs/ml-dsa-commit-profile.md`.
 
 ## Vendored verifier (committed): SPHINCS- C13
 

@@ -723,15 +723,45 @@ def keyRestorationAdv (b : Bool) :
     adv (if b then pkOther else pkOf encoding chal.1 chal.2)
       (if b then pkOf encoding chal.1 chal.2 else pkOther) simCt
 
+omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
+  [DecidableEq encoding.EncodedV] in
 ```
 
-[`SPRTwoHop.lean:486-493 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L486-L493)
+[`SPRTwoHop.lean:489-498 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L489-L498)
 
 ## `game0_keyRestorationAdv`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
 ```lean
 theorem game0_keyRestorationAdv (b : Bool) :
     LearningWithErrors.game0 (keyHopProblem ring encoding prims)
+      (keyRestorationAdv ring encoding prims adv sim b) =
+      idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
+        (fun _ => sim) b := by
+```
+
+:::details[proof]
+
+```lean
+  simp only [LearningWithErrors.game0, LearningWithErrors.distr, keyHopProblem,
+    keyRestorationAdv, idealBranch, idealKeygen, bind_assoc, pure_bind]
+
+omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
+  [DecidableEq encoding.EncodedV] in
+```
+
+:::
+
+[`SPRTwoHop.lean:502-511 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L502-L511)
+
+## `game1_keyRestorationAdv`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem game1_keyRestorationAdv (b : Bool) :
+    LearningWithErrors.game1 (keyHopProblem ring encoding prims)
       (keyRestorationAdv ring encoding prims adv sim b) =
       idealBranch ring encoding prims adv (uniformKeygen encoding)
         (fun _ => sim) b := by
@@ -740,31 +770,59 @@ theorem game0_keyRestorationAdv (b : Bool) :
 :::details[proof]
 
 ```lean
-  sorry
+  simp only [LearningWithErrors.game1, LearningWithErrors.uniformDistr, keyHopProblem,
+    keyRestorationAdv, idealBranch, uniformKeygen, bind_assoc, pure_bind]
 ```
 
 :::
 
-[`SPRTwoHop.lean:496-502 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L496-L502)
+[`SPRTwoHop.lean:514-521 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L514-L521)
 
-## `game1_keyRestorationAdv`
+## `keyIdealization`
 
 ```lean
-theorem game1_keyRestorationAdv (b : Bool) :
-    LearningWithErrors.game1 (keyHopProblem ring encoding prims)
-      (keyRestorationAdv ring encoding prims adv sim b) =
-      KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv := by
+noncomputable def keyIdealization (b : Bool) : ℝ :=
+  (idealBranch ring encoding prims adv (idealKeygen ring encoding prims)
+      (fun _ => sim) b).boolDistAdvantage
+    (KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv)
+
+```
+
+[`SPRTwoHop.lean:526-530 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L526-L530)
+
+## `keyRestoration_le_mlwe_add_keyIdealization`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem keyRestoration_le_mlwe_add_keyIdealization (b : Bool) :
+    keyRestoration ring encoding prims adv sim b ≤
+      LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+        (keyRestorationAdv ring encoding prims adv sim b)
+        + keyIdealization ring encoding prims adv sim b := by
 ```
 
 :::details[proof]
 
 ```lean
-  sorry
+  rw [keyRestoration, keyIdealization, LearningWithErrors.advantage_eq_boolDistAdvantage,
+    game0_keyRestorationAdv, game1_keyRestorationAdv]
+  set Gu : ProbComp Bool :=
+    idealBranch ring encoding prims adv (uniformKeygen encoding) (fun _ => sim) b
+  set Gi : ProbComp Bool :=
+    idealBranch ring encoding prims adv (idealKeygen ring encoding prims) (fun _ => sim) b
+  set Gr : ProbComp Bool :=
+    KEM.anonSetup (MLKEM.asKEMScheme ring encoding prims) >>= KEM.simBranch sim adv
+  calc ProbComp.boolDistAdvantage Gu Gr
+      ≤ ProbComp.boolDistAdvantage Gu Gi + ProbComp.boolDistAdvantage Gi Gr :=
+        ProbComp.boolDistAdvantage_triangle _ _ _
+    _ = ProbComp.boolDistAdvantage Gi Gu + ProbComp.boolDistAdvantage Gi Gr := by
+        rw [ProbComp.boolDistAdvantage_comm Gu Gi]
 ```
 
 :::
 
-[`SPRTwoHop.lean:504-509 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L504-L509)
+[`SPRTwoHop.lean:535-553 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L535-L553)
 
 ## `keyRestorationMLWE`
 
@@ -774,7 +832,7 @@ def keyRestorationMLWE (epsilonRestore : ℝ) : Prop :=
 
 ```
 
-[`SPRTwoHop.lean:511-513 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L511-L513)
+[`SPRTwoHop.lean:557-559 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L557-L559)
 
 ## `sprAdv_le_mlwe`
 
@@ -820,18 +878,22 @@ theorem sprAdv_le_mlwe (b : Bool)
 
 :::
 
-[`SPRTwoHop.lean:515-547 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L515-L547)
+[`SPRTwoHop.lean:561-593 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L561-L593)
 
 ## `mlkem768_sprAdv_le_mlwe`
 
-**ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages.**
+**ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages**, against the
+uniform-ciphertext-bytes simulator `mlkem768UniformCiphertext` (the same
+simulator as `mlkem768_sprAdv_le_two_hop_decomposition`).
 
 ```lean
 theorem mlkem768_sprAdv_le_mlwe (b : Bool)
     (epsilonPrim epsilonEnc epsilonRestore : ℝ)
     (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b ≤ epsilonPrim)
-    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonEnc)
-    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 sim768 b ≤ epsilonRestore) :
+    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768UniformCiphertext b ≤ epsilonEnc)
+    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768UniformCiphertext b ≤ epsilonRestore) :
     mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
       epsilonPrim
         + LearningWithErrors.advantage mlkem768KeyHopProblem
@@ -839,15 +901,10 @@ theorem mlkem768_sprAdv_le_mlwe (b : Bool)
         + LearningWithErrors.advantage mlkem768CtHopProblem
             (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
         + epsilonEnc
-        + epsilonRestore := by
+        + epsilonRestore :=
+  sprAdv_le_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+    mlkem768UniformCiphertext b epsilonPrim epsilonEnc epsilonRestore hPrim hEnc hRestore
+
 ```
 
-:::details[proof]
-
-```lean
-  sorry
-```
-
-:::
-
-[`SPRTwoHop.lean:558-572 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L558-L572)
+[`SPRTwoHop.lean:605-622 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L605-L622)

@@ -5,17 +5,21 @@ Source: [`lean/docs-proofs/widenedsigning.md`](https://github.com/Skanislav/pq-s
 :::
 
 The standard ML-DSA identification scheme rejects when `‖z‖∞ < γ₁ - β` and
-`‖r₀‖∞ < γ₂ - β`, where `β = τ·η` bounds `‖c·s₁‖∞`.  In Construction A the
-blinded secret `(s₁ + s', s₂ + e')` is `2·η`-short, so the challenge product
-`c·(s₁+s')` is bounded by `β' = τ·(2·η) = 2·β`.  We therefore run the IDS with
-response bound `γ₁ - β'` (and keep `γ₂ - β` unchanged, since the low-bits check
-still uses the honest `s₂` bound).  This file defines the widened IDS, proves
-mask-cube acceptance probability, and states the HVZK and completeness results.
+`‖r₀‖∞ < γ₂ - β`, where `β = τ·η` bounds `‖c·s‖∞` for an `η`-short `s`.  In
+Construction A the blinded secret `(s₁ + s', s₂ + e')` is a sum of two
+`η`-short vectors, so both challenge products `c·(s₁+s')` and `c·(s₂+e')` are
+bounded by `β' = 2·β` (`sampleInBall_smul_widened_bound`).  We therefore run
+the IDS with both response gates widened: `‖z‖∞ < γ₁ - β'` and
+`‖r₀‖∞ < γ₂ - β'`.  The second widening is what makes `hide_low` go through
+for the `2η`-short `s₂`; the verifier only checks `z`, so it is unaffected.
+
+The mask `y` is drawn from the FIPS 204 cube `[-(γ₁-1), γ₁]` (`sampleMaskCube`),
+not from the whole ring as in VCVio's `identificationScheme`, so that the
+accepted-`z` probability is the one in the Dilithium analysis.
 
 Assumed / NOT closed: exact equality of the full commitment/challenge/hint
-transcript to the simulator (quantified as `widenedHvzkDistance`); the
-accepted-`z` distribution is independent of the secret, but the hint and
-commitment distributions are only bounded by `zetaWide`.
+transcript to the simulator (quantified as `widenedHvzkDistance`, currently the
+trivial `1`).
 
 ## `widenedBeta`
 
@@ -24,9 +28,10 @@ Widened challenge-product bound for blinded signing keys: `β' = 2·β`.
 ```lean
 def widenedBeta : ℕ := 2 * p.beta
 
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (CommitHashBytes p)] in
 ```
 
-[`WidenedSigning.lean:34-35 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L34-L35)
+[`WidenedSigning.lean:39-41 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L39-L41)
 
 ## `widenedBeta_eq_tau_two_eta`
 
@@ -40,37 +45,464 @@ def widenedBeta : ℕ := 2 * p.beta
   rw [widenedBeta, Params.beta]
   ring
 
-@[simp] theorem widenedBeta_eq_two_beta : widenedBeta p = 2 * p.beta := rfl
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (CommitHashBytes p)] in
 ```
 
 :::
 
-[`WidenedSigning.lean:37-42 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L37-L42)
+[`WidenedSigning.lean:43-47 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L43-L47)
 
-## `widenedValidKeyPair`
+## `widenedBeta_eq_two_beta`
 
 ```lean
-def widenedValidKeyPair (pk : PublicKey p prims) (sk : SecretKey p) : Bool :=
-  decide (pk.rho = sk.rho)
-    && decide (polyVecNorm sk.s1 ≤ 2 * p.eta)
-    && decide (polyVecNorm sk.s2 ≤ 2 * p.eta)
+@[simp] theorem widenedBeta_eq_two_beta : widenedBeta p = 2 * p.beta := rfl
 
 ```
 
-[`WidenedSigning.lean:46-50 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L46-L50)
+[`WidenedSigning.lean:49-50 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L49-L50)
 
 ### 1. Widened parameters
 
-## `sampleMask`
+## `polyNorm_eq_cInfNorm`
 
-Uniform mask over the FIPS 204 cube; distribution refinement is `sampleMask_cube`.
+`polyNorm` is the vector-backend centered infinity norm, definitionally.
 
 ```lean
-def sampleMask : ProbComp (RqVec p.l) := $ᵗ (RqVec p.l)
+theorem polyNorm_eq_cInfNorm (f : Rq) : polyNorm f = cInfNorm f := by
+```
+
+:::details[proof]
+
+```lean
+  unfold polyNorm normOps cInfNorm
+  simp only [zmodPolyNormOps, normOpsOfCenteredView]
+  rfl
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:56-62 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L56-L62)
+
+## `normOps_cInfNorm_eq`
+
+```lean
+theorem normOps_cInfNorm_eq (f : Rq) : normOps.cInfNorm f = cInfNorm f :=
+  polyNorm_eq_cInfNorm f
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+[`WidenedSigning.lean:64-68 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L64-L68)
+
+## `polyNorm_neg`
+
+```lean
+theorem polyNorm_neg' (f : Rq) : polyNorm (-f) = polyNorm f := by
+```
+
+:::details[proof]
+
+```lean
+  unfold polyNorm normOps
+  simp only [LatticeCrypto.zmodPolyNormOps, LatticeCrypto.normOpsOfCenteredView]
+  unfold LatticeCrypto.cInfNormOf
+  apply Finset.sup_congr rfl
+  intro i _
+  simp only [LatticeCrypto.zmodCenteredCoeffView, coeffRing.coeff_neg]
+  exact LatticeCrypto.centeredRepr_natAbs_neg _
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:70-80 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L70-L80)
+
+## `polyVecNorm_add_le`
+
+```lean
+theorem polyVecNorm_add_le {k : ℕ} (u v : RqVec k) :
+    polyVecNorm (u + v) ≤ polyVecNorm u + polyVecNorm v := by
+```
+
+:::details[proof]
+
+```lean
+  refine (PolyVec.cInfNorm_le_iff (ops := normOps)).mpr fun j => ?_
+  have hget : (u + v).get j = u.get j + v.get j := by
+    simp only [Vector.get_eq_getElem, Vector.getElem_add]
+  rw [hget]
+  calc normOps.cInfNorm (u.get j + v.get j)
+      = cInfNorm (u.get j + v.get j) := normOps_cInfNorm_eq _
+    _ ≤ cInfNorm (u.get j) + cInfNorm (v.get j) := PqStealth.cInfNorm_add_le _ _
+    _ = normOps.cInfNorm (u.get j) + normOps.cInfNorm (v.get j) := by
+        rw [normOps_cInfNorm_eq, normOps_cInfNorm_eq]
+    _ ≤ polyVecNorm u + polyVecNorm v :=
+        Nat.add_le_add (PolyVec.component_cInfNorm_le normOps u j)
+          (PolyVec.component_cInfNorm_le normOps v j)
+
+omit [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:82-98 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L82-L98)
+
+## `sampleInBall_smul_widened_bound`
+
+```lean
+theorem sampleInBall_smul_widened_bound (h_laws : Primitives.Laws prims nttOps)
+    (cTilde : CommitHashBytes p) {k : ℕ} {s a b : RqVec k} (hs : s = a + b)
+    (ha : polyVecBounded a p.eta) (hb : polyVecBounded b p.eta) :
+    polyVecNorm (prims.sampleInBall cTilde • s) ≤ widenedBeta p := by
+```
+
+:::details[proof]
+
+```lean
+  haveI := h_laws.transform
+  subst hs
+  change polyVecNorm (nttOps.coeffScalarVecMul _ (a + b)) ≤ _
+  rw [nttOps.coeffScalarVecMul_add, widenedBeta, two_mul]
+  exact (polyVecNorm_add_le _ _).trans
+    (Nat.add_le_add (h_laws.sampleInBall_smul_bound cTilde a ha)
+      (h_laws.sampleInBall_smul_bound cTilde b hb))
+```
+
+:::
+
+[`WidenedSigning.lean:102-113 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L102-L113)
+
+### 2. Norm facts for sums of short vectors
+
+## `widenedValidKeyPair`
+
+A key pair valid for the widened scheme: the seeds agree, the public-key
+identity `t₁·2^d + t₀ = A·s₁ + s₂` holds, and each secret vector is a sum of
+two `η`-short vectors (so is itself `2η`-short, `widenedValidKeyPair_norm`).
+No honest seed is required; a blinded stealth key `(s₁+s', s₂+e')` qualifies
+(`widenedValidKeyPair_blinded`).
+
+```lean
+noncomputable def widenedValidKeyPair (pk : PublicKey p prims) (sk : SecretKey p) : Bool :=
+  decide (pk.rho = sk.rho ∧
+    prims.power2RoundShiftVec pk.t1 + sk.t0 = prims.expandA pk.rho * sk.s1 + sk.s2 ∧
+    (∃ a b : RqVec p.l, sk.s1 = a + b ∧ polyVecBounded a p.eta ∧ polyVecBounded b p.eta) ∧
+    (∃ a b : RqVec p.k, sk.s2 = a + b ∧ polyVecBounded a p.eta ∧ polyVecBounded b p.eta))
+
+omit [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+@[simp] theorem widenedValidKeyPair_eq_true_iff (pk : PublicKey p prims) (sk : SecretKey p) :
+    widenedValidKeyPair p prims pk sk = true ↔
+      pk.rho = sk.rho ∧
+      prims.power2RoundShiftVec pk.t1 + sk.t0 = prims.expandA pk.rho * sk.s1 + sk.s2 ∧
+      (∃ a b : RqVec p.l, sk.s1 = a + b ∧ polyVecBounded a p.eta ∧ polyVecBounded b p.eta) ∧
+      (∃ a b : RqVec p.k, sk.s2 = a + b ∧ polyVecBounded a p.eta ∧ polyVecBounded b p.eta) := by
+```
+
+:::details[proof]
+
+```lean
+  simp [widenedValidKeyPair]
+
+omit [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:122-139 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L122-L139)
+
+## `widenedValidKeyPair_norm`
+
+```lean
+theorem widenedValidKeyPair_norm {pk : PublicKey p prims} {sk : SecretKey p}
+    (hw : widenedValidKeyPair p prims pk sk = true) :
+    polyVecNorm sk.s1 ≤ 2 * p.eta ∧ polyVecNorm sk.s2 ≤ 2 * p.eta := by
+```
+
+:::details[proof]
+
+```lean
+  obtain ⟨-, -, ⟨a1, b1, h1, ha1, hb1⟩, ⟨a2, b2, h2, ha2, hb2⟩⟩ :=
+    (widenedValidKeyPair_eq_true_iff p prims pk sk).mp hw
+  refine ⟨?_, ?_⟩
+  · rw [h1, two_mul]
+    exact (polyVecNorm_add_le _ _).trans (Nat.add_le_add ha1 hb1)
+  · rw [h2, two_mul]
+    exact (polyVecNorm_add_le _ _).trans (Nat.add_le_add ha2 hb2)
+
+omit [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:141-153 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L141-L153)
+
+## `widenedValidKeyPair_blinded`
+
+```lean
+theorem widenedValidKeyPair_blinded (h_laws : Primitives.Laws prims nttOps)
+    (rho key : Bytes 32) (tr : Bytes 64)
+    (s1 s' : RqVec p.l) (s2 e' : RqVec p.k)
+    (hs1 : polyVecBounded s1 p.eta) (hs' : polyVecBounded s' p.eta)
+    (hs2 : polyVecBounded s2 p.eta) (he' : polyVecBounded e' p.eta) :
+    let t := prims.expandA rho * (s1 + s') + (s2 + e')
+    widenedValidKeyPair p prims
+      ⟨rho, (prims.power2RoundVec t).1⟩
+      ⟨rho, key, tr, s1 + s', s2 + e', (prims.power2RoundVec t).2⟩ = true := by
+```
+
+:::details[proof]
+
+```lean
+  intro t
+  rw [widenedValidKeyPair_eq_true_iff]
+  refine ⟨rfl, ?_, ⟨s1, s', rfl, hs1, hs'⟩, ⟨s2, e', rfl, hs2, he'⟩⟩
+  refine Vector.ext fun i hi => ?_
+  rw [Vector.getElem_add]
+  simp only [Primitives.power2RoundShiftVec, Primitives.power2RoundVec,
+    Vector.map_map, Vector.getElem_map, Function.comp]
+  exact h_laws.power2Round_decomp _
+```
+
+:::
+
+[`WidenedSigning.lean:156-173 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L156-L173)
+
+### 3. Widened key relation
+
+## `wApprox_eq_of_keyIdentity`
+
+```lean
+theorem wApprox_eq_of_keyIdentity (h_laws : Primitives.Laws prims nttOps)
+    {pk : PublicKey p prims} {sk : SecretKey p}
+    (h_kg : prims.power2RoundShiftVec pk.t1 + sk.t0 = prims.expandA pk.rho * sk.s1 + sk.s2)
+    (c : Rq) (y : RqVec p.l) :
+    computeWApprox p prims (prims.expandA pk.rho) c (y + c • sk.s1) pk.t1 =
+      (prims.expandA pk.rho) * y - c • sk.s2 + c • sk.t0 := by
+```
+
+:::details[proof]
+
+```lean
+  haveI := h_laws.transform
+  let laws := h_laws.transform
+  set aHat := prims.expandA pk.rho
+  simp only [computeWApprox]
+  refine Vector.ext fun i hi => ?_
+  simp only [Vector.getElem_add, Vector.getElem_sub,
+    nttOps.hatVec_add, nttOps.unhatVec_sub, nttOps.matVecMul_add, nttOps.unhatVec_add]
+  have hAs1_hat : nttOps.matVecMul aHat (nttOps.hatVec sk.s1) =
+      nttOps.hatVec (prims.power2RoundShiftVec pk.t1 + sk.t0 - sk.s2) := by
+    rw [h_kg]
+    refine Vector.ext fun j hj => ?_
+    simp only [hatVec, HMul.hMul, coeffMatVecMul, unhatVec, matVecMul,
+               Vector.getElem_map, Vector.getElem_sub, Vector.getElem_add]
+    have hcancel : (fromHat (dot nttOps aHat[j] (Vector.map toHat sk.s1)) : Rq) +
+        sk.s2[j] - sk.s2[j] = fromHat (dot nttOps aHat[j] (Vector.map toHat sk.s1)) := by
+      abel
+    rw [hcancel, laws.toHat_fromHat]
+  have hMatScalarComm : nttOps.matVecMul aHat (nttOps.hatVec (c • sk.s1)) =
+      nttOps.scalarVecMul (toHat c) (nttOps.matVecMul aHat (nttOps.hatVec sk.s1)) := by
+    have hNTTSmul : nttOps.hatVec (c • sk.s1) =
+        nttOps.scalarVecMul (toHat c) (nttOps.hatVec sk.s1) := by
+      refine Vector.ext fun j hj => ?_
+      simp only [hatVec, scalarVecMul, Vector.getElem_map]
+      change nttOps.toHat (nttOps.coeffScalarVecMul c sk.s1)[j] = _
+      simp only [coeffScalarVecMul, unhatVec, scalarVecMul, hatVec,
+                 Vector.map_map, Vector.getElem_map, Function.comp_apply, laws.toHat_fromHat]
+    rw [hNTTSmul]
+    refine Vector.ext fun j hj => ?_
+    simp only [matVecMul, scalarVecMul, Vector.getElem_map]
+    exact nttOps.dot_scalar_right (toHat c) _ _
+  simp only [hMatScalarComm, hAs1_hat]
+  change (aHat * y)[i] +
+      (nttOps.coeffScalarVecMul c (prims.power2RoundShiftVec pk.t1 + sk.t0 - sk.s2))[i] -
+      (nttOps.coeffScalarVecMul c (prims.power2RoundShiftVec pk.t1))[i] =
+      (aHat * y)[i] -
+      (nttOps.coeffScalarVecMul c sk.s2)[i] + (nttOps.coeffScalarVecMul c sk.t0)[i]
+  simp only [nttOps.coeffScalarVecMul_sub, nttOps.coeffScalarVecMul_add,
+             Vector.getElem_sub, Vector.getElem_add]
+  abel
+```
+
+:::
+
+[`WidenedSigning.lean:184-229 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L184-L229)
+
+### 4. The key identity behind verification
+
+## `cubeCoeff`
+
+Centered lift of an index in `Fin (2·γ₁)` onto the mask cube `[-(γ₁-1), γ₁]`.
+
+```lean
+def cubeCoeff (i : Fin (2 * p.gamma1)) : Coeff :=
+  (((i : ℕ) : ℤ) - ((p.gamma1 : ℤ) - 1) : ℤ)
 
 ```
 
-[`WidenedSigning.lean:59-60 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L59-L60)
+[`WidenedSigning.lean:239-241 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L239-L241)
+
+## `cubeLift`
+
+```lean
+def cubeLift (v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1)) : RqVec p.l :=
+  Vector.ofFn fun j => (Vector.ofFn fun i => cubeCoeff p (v j i) : Rq)
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+[`WidenedSigning.lean:243-247 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L243-L247)
+
+## `centeredRepr_cubeCoeff_add`
+
+```lean
+theorem centeredRepr_cubeCoeff_add (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
+    (x : Fin (2 * p.gamma1)) (d : Coeff) (hd : (centeredRepr d).natAbs ≤ widenedBeta p) :
+    centeredRepr (cubeCoeff p x + d) =
+      ((x : ℕ) : ℤ) - ((p.gamma1 : ℤ) - 1) + centeredRepr d := by
+```
+
+:::details[proof]
+
+```lean
+  have hcast : cubeCoeff p x + d =
+      ((((x : ℕ) : ℤ) - ((p.gamma1 : ℤ) - 1) + centeredRepr d : ℤ) : Coeff) := by
+    rw [Int.cast_add, cubeCoeff, ← centeredRepr_intCast d]
+  rw [hcast]
+  apply centeredRepr_intCast_eq_of_natAbs_le _ (b := p.gamma1 + widenedBeta p) _ hq
+  have := x.isLt
+  omega
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:250-263 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L250-L263)
+
+## `polyVecNorm_lt_iff`
+
+```lean
+theorem polyVecNorm_lt_iff {k : ℕ} (w : RqVec k) {B : ℕ} (hB : 0 < B) :
+    polyVecNorm w < B ↔ ∀ j i, (centeredRepr ((w.get j).get i)).natAbs < B := by
+```
+
+:::details[proof]
+
+```lean
+  have h1 : polyVecNorm w < B ↔ polyVecNorm w ≤ B - 1 := by omega
+  rw [h1]
+  refine (PolyVec.cInfNorm_le_iff (ops := normOps)).trans (forall_congr' fun j => ?_)
+  rw [normOps_cInfNorm_eq, cInfNorm_le_iff]
+  exact forall_congr' fun i => by omega
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:265-274 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L265-L274)
+
+## `cubeLift_add_get`
+
+```lean
+theorem cubeLift_add_get (v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1))
+    (delta : RqVec p.l) (j : Fin p.l) (i : Fin ringDegree) :
+    ((cubeLift p v + delta).get j).get i = cubeCoeff p (v j i) + (delta.get j).get i := by
+```
+
+:::details[proof]
+
+```lean
+  have h1 : (cubeLift p v + delta).get j = (cubeLift p v).get j + delta.get j := by
+    simp only [Vector.get_eq_getElem, Vector.getElem_add]
+  rw [h1, Rq.get_add]
+  congr 1
+  simp only [cubeLift, Vector.get_eq_getElem, Vector.getElem_ofFn, Fin.eta]
+```
+
+:::
+
+[`WidenedSigning.lean:276-284 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L276-L284)
+
+## `sampleMaskCube`
+
+Uniform mask over the FIPS 204 cube `[-(γ₁-1), γ₁]^(l·256)`.
+
+```lean
+def sampleMaskCube : ProbComp (RqVec p.l) :=
+  cubeLift p <$> ($ᵗ (Fin p.l → Fin ringDegree → Fin (2 * p.gamma1)))
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+[`WidenedSigning.lean:288-292 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L288-L292)
+
+## `card_filter_cube`
+
+```lean
+theorem card_filter_cube (hB : widenedBeta p < p.gamma1)
+    (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
+    (d : Coeff) (hd : (centeredRepr d).natAbs ≤ widenedBeta p) :
+    (Finset.univ.filter fun x : Fin (2 * p.gamma1) =>
+        (centeredRepr (cubeCoeff p x + d)).natAbs < p.gamma1 - widenedBeta p).card
+      = 2 * (p.gamma1 - widenedBeta p) - 1 := by
+```
+
+:::details[proof]
+
+```lean
+  have hpred : ∀ x : Fin (2 * p.gamma1),
+      (centeredRepr (cubeCoeff p x + d)).natAbs < p.gamma1 - widenedBeta p ↔
+        (((x : ℕ) : ℤ) - ((p.gamma1 : ℤ) - 1) + centeredRepr d).natAbs
+          < p.gamma1 - widenedBeta p :=
+    fun x => by rw [centeredRepr_cubeCoeff_add p hq x d hd]
+  set lo : ℕ := ((widenedBeta p : ℤ) - centeredRepr d).toNat with hlo
+  rw [show 2 * (p.gamma1 - widenedBeta p) - 1 =
+      (Finset.Ico lo (lo + (2 * (p.gamma1 - widenedBeta p) - 1))).card by
+    rw [Nat.card_Ico]; omega]
+  refine Finset.card_nbij' (fun x : Fin (2 * p.gamma1) => (x : ℕ))
+    (fun n => ⟨n % (2 * p.gamma1), Nat.mod_lt _ (NeZero.pos _)⟩) ?_ ?_ ?_ ?_
+  · intro x hx
+    simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_univ, true_and] at hx
+    simp only [Finset.mem_coe, Finset.mem_Ico]
+    rw [hpred] at hx
+    have := x.isLt
+    omega
+  · intro n hn
+    simp only [Finset.mem_coe, Finset.mem_Ico] at hn
+    simp only [Finset.mem_coe, Finset.mem_filter, Finset.mem_univ, true_and]
+    rw [hpred]
+    have hnlt : n < 2 * p.gamma1 := by omega
+    simp only [Nat.mod_eq_of_lt hnlt]
+    omega
+  · intro x _
+    exact Fin.ext (Nat.mod_eq_of_lt x.isLt)
+  · intro n hn
+    simp only [Finset.mem_coe, Finset.mem_Ico] at hn
+    exact Nat.mod_eq_of_lt (by omega)
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] [NeZero (2 * p.gamma1)] in
+```
+
+:::
+
+[`WidenedSigning.lean:297-334 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L297-L334)
 
 ## `coefficient_preimage`
 
@@ -83,74 +515,114 @@ theorem coefficient_preimage {delta z : ℤ}
 :::details[proof]
 
 ```lean
-  sorry
+  have h := Int.natAbs_sub_le z delta
+  omega
+
+omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
 ```
 
 :::
 
-[`WidenedSigning.lean:64-68 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L64-L68)
+[`WidenedSigning.lean:338-345 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L338-L345)
+
+## `cube_shift_accept_prob`
+
+```lean
+theorem cube_shift_accept_prob
+    (hB : widenedBeta p < p.gamma1) (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
+    (delta : RqVec p.l) (hd : polyVecNorm delta ≤ widenedBeta p) :
+    Pr[= true | (do
+        let y ← sampleMaskCube p
+        pure (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p)) ] =
+      (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
+        ^ (p.l * ringDegree) := by
+```
+
+:::details[proof]
+
+```lean
+  have hBpos : 0 < p.gamma1 - widenedBeta p := by omega
+  have hdc : ∀ j i, (centeredRepr ((delta.get j).get i)).natAbs ≤ widenedBeta p := by
+    intro j i
+    have h1 := (PolyVec.cInfNorm_le_iff (ops := normOps)).mp hd j
+    rw [normOps_cInfNorm_eq, cInfNorm_le_iff] at h1
+    exact h1 i
+  -- 1. The computation is a uniform draw of cube indices pushed through the gate.
+  have hcomp : (do
+        let y ← sampleMaskCube p
+        pure (decide (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p)) : ProbComp Bool)
+      = (fun v => decide (polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)) <$>
+          ($ᵗ (Fin p.l → Fin ringDegree → Fin (2 * p.gamma1))) := by
+    simp only [sampleMaskCube, map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
+  rw [hcomp, probOutput_map]
+  simp only [decide_eq_true_eq]
+  rw [probEvent_uniformSample]
+  -- 2. The accepted set is a product of per-coefficient accepted sets.
+  have hfilter : (Finset.univ.filter fun v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1) =>
+        polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)
+      = Fintype.piFinset fun j => Fintype.piFinset fun i =>
+          Finset.univ.filter fun x : Fin (2 * p.gamma1) =>
+            (centeredRepr (cubeCoeff p x + (delta.get j).get i)).natAbs
+              < p.gamma1 - widenedBeta p := by
+    ext v
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Fintype.mem_piFinset]
+    rw [polyVecNorm_lt_iff _ hBpos]
+    simp only [cubeLift_add_get]
+  have hcount : ∀ j i, (Finset.univ.filter fun x : Fin (2 * p.gamma1) =>
+      (centeredRepr (cubeCoeff p x + (delta.get j).get i)).natAbs
+        < p.gamma1 - widenedBeta p).card = 2 * (p.gamma1 - widenedBeta p) - 1 :=
+    fun j i => card_filter_cube p hB hq _ (hdc j i)
+  rw [hfilter]
+  simp only [Fintype.card_piFinset, hcount, Finset.prod_const, Finset.card_univ,
+    Fintype.card_fin, Fintype.card_pi]
+  -- 3. `(N^256)^l / (M^256)^l = (N / M)^(l·256)` in `ℝ≥0∞`.
+  rw [← pow_mul, ← pow_mul, mul_comm ringDegree p.l, Nat.cast_pow, Nat.cast_pow,
+    div_eq_mul_inv, ENNReal.inv_pow, ← mul_pow, ← div_eq_mul_inv]
+
+omit [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
+  [SampleableType (CommitHashBytes p)] in
+```
+
+:::
+
+[`WidenedSigning.lean:351-398 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L351-L398)
 
 ## `widened_z_accepted_independent`
 
 ```lean
-theorem widened_z_accepted_independent
+theorem widened_z_accepted_independent (h_laws : Primitives.Laws prims nttOps)
+    (hB : widenedBeta p < p.gamma1) (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
     (pk : PublicKey p prims) (sk : SecretKey p)
     (hw : widenedValidKeyPair p prims pk sk = true)
-    (c : Rq) (hc : polyNorm c ≤ p.tau) :
-    let acceptProb : ℝ≥0∞ :=
-      ((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) / (2 * p.gamma1 : ℕ)) ^ (p.l * ringDegree)
+    (cTilde : CommitHashBytes p) :
     Pr[= true | (do
-        let y ← sampleMask p
-        let z := y + c • sk.s1
-        pure (polyVecNorm z < p.gamma1 - widenedBeta p)) ] = acceptProb := by
+        let y ← sampleMaskCube p
+        let z := y + prims.sampleInBall cTilde • sk.s1
+        pure (polyVecNorm z < p.gamma1 - widenedBeta p)) ] =
+      (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
+        ^ (p.l * ringDegree) := by
 ```
 
 :::details[proof]
 
 ```lean
-  sorry
+  obtain ⟨-, -, ⟨a, b, hs1, ha, hb⟩, -⟩ := (widenedValidKeyPair_eq_true_iff p prims pk sk).mp hw
+  exact cube_shift_accept_prob p hB hq _
+    (sampleInBall_smul_widened_bound p prims h_laws cTilde hs1 ha hb)
 ```
 
 :::
 
-[`WidenedSigning.lean:74-85 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L74-L85)
+[`WidenedSigning.lean:402-416 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L402-L416)
 
-## `mldsa65_widened_z_accept_prob`
-
-```lean
-theorem mldsa65_widened_z_accept_prob
-    (prims65 : Primitives mldsa65)
-    [SampleableType (RqVec mldsa65.l)] [SampleableType (Vector prims65.Hint mldsa65.k)]
-    [SampleableType (CommitHashBytes mldsa65)] [nttOps : NTTRingOps]
-    (pk : PublicKey mldsa65 prims65) (sk : SecretKey mldsa65)
-    (hw : widenedValidKeyPair mldsa65 prims65 pk sk = true)
-    (c : Rq) (hc : polyNorm c ≤ mldsa65.tau) :
-    Pr[= true | (do
-        let y ← sampleMask mldsa65
-        let z := y + c • sk.s1
-        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65)) ] =
-      (1047791 / 1048576 : ℝ≥0∞) ^ 1280 := by
-```
-
-:::details[proof]
-
-```lean
-  rw [widened_z_accepted_independent mldsa65 prims65 pk sk hw c hc]
-  simp only [widenedBeta, Params.beta, mldsa65, ParameterSet.params, ringDegree]
-  norm_num
-```
-
-:::
-
-[`WidenedSigning.lean:89-104 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L89-L104)
-
-### 2. Mask sampler over the FIPS 204 cube
+### 5. Mask sampler over the FIPS 204 cube
 
 ## `widenedIdentificationScheme`
 
-The widened IDS uses `sampleMask` and the widened response bound, but the
-same verification as the standard scheme.  Completeness and soundness hold
-relative to the widened key relation.
+The widened IDS: cube-uniform mask, widened `z` and `r₀` gates, and the
+same verification as the standard scheme (with the widened `z` bound).
+Completeness holds relative to `widenedValidKeyPair` (`widened_ids_complete`).
 
 ```lean
 def widenedIdentificationScheme
@@ -162,7 +634,7 @@ def widenedIdentificationScheme
       (widenedValidKeyPair p prims) where
   commit := fun pk _sk => do
     let aHat := prims.expandA pk.rho
-    let y ← sampleMask p
+    let y ← sampleMaskCube p
     let w := aHat * y
     let w1 := prims.highBitsVec w
     return (w1, ⟨y, w⟩)
@@ -172,7 +644,8 @@ def widenedIdentificationScheme
     let cs2 := c • sk.s2
     let z := st.y + cs1
     let r0 := prims.lowBitsVec (st.w - cs2)
-    if polyVecNorm z < p.gamma1 - widenedBeta p ∧ polyVecNorm r0 < p.gamma2 - p.beta then do
+    if polyVecNorm z < p.gamma1 - widenedBeta p ∧
+        polyVecNorm r0 < p.gamma2 - widenedBeta p then do
       let ct0 := c • sk.t0
       let h := prims.makeHintVec (-ct0) (st.w - cs2 + ct0)
       if polyVecNorm ct0 < p.gamma2 ∧ prims.hintWeight h ≤ p.omega then
@@ -192,15 +665,111 @@ def widenedIdentificationScheme
 
 ```
 
-[`WidenedSigning.lean:110-146 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L110-L146)
+[`WidenedSigning.lean:422-459 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L422-L459)
 
-### 3. Widened identification scheme
+### 6. Widened identification scheme
+
+## `widened_ids_complete`
+
+**Completeness of the widened scheme.** Whenever the honest prover does
+not abort, the verifier accepts. Same shape as VCVio's
+`idsWithAbort_complete`, with the widened bound `β'` in place of `β` and the
+key identity taken from `widenedValidKeyPair` instead of an honest seed.
+
+```lean
+theorem widened_ids_complete
+    [DecidableEq prims.High] [IsUniformSpec unifSpec]
+    (h_laws : Primitives.Laws prims nttOps) :
+    (widenedIdentificationScheme p prims).Complete := by
+```
+
+:::details[proof]
+
+```lean
+  classical
+  intro pk sk hvalid
+  rw [probOutput_eq_one_iff_forall]
+  refine ⟨probFailure_of_liftM_PMF _, fun b hb => ?_⟩
+  rw [support_bind] at hb
+  simp only [Set.mem_iUnion] at hb
+  obtain ⟨t?, ht?, hb⟩ := hb
+  rw [support_pure] at hb
+  simp only [Set.mem_singleton_iff] at hb
+  subst hb
+  match t? with
+  | none => rfl
+  | some (w1, cTilde, zh) =>
+    simp only [IdenSchemeWithAbort.honestExecution, support_bind, Set.mem_iUnion,
+      support_pure, Set.mem_singleton_iff] at ht?
+    obtain ⟨⟨w1', st⟩, hw1st, cTilde', hcTilde, oz, hoz, heq⟩ := ht?
+    cases oz with
+    | none => simp only [Option.map, reduceCtorEq] at heq
+    | some zh' =>
+      simp only [Option.map, Option.some.injEq, Prod.mk.injEq] at heq
+      obtain ⟨rfl, rfl, rfl⟩ := heq
+      -- The algebraic core.
+      obtain ⟨-, h_kg, ⟨a1, b1, hs1, ha1, hb1⟩, ⟨a2, b2, hs2, ha2, hb2⟩⟩ :=
+        (widenedValidKeyPair_eq_true_iff p prims pk sk).mp hvalid
+      simp only [widenedIdentificationScheme, support_bind, support_pure, Set.mem_iUnion,
+        Set.mem_singleton_iff, Prod.mk.injEq] at hw1st
+      simp only [widenedIdentificationScheme] at hoz
+      obtain ⟨y, -, hw1, hst⟩ := hw1st
+      subst hst hw1
+      split_ifs at hoz with hc1 hc2
+      · rw [support_pure, Set.mem_singleton_iff, Option.some.injEq] at hoz
+        subst hoz
+        dsimp only at hc1 hc2 ⊢
+        obtain ⟨hz_norm, hr0_norm⟩ := hc1
+        obtain ⟨hct0_norm, hweight⟩ := hc2
+        have hcs2_norm : polyVecNorm (prims.sampleInBall cTilde • sk.s2) ≤ widenedBeta p :=
+          sampleInBall_smul_widened_bound p prims h_laws cTilde hs2 ha2 hb2
+        set c := prims.sampleInBall cTilde with hc_def
+        set aHat := prims.expandA pk.rho with haHat_def
+        have hcond_t0 : ∀ j : Fin p.k, polyNorm ((-(c • sk.t0)).get j) ≤ p.gamma2 := by
+          intro j
+          have hneg : (-(c • sk.t0)).get j = -((c • sk.t0).get j) := by
+            simp only [Vector.get_eq_getElem, Vector.getElem_neg]
+          rw [hneg, polyNorm_neg']
+          exact le_of_lt (lt_of_le_of_lt
+            (LatticeCrypto.PolyVec.component_cInfNorm_le normOps (c • sk.t0) j) hct0_norm)
+        have harith1 : aHat * y - c • sk.s2 + c • sk.t0 + -(c • sk.t0) = aHat * y - c • sk.s2 := by
+          apply Vector.ext; intro i hi
+          simp only [Vector.getElem_add, Vector.getElem_sub, Vector.getElem_neg]; abel
+        have harith2 : aHat * y - c • sk.s2 + c • sk.s2 = aHat * y := by
+          apply Vector.ext; intro i hi
+          simp only [Vector.getElem_add, Vector.getElem_sub]; abel
+        have hhide : prims.highBitsVec (aHat * y - c • sk.s2) = prims.highBitsVec (aHat * y) := by
+          have h := hide_lowVec p prims h_laws (aHat * y - c • sk.s2) (c • sk.s2) (widenedBeta p)
+            (fun j => le_trans
+              (LatticeCrypto.PolyVec.component_cInfNorm_le normOps (c • sk.s2) j) hcs2_norm)
+            (fun j => by
+              have hj := lt_of_le_of_lt
+                (LatticeCrypto.PolyVec.component_cInfNorm_le normOps
+                  (prims.lowBitsVec (aHat * y - c • sk.s2)) j) hr0_norm
+              simp only [Primitives.lowBitsVec, Vector.get_eq_getElem, Vector.getElem_map,
+                polyNorm] at hj ⊢
+              omega)
+          rw [harith2] at h
+          exact h.symm
+        have hwa := wApprox_eq_of_keyIdentity p prims h_laws h_kg c y
+        simp only [widenedIdentificationScheme, Bool.and_eq_true, decide_eq_true_eq]
+        refine ⟨⟨hz_norm, ?_⟩, hweight⟩
+        rw [hwa, useHintVec_makeHintVec p prims h_laws (-(c • sk.t0))
+            (aHat * y - c • sk.s2 + c • sk.t0) hcond_t0, harith1, hhide]
+      all_goals (rw [support_pure, Set.mem_singleton_iff] at hoz; exact absurd hoz (by simp))
+```
+
+:::
+
+[`WidenedSigning.lean:467-542 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L467-L542)
+
+### 7. Completeness
 
 ## `widenedHvzkSimulator`
 
 Public-key-only simulator for the widened scheme: sample `z` from the inner
 acceptance cube and program the commitment so verification succeeds.  The full
-transcript distance is quantified separately as `zetaWide`.
+transcript distance is quantified separately as `widenedHvzkDistance`.
 
 ```lean
 def widenedHvzkSimulator
@@ -220,7 +789,7 @@ def widenedHvzkSimulator
 
 ```
 
-[`WidenedSigning.lean:152-166 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L152-L166)
+[`WidenedSigning.lean:548-562 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L548-L562)
 
 ## `widenedHvzkDistance`
 
@@ -229,22 +798,65 @@ noncomputable def widenedHvzkDistance : ℝ≥0∞ := 1
 
 ```
 
-[`WidenedSigning.lean:169-170 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L169-L170)
+[`WidenedSigning.lean:568-569 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L568-L569)
 
-## `widened_ids_complete`
+## `widened_ids_hvzk`
 
 ```lean
-theorem widened_ids_complete
-    [DecidableEq prims.High] :
-    (widenedIdentificationScheme p prims).Complete := by
+theorem widened_ids_hvzk
+    [DecidableEq prims.High] [IsUniformSpec unifSpec] :
+    (widenedIdentificationScheme p prims).HVZK
+      (fun pk => widenedHvzkSimulator p prims pk)
+      widenedHvzkDistance.toReal := by
 ```
 
 :::details[proof]
 
 ```lean
-  sorry
+  intro s w _
+  simp only [widenedHvzkDistance, ENNReal.toReal_one]
+  exact tvDist_le_one _ _
 ```
 
 :::
 
-[`WidenedSigning.lean:178-182 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L178-L182)
+[`WidenedSigning.lean:573-581 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L573-L581)
+
+### 8. HVZK
+
+## `mldsa65_widened_z_accept_prob`
+
+**ML-DSA-65 concrete acceptance probability.** With `γ₁ = 2^19` and
+`widenedBeta = 392`, the per-coefficient acceptance is `1047791 / 1048576`, and
+there are `5·256 = 1280` coefficients.  Kept as an exact rational.
+
+```lean
+theorem mldsa65_widened_z_accept_prob
+    (prims65 : Primitives mldsa65)
+    [SampleableType (RqVec mldsa65.l)] [SampleableType (Vector prims65.Hint mldsa65.k)]
+    [SampleableType (CommitHashBytes mldsa65)]
+    (h_laws : Primitives.Laws prims65 nttOps)
+    (pk : PublicKey mldsa65 prims65) (sk : SecretKey mldsa65)
+    (hw : widenedValidKeyPair mldsa65 prims65 pk sk = true)
+    (cTilde : CommitHashBytes mldsa65) :
+    Pr[= true | (do
+        let y ← sampleMaskCube mldsa65
+        let z := y + prims65.sampleInBall cTilde • sk.s1
+        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65)) ] =
+      (1047791 / 1048576 : ℝ≥0∞) ^ 1280 := by
+```
+
+:::details[proof]
+
+```lean
+  rw [widened_z_accepted_independent mldsa65 prims65 h_laws
+    (by simp [widenedBeta, Params.beta, mldsa65, ParameterSet.params])
+    (by simp [widenedBeta, Params.beta, mldsa65, ParameterSet.params, modulus])
+    pk sk hw cTilde]
+  simp only [widenedBeta, Params.beta, mldsa65, ParameterSet.params, ringDegree]
+  norm_num
+```
+
+:::
+
+[`WidenedSigning.lean:590-609 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/WidenedSigning.lean#L590-L609)

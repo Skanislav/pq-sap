@@ -570,3 +570,205 @@ theorem boolDistAdvantage_run'_cacheQuery_run'_empty_le {γ : Type} (pre : ProbC
 :::
 
 [`ROMUpToBad.lean:386-431 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L386-L431)
+
+### Programming a single point, and the averaged bound
+
+## `probEvent_bind_le_const`
+
+A bound that holds on every support point of the continuation bounds the bind.
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probEvent_bind_le_const {α β : Type} (mx : ProbComp α) (my : α → ProbComp β)
+    (q : β → Prop) (c : ℝ≥0∞) (h : ∀ x ∈ support mx, Pr[q | my x] ≤ c) :
+    Pr[q | mx >>= my] ≤ c := by
+```
+
+:::details[proof]
+
+```lean
+  rw [probEvent_bind_eq_tsum]
+  calc ∑' x, Pr[= x | mx] * Pr[q | my x]
+      ≤ ∑' x, Pr[= x | mx] * c := by
+        refine ENNReal.tsum_le_tsum fun x => ?_
+        by_cases hx : x ∈ support mx
+        · exact mul_le_mul' le_rfl (h x hx)
+        · simp [probOutput_eq_zero_of_not_mem_support hx]
+    _ = (∑' x, Pr[= x | mx]) * c := ENNReal.tsum_mul_right
+    _ ≤ 1 * c := mul_le_mul' tsum_probOutput_le_one le_rfl
+    _ = c := one_mul c
+```
+
+:::
+
+[`ROMUpToBad.lean:452-465 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L452-L465)
+
+## `probEvent_flag_trackingROImpl_pointPolicy_le`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probEvent_flag_trackingROImpl_pointPolicy_le {α : Type}
+    (oa : OracleComp (unifSpec + hashSpec) α) (pt : hashSpec.Domain) (v : hashSpec.Range pt)
+    (cache₀ : hashSpec.QueryCache) (h₀ : cache₀ pt = none) :
+    Pr[fun z => z.2.2 = true |
+        (simulateQ (trackingROImpl (pointPolicy pt v)) oa).run (cache₀, false)] ≤
+      Pr[fun z => QueryCache.isCached z.2 pt = true | (simulateQ (roImpl hashSpec) oa).run cache₀] := by
+```
+
+:::details[proof]
+
+```lean
+  have hrel := relTriple_simulateQ_run (trackingROImpl (pointPolicy pt v)) (roImpl hashSpec)
+    (fun p c => c = p.1 ∧ p.2 = (p.1 pt).isSome) oa ?_ (cache₀, false) cache₀ ⟨rfl, by simp [h₀]⟩
+  · refine probEvent_le_of_relTriple hrel ?_
+    rintro a b ⟨-, hc, hflag⟩ hbad
+    show (b.2 pt).isSome = true
+    rw [hc, ← hflag]
+    exact hbad
+  · rintro (n | t) ⟨c, bad⟩ c' ⟨hc', hbad⟩
+    · exact relTriple_unifFwdFlagImpl_unifFwdImpl
+        (R := fun p c => c = p.1 ∧ p.2 = (p.1 pt).isSome) n (c, bad) c' ⟨hc', hbad⟩
+    · subst hc'
+      simp only [trackingROImpl, roImpl, QueryImpl.add_apply_inr, OracleSpec.randomOracle]
+      cases hcache : c' t with
+      | some w =>
+        simp only [add_apply_inr, QueryImpl.withCachingTrackingPolicy_apply, Functor.map_map,
+          StateT.run_mk, hcache, QueryImpl.withCaching_apply, StateT.run_bind, StateT.run_get,
+          pure_bind, StateT.run_pure, relTriple_iff_relWP, MAlgRelOrdered.relWP_pure]
+        refine ⟨trivial, trivial, ?_⟩
+        simpa using hbad
+      | none =>
+        simp only [add_apply_inr, QueryImpl.withCachingTrackingPolicy_apply, Functor.map_map,
+          StateT.run_mk, hcache, QueryImpl.withCaching_apply, StateT.run_bind, StateT.run_get,
+          pure_bind, StateT.run_monadLift, monadLift_self, bind_pure_comp, StateT.run_modifyGet]
+        refine relTriple_map (relTriple_post_mono (relTriple_refl _) ?_)
+        intro x y hxy
+        cases hxy
+        dsimp only at hbad ⊢
+        refine ⟨rfl, rfl, ?_⟩
+        by_cases ht : t = pt
+        · subst ht
+          simp [pointPolicy]
+        · simp only [pointPolicy, ht, dite_false, Option.isSome_none, Bool.false_eq_true,
+            if_false, QueryCache.cacheQuery_of_ne _ _ (Ne.symm ht)]
+          exact hbad
+```
+
+:::
+
+[`ROMUpToBad.lean:469-509 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L469-L509)
+
+## `roImpl_run_keys_subset`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem roImpl_run_keys_subset {α : Type}
+    (oa : OracleComp (unifSpec + hashSpec) α) (n : ℕ)
+    (hq : IsQueryBoundP oa (fun i => i.isRight = true) n) (cache₀ : hashSpec.QueryCache) :
+    ∀ z ∈ support ((simulateQ (roImpl hashSpec) oa).run cache₀),
+      ∃ S : Finset hashSpec.Domain, S.card ≤ n ∧
+        ∀ t, QueryCache.isCached z.2 t = true → QueryCache.isCached cache₀ t = true ∨ t ∈ S := by
+```
+
+:::details[proof]
+
+```lean
+  induction oa using OracleComp.inductionOn generalizing n cache₀ with
+  | pure x =>
+    intro z hz
+    simp only [simulateQ_pure, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hz
+    subst hz
+    exact ⟨∅, by simp, fun t h => Or.inl h⟩
+  | query_bind t mx ih =>
+    intro z hz
+    rw [isQueryBoundP_query_bind_iff] at hq
+    obtain ⟨hvalid, hrest⟩ := hq
+    simp only [simulateQ_bind, simulateQ_query, OracleQuery.input_query, OracleQuery.cont_query,
+      id_map, StateT.run_bind, support_bind, Set.mem_iUnion] at hz
+    obtain ⟨⟨u, c'⟩, hstep, hz⟩ := hz
+    rcases t with n' | t
+    · have hrun : (roImpl hashSpec (Sum.inl n')).run cache₀ =
+          ((fun x => (x, cache₀)) <$> ($[0..n']) :
+            ProbComp ((unifSpec + hashSpec).Range (Sum.inl n') × hashSpec.QueryCache)) := rfl
+      have hb := hrest u
+      simp only [Sum.isRight_inl, Bool.false_eq_true, if_false] at hb
+      rw [hrun] at hstep
+      simp only [support_map, Set.mem_image, Prod.mk.injEq] at hstep
+      obtain ⟨x, -, rfl, rfl⟩ := hstep
+      exact ih _ n hb _ z hz
+    · have hb := hrest u
+      simp only [Sum.isRight_inr, if_true] at hb
+      simp only [Sum.isRight_inr, not_true_eq_false, false_or] at hvalid
+      cases hcache : cache₀ t with
+      | some w =>
+        have hrun : (roImpl hashSpec (Sum.inr t)).run cache₀ =
+            (pure (w, cache₀) :
+              ProbComp ((unifSpec + hashSpec).Range (Sum.inr t) × hashSpec.QueryCache)) := by
+          show (hashSpec.randomOracle t).run cache₀ = _
+          simp [StateT.run_bind, StateT.run_get, hcache]
+        rw [hrun] at hstep
+        simp only [support_pure, Set.mem_singleton_iff, Prod.mk.injEq] at hstep
+        obtain ⟨rfl, rfl⟩ := hstep
+        obtain ⟨S, hS, hkeys⟩ := ih _ (n - 1) hb _ z hz
+        exact ⟨S, hS.trans (Nat.sub_le n 1), hkeys⟩
+      | none =>
+        have hrun : (roImpl hashSpec (Sum.inr t)).run cache₀ =
+            (($ᵗ hashSpec.Range t) >>= fun x => pure (x, cache₀.cacheQuery t x) :
+              ProbComp ((unifSpec + hashSpec).Range (Sum.inr t) × hashSpec.QueryCache)) := by
+          show (hashSpec.randomOracle t).run cache₀ = _
+          simp [StateT.run_bind, StateT.run_get, hcache, StateT.run_monadLift, monadLift_self,
+            StateT.run_modifyGet, uniformSampleImpl]
+        rw [hrun] at hstep
+        simp only [support_bind, support_pure, Set.mem_iUnion, Set.mem_singleton_iff,
+          Prod.mk.injEq] at hstep
+        obtain ⟨x, -, rfl, rfl⟩ := hstep
+        obtain ⟨S, hS, hkeys⟩ := ih _ (n - 1) hb _ z hz
+        refine ⟨insert t S, ?_, ?_⟩
+        · calc (insert t S).card ≤ S.card + 1 := Finset.card_insert_le _ _
+            _ ≤ n := by omega
+        · intro t' h
+          rcases hkeys t' h with h' | h'
+          · by_cases htt : t' = t
+            · subst htt
+              exact Or.inr (Finset.mem_insert_self _ _)
+            · rw [QueryCache.isCached_cacheQuery_of_ne _ _ htt] at h'
+              exact Or.inl h'
+          · exact Or.inr (Finset.mem_insert_of_mem h')
+
+omit [DecidableEq ι] [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t)] in
+```
+
+:::
+
+[`ROMUpToBad.lean:513-581 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L513-L581)
+
+## `probEvent_isSome_apply_le`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probEvent_isSome_apply_le {γ : Type} (samp : ProbComp γ) (f : γ → hashSpec.Domain)
+    (beta : ℝ≥0∞) (hB : ∀ x, Pr[fun y => f y = x | samp] ≤ beta)
+    (c : hashSpec.QueryCache) (S : Finset hashSpec.Domain)
+    (hS : ∀ t, QueryCache.isCached c t = true → t ∈ S) :
+    Pr[fun y => QueryCache.isCached c (f y) = true | samp] ≤ S.card * beta := by
+```
+
+:::details[proof]
+
+```lean
+  calc Pr[fun y => QueryCache.isCached c (f y) = true | samp]
+      ≤ Pr[fun y => ∃ t ∈ S, f y = t | samp] :=
+        probEvent_mono'' fun y hy => ⟨f y, hS _ hy, rfl⟩
+    _ ≤ ∑ t ∈ S, Pr[fun y => f y = t | samp] :=
+        probEvent_exists_finset_le_sum S samp (fun t y => f y = t)
+    _ ≤ ∑ _t ∈ S, beta := Finset.sum_le_sum fun t _ => hB t
+    _ = S.card * beta := by rw [Finset.sum_const, nsmul_eq_mul]
+```
+
+:::
+
+[`ROMUpToBad.lean:584-596 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L584-L596)
