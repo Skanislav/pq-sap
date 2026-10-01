@@ -16,16 +16,22 @@ D-025 (account routes), D-028 (key-exchange layer).
 
 ## 1. Headline
 
-| Cost | Value | Source |
+Categories are kept separate throughout (review F6): **setup/deployment**
+(one-time), **recurring verification** (per spend), **whole-transaction**
+(sponsor-visible), and **client-side**. Every row names its profile/parameter
+set, verifier revision, toolchain, and measurement boundary.
+
+| Cost (category) | Value | Exact provenance |
 | --- | --- | --- |
-| Announcement, L1 | **67,580 gas** (EIP-7623 floor, binding) | measured, Sepolia fork e2e; model reproduces 0.00% error |
-| vs EC-DKSAP baseline | **2.5×** (27,342 gas, standard regime) | `onchain_cost.py` |
-| Key-exchange wrapper overhead | **2,065 gas** (~3% of the floor) | `test_announce_overhead_gas` (D-028) |
-| Announcement, L2 blob regime | **~$0.0042** marginal L1 data | `onchain_cost.py` L2 model, dated anchors |
-| Meta-address registration (one-time) | 3.79 M gas naive / **~1.13 M via SSTORE2** (5,633 B) | modeled, D-011 |
-| Account deployment | **620,750 gas** (ERC-7913 pointer route) | e2e-7913, anvil, 2026-08-10 |
-| Signature verification on-chain | **4.93 M** (ethdilithium) – 8.18 M (dilithium) gas | ETHDILITHIUM KAT gas report |
-| Scanning | **44.3 µs/announcement** steady-state (Python client); 23.8 µs native | `scan_bench.py` / `registry_curve.py`; 0x3327 Rust harness |
+| Announcement, L1 (recurring, per payment) | **67,580 gas** (EIP-7623 floor, binding) | measured, Sepolia fork e2e, forge/anvil, 2026-08-10; model reproduces 0.00% error |
+| vs EC-DKSAP baseline (same boundary) | **2.5×** (27,342 gas, standard regime) | `onchain_cost.py` (modeled standard-regime baseline) |
+| Key-exchange wrapper overhead (recurring marginal) | **2,065 gas** (~3% of the floor) | `test_announce_overhead_gas` (D-028), forge, CI toolchain |
+| Announcement, L2 blob regime (recurring) | **~$0.0042** marginal L1 data | `onchain_cost.py` L2 model, anchors dated 2026-07-28 |
+| Meta-address registration (one-time setup) | 3.79 M gas naive / **~1.13 M via SSTORE2** (5,633 B, `0x01`) | modeled, D-011; `0x02` is 1,217 B → ~264k SSTORE2 |
+| Account deployment (one-time setup) | **620,750 gas** (ERC-7913 pointer route) | e2e-7913, anvil, 2026-08-10 |
+| Signature verification (recurring, per spend — see §5 for the profile split) | 4.93 M (ZKNOX_ethdilithium, keccak-PRNG variant) – 8.18 M (ZKNOX_dilithium, SHAKE) – ~15 M (ERC-7913 route at df999ed) | ETHDILITHIUM KAT gas report at rev df999ed; e2e-7913 |
+| Whole-spend transaction (recurring) | ~8.4 M (`handleOps`, blinded-key sig) | Sepolia fork, outer-tx measured |
+| Scanning (client-side) | **44.3 µs/announcement** steady-state (Python client); 23.8 µs native | `scan_bench.py` / `registry_curve.py`; 0x3327 Rust harness |
 
 The one-line story: **the scheme is data-heavy, not compute-heavy.** Detection
 (scanning) is competitive with — and natively *faster* than — the EC scheme
@@ -110,32 +116,55 @@ The deployed-verifier reality is ZKNOX's ETHDILITHIUM profile (level-2 round-3
 Dilithium, not ML-DSA-65 — issue #30). All figures measured (forge/anvil e2e,
 2026-08-10; ETHDILITHIUM KAT gas report at rev df999ed):
 
-| Operation | Gas | Notes |
-| --- | --- | --- |
-| ERC-7913 account deploy (pointer route) | **620,750** | initcode 2,952 B; keys behind SSTORE2 pointer (D-020/D-025) |
-| PKContract deploy (22.4 kB expanded pk) | 5,324,168 | one-time per stealth key |
-| Account deploy via old factory+embedded-key | 6,167,566 | the route D-025 replaced |
-| `ZKNOX_ethdilithium.verify` | **4,926,456** | keccak-PRNG variant |
-| `ZKNOX_dilithium.verify` | 8,176,453 | level-2 profile, SHAKE |
-| ERC-7913 verify at df999ed | ~14.97 M | stores `t1` plain, recomputes `NTT(t1·2^d)` per verify |
-| C13 `verify` | **188,092** | tx-level; the cheap non-PQ-sound corner |
-| 4337 `handleOps` spend (blinded-key sig) | ~8.4 M | Sepolia fork, outer-tx measured |
+| Operation | Category | Gas | Profile / verifier revision | Notes |
+| --- | --- | --- | --- | --- |
+| ERC-7913 account deploy (pointer route) | setup, one-time | **620,750** | ERC-7913 pointer route, df999ed verifier | initcode 2,952 B; keys behind SSTORE2 pointer (D-020/D-025) |
+| PKContract deploy (22.4 kB expanded pk) | setup, one-time per stealth key | 5,324,168 | ZKNOX PKContract | expanded-key storage route |
+| Account deploy via old factory+embedded-key | setup, one-time (superseded) | 6,167,566 | pre-D-025 route | the route D-025 replaced |
+| `ZKNOX_ethdilithium.verify` | recurring verification | **4,926,456** | ETHDILITHIUM keccak-PRNG variant — **not a FIPS ML-DSA measurement** | see caveat below |
+| `ZKNOX_dilithium.verify` | recurring verification | 8,176,453 | level-2 Dilithium2-shape, SHAKE | issue #30 territory: raw-key ML-DSA-65 verifier is open |
+| ERC-7913 verify at df999ed | recurring verification | ~14.97 M | ERC-7913 route, df999ed | stores `t1` plain, recomputes `NTT(t1·2^d)` per verify |
+| C13 `verify` (direct scheme) | recurring verification | **188,092** | SPHINCS-C13 direct signature, tx-level | hash-based; **its own soundness is that of the C13 parameter set** — the classical-only UltraHonk *wrapper* limitation (D-025) is a separate statement about a different route and does not transfer here |
+| 4337 `handleOps` spend | whole-transaction | ~8.4 M | blinded-key sig, level-2 profile | Sepolia fork, outer-tx measured |
 
-At the dated anchors (8 gwei, ETH $3,200) a full spend verification is
-~$126 (ethdilithium) to ~$209 (dilithium); at 30 gwei, ~$473–785. The honest
-framing: **spend is the expensive side of the scheme, and it is L1-only
-expensive** — detection (the every-payment path) sits at the 67,580 data
-floor, while each spend pays single-digit-millions of *execution* gas for PQ
-signature verification, which L2s price at a fraction of L1. Spend is also a
-one-shot operation per payment, not per-recipient per-announcement, and the
-account deploy (620,750) is one-time per stealth address.
+**Keccak-PRNG caveat (review F6):** `ZKNOX_ethdilithium` is a keccak-PRNG
+*variant* of the level-2 profile. It is **not** interchangeable with a FIPS
+ML-DSA measurement, and its 4.93 M figure must not be read as "the cost of
+ML-DSA verification" — it is the cost of that specific variant's verify at
+rev df999ed on the stated toolchain. The SHAKE-based `ZKNOX_dilithium` row
+(8.18 M) is the closer-to-standard measurement; a genuine FIPS ML-DSA
+verifier figure does not exist in this report (issue #30 records the
+raw-key ML-DSA-65 verifier as open work).
+
+Per-spend execution gas spans **single-digit millions to ~15 M depending on
+the verifier revision and route** (review F6: the earlier
+"single-digit-millions" framing contradicted the ~14.97 M ERC-7913 row in
+this same table). At the dated anchors (8 gwei, ETH $3,200) a spend's
+signature verification alone is ~$126 (ZKNOX_ethdilithium, 4.93 M) to ~$209
+(ZKNOX_dilithium, 8.18 M), and the ERC-7913 route at df999ed (~14.97 M) is
+~$383; at 30 gwei those become ~$473 / ~$785 / ~$1,437. The honest framing:
+**spend is the expensive side of the scheme, and it is L1-only expensive** —
+detection (the every-payment path) sits at the 67,580 data floor, while each
+spend pays millions to ~15 M of *execution* gas for PQ signature
+verification, which L2s price at a fraction of L1. Spend is a one-shot
+operation per payment, not per-recipient per-announcement, and the account
+deploy (620,750) is one-time per stealth address.
 
 The ZK-ownership route (D-025 preimage proof, UltraHonk backend) changes the
 profile, not the story: verification drops to the verifier's fixed cost but
-the backend is not PQ-sound — a PQ-sound STARK verifier is ~5 M gas (D-007
-measured/cited: STARK ~5 M vs Groth16 <300 k which is classical). Route
-choice is the parameter-level decision (#30/#31) and does not move the
-detection numbers.
+**that specific backend is classical-only sound** (UltraHonk is BN254/KZG) —
+a PQ-sound STARK verifier is ~5 M gas (D-007 measured/cited: STARK ~5 M vs
+Groth16 <300 k which is classical). Route choice is the parameter-level
+decision (#30/#31) and does not move the detection numbers.
+
+**Security-assumption bookkeeping (review F6), kept separate:** the *direct*
+C13 route (188,092) verifies a hash-based signature on-chain; its soundness
+assumptions are those of the SPHINCS-C13 parameter set — post-quantum under
+the hash-function security of its components, independent of any proof
+system. The classical-only limitation above belongs to the *UltraHonk-wrapped*
+preimage route (D-025), a different route whose statement happens to include
+C13 inside a zk proof. The two must not share a security label; the table row
+for direct C13 now carries its own.
 
 ## 6. Client-side scanning
 
@@ -178,10 +207,18 @@ in the security level — `param_sweep.py`).
   only marginal L1 data cost.
 - The gas model's dispatch overhead was fit once (700 gas) against the
   measured 67,580 and is fixed; the model is anchored, not tuned per use.
-- Spend-side verification figures are the **deployed level-2 profile**, not
-  ML-DSA-65 (D-006; #30 is the raw-key ML-DSA-65 verifier, open). Route and
-  parameter-level selection (#30/#31) is a spec-freeze decision and will move
-  the spend rows; it does not move §2–§4.
+- Spend-side verification figures are the **deployed level-2 profile**
+  (ZKNOX/ETHDILITHIUM at rev df999ed, forge/anvil, solc 0.8.30 / EVM
+  `prague`), **not ML-DSA-65**: the keccak-PRNG variant (4.93 M) and the
+  SHAKE level-2 shape (8.18 M) are separate measurements of separate
+  verifier builds and are not interchangeable FIPS ML-DSA figures (#30 is
+  the raw-key ML-DSA-65 verifier, open). Route and parameter-level selection
+  (#30/#31) is a spec-freeze decision and will move the spend rows; it does
+  not move §2–§4.
+- Whole-spend rows (`handleOps` ~8.4 M) are outer-transaction measurements
+  including EntryPoint overhead, on Sepolia fork replay — not pure
+  verification cost and not comparable to per-verify figures without
+  subtracting the wrapper (§5 table lists both categories separately).
 - Blinded-signing round counts are stochastic; means/medians are over N=200
   (mean) and N=50 (per-level) signatures (`op_bench.py`, `param_sweep.py`).
 
