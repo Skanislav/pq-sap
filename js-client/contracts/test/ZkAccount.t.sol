@@ -74,28 +74,36 @@ contract ZkAccountTest is Test {
         assertEq(dest.balance - before, 0.1 ether);
     }
 
+    /// @dev Issue #32: the Honk backend reverts on a digest mismatch (it never
+    ///      answers false), so a wrong digest surfaces as ProofCallFailed, not
+    ///      NotAuthorized — the account no longer swallows the revert. Partial
+    ///      match: the error carries the backend's own revert data.
     function testRejectsWrongDigest() public {
         ctx.set(keccak256("other frames"), 1, proof);
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(Stealth8141ZkAccount.NotAuthorized.selector);
+        vm.expectPartialRevert(Stealth8141ZkAccount.ProofCallFailed.selector);
         acct.executeFrame(1, address(0xdEaD), 0.1 ether, "");
     }
 
+    /// @dev Issue #32: a tampered proof is rejected inside the Honk verifier
+    ///      with a revert, which the account surfaces as ProofCallFailed.
     function testRejectsTamperedProof() public {
         bytes memory bad = proof;
         bad[200] ^= 0x01;
         ctx.set(DIGEST, 1, bad);
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(Stealth8141ZkAccount.NotAuthorized.selector);
+        vm.expectPartialRevert(Stealth8141ZkAccount.ProofCallFailed.selector);
         acct.executeFrame(1, address(0xdEaD), 0.1 ether, "");
     }
 
+    /// @dev Issue #32: same as above — a proof for someone else's commitment is
+    ///      a backend revert, surfaced as ProofCallFailed.
     function testRejectsOtherCommitment() public {
         Stealth8141ZkAccount other =
             Stealth8141ZkAccount(payable(factory.createAccount(keccak256("someone else"))));
         vm.deal(address(other), 1 ether);
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(Stealth8141ZkAccount.NotAuthorized.selector);
+        vm.expectPartialRevert(Stealth8141ZkAccount.ProofCallFailed.selector);
         other.executeFrame(1, address(0xdEaD), 0.1 ether, "");
     }
 

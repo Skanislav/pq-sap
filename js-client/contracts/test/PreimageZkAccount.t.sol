@@ -44,16 +44,20 @@ contract PreimageZkAccountTest is Test {
         assertEq(dest.balance, 0.1 ether);
     }
 
+    /// @dev Issue #32: the Honk backend reverts on a digest mismatch or a
+    ///      tampered proof (it never answers false); the account surfaces those
+    ///      as ProofCallFailed instead of collapsing them into NotAuthorized.
+    ///      Partial match: the error carries the backend's own revert data.
     function testRejectsWrongDigestAndTamper() public {
         ctx.set(keccak256("other"), 1, proof);
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(Stealth8141ZkAccount.NotAuthorized.selector);
+        vm.expectPartialRevert(Stealth8141ZkAccount.ProofCallFailed.selector);
         acct.executeFrame(1, address(0xdEaD), 0.1 ether, "");
         bytes memory bad = proof;
         bad[300] ^= 0x01;
         ctx.set(DIGEST, 1, bad);
         vm.prank(ENTRY_POINT);
-        vm.expectRevert(Stealth8141ZkAccount.NotAuthorized.selector);
+        vm.expectPartialRevert(Stealth8141ZkAccount.ProofCallFailed.selector);
         acct.executeFrame(1, address(0xdEaD), 0.1 ether, "");
     }
 }

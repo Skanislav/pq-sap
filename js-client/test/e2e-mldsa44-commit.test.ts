@@ -17,6 +17,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { artifactFrom } from './util/artifact.ts';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -37,7 +38,7 @@ const FAIL = '0xffffffff';
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const OUT = here('../contracts/out');
-const artifact = (rel: string) => JSON.parse(readFileSync(`${OUT}/${rel}`, 'utf8'));
+const artifact = (rel: string) => artifactFrom(OUT, rel);
 const fx = JSON.parse(readFileSync(here('../../python/scripts/mldsa44_commit_7913_demo.json'), 'utf8'));
 
 test('ml-dsa-44-commit/v0: committed ML-DSA-44 key spends through the frame account on anvil', {

@@ -21,6 +21,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+
+import { artifactFrom } from './util/artifact.ts';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -47,7 +49,7 @@ const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const OUT = here('../contracts/out');
 
 function artifact(rel: string) {
-  return JSON.parse(readFileSync(`${OUT}/${rel}`, 'utf8'));
+  return artifactFrom(OUT, rel);
 }
 
 const demo = JSON.parse(

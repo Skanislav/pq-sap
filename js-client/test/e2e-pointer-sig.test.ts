@@ -28,6 +28,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { artifactFrom } from './util/artifact.ts';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -48,7 +49,7 @@ const CLASSIC_KEY = keccak256(toHex('pointer-sig classic demo key'));
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const OUT = here('../contracts/out');
-const artifact = (rel: string) => JSON.parse(readFileSync(`${OUT}/${rel}`, 'utf8'));
+const artifact = (rel: string) => artifactFrom(OUT, rel);
 
 const demo = JSON.parse(
   readFileSync(here('../../python/scripts/sphincs_c13_7913_demo.json'), 'utf8'));

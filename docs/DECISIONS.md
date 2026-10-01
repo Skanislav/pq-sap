@@ -1269,6 +1269,7 @@ hashes of `ss`, and a format-`0x02` address has no EC scalar. The one-byte
 tag is a post-decapsulation filter, not a soundness surface — a tag match
 alone proves nothing, and a false positive falls through to the full address
 comparison (`check_commit_announcement` returns `None`).
+
 ## D-030 — Registry trust is deployment policy, not ERC scope; direct-signature spend routes are informative, and their linkability is a stated property — **FINDING (2026-09-30; issues #28, #33, #29)**
 
 Three questions arrived together and are decided together, because they are
@@ -1341,3 +1342,74 @@ both linkability channels is left for the human-authored `erc-draft.md`
 (D-024); the wording above is the record's language, not the draft's.
 Cross-links on issues #28, #33 and #29 are the remaining GitHub action,
 pending the maintainer's OK.
+## D-031 — Gas-exhaustion semantics across the spend wrappers: verifier failures surface, underfunding fails fast at a floor, and only a completed `false` is forgery — **FINDING / implementation (2026-09-30)**
+
+Issue #32 (from PR #26 review). `MlDsa44CommitSigner7913.verify` had already
+stopped collapsing inner failures into "invalid": a gas-capped caller sees
+`VerifierCallFailed`, so exhaustion and forgery are distinguishable there.
+The layers above still swallowed every revert:
+
+- OpenZeppelin's `ERC7913Utils.isValidSignatureNow` (under
+  `SignerERC7913`, i.e. `Stealth7913Account`, `Stealth7913Account4337`,
+  `Stealth8141Account`) treats any inner revert as "not authorized".
+- `Stealth8141ZkAccount._verify` treated `ok == false` as `verify == false`.
+
+An integrator calling under a gas cap could not distinguish resource
+exhaustion from forgery, and gas estimation settles on the cheap failure
+path (a revert reads as "signature invalid" → wallet retries with the same
+underfunded budget, or silently misreports).
+
+**The fix, three layers.**
+
+1. `Pq7913Signer` (new, `js-client/contracts/src/Pq7913Signer.sol`):
+   `SignerERC7913` with the swallow removed. A verifier call that does not
+  complete — out of gas under the caller's cap, or a malformed return —
+   reverts `VerifierCallFailed(bytes returnData)`; a completed call that
+   answers anything but the magic is "invalid" (unchanged). All three
+   ERC-7913 account wrappers now inherit it (`Stealth7913Account`,
+   `Stealth7913Account4337`, `Stealth8141Account` — the frame route now
+   validates through `_validate7913` instead of
+   `SignatureChecker.isValidSignatureNow`). The plain-address branch
+   (`signer.length == 20`, ECDSA/ERC-1271) is delegated unchanged.
+   No floor is checkable here: the verifier is caller-chosen at deployment
+   (`verifier || key` bytes), so the contract cannot know a backend's cost.
+   Consumers that catch reverts still see a failure — now an honest
+   "underfunded", not a forged verdict.
+2. `Stealth8141ZkAccount.executeFrame` checks `MIN_PROOF_GAS = 4_000_000`
+   before the verifier call and reverts `GasFloorExceeded(floor, available)`
+   (both values in the payload, so the sponsor sees exactly what to
+   resupply). The shipped backends measure (whole call, forge, solc
+   0.8.30/prague): preimage-ownership ~3.0 M, UltraHonk C13 ~3.6 M — 4 M
+   leaves headroom for larger proofs of the same statements; a cheaper
+   replacement backend is unaffected (the floor is a caller budget, not a
+   verifier cost). Above the floor, a backend revert surfaces as
+   `ProofCallFailed(bytes returnData)`; a completed call with a malformed
+   return is a malfunction (`ProofCallFailed`), not a bad proof; only a
+   completed `verify == false` is `NotAuthorized`. The tooling surface
+   `isValidProof` keeps the bool contract.
+3. Documented minimum gas table (in `Pq7913Signer`): C13 verify ~110 k
+   exec / ~188 k tx-level (D-019's anvil figure), preimage ~3.0 M, Honk C13
+   ~3.6 M, ML-DSA-44 ~16 M (D-027 route), ML-DSA-65 ~15 M (frames route).
+
+**What changed observably.** `Stealth8141ZkAccount` rejection tests
+(`ZkAccount.t.sol`, `PreimageZkAccount.t.sol`) previously expected
+`NotAuthorized` for wrong digest / tampered proof / other commitment: the
+Honk backends revert on those (they never answer `false`), and the old
+`_verify` collapsed the revert. Those tests now expect `ProofCallFailed`
+(partial selector match — the error carries the backend's own revert data).
+The account's own surface is unchanged for the accept path and the
+completed-`false` path; only the failure taxonomy changed. ERC-4337: a
+reverted `validateUserOp` is still a time-0 validation failure to the
+EntryPoint; the difference is decodable, not behavioral, at that layer.
+
+**What is and is not claimed.** The window fixed is the practical one: the
+account has gas for its own logic, the verifier does not. A frame so
+gas-starved that even the account's revert cannot be paid for still reverts
+generically — no contract can make an exhausted-gas revert
+self-describing. The floors and the no-swallow rule are about the
+integrator's diagnosis, not about new authorization power: nothing here
+changes what a valid proof or signature authorizes. Gas figures are
+measured on the shipped forge/solc stack and will drift with the toolchain;
+the assert bounds in `GasExhaustion.t.sol` are deliberately loose (C13
+< 2 M, i.e. 10× the measured figure) so the tests document rather than
+brittle-pin. Nothing is deployed.

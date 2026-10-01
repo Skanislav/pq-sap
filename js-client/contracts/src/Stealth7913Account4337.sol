@@ -2,9 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Account} from "@openzeppelin/contracts/account/Account.sol";
-import {SignerERC7913} from "@openzeppelin/contracts/utils/cryptography/signers/SignerERC7913.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {IEntryPoint} from "@openzeppelin/contracts/interfaces/draft-IERC4337.sol";
+
+import {Pq7913Signer} from "./Pq7913Signer.sol";
 
 /// @title Stealth7913Account4337
 /// @notice ERC-4337 stealth account for the ERC-7913 spend route (D-014):
@@ -15,10 +16,18 @@ import {IEntryPoint} from "@openzeppelin/contracts/interfaces/draft-IERC4337.sol
 ///         authorizes spends. The EntryPoint is constructor-provided so the
 ///         account works on chains where the canonical singleton is absent
 ///         (local anvil).
-contract Stealth7913Account4337 is Account, SignerERC7913, IERC1271 {
+///
+///         `Pq7913Signer` (issue #32): a verifier call that does not complete
+///         (gas exhaustion under the EntryPoint's verification-gas cap)
+///         reverts `VerifierCallFailed` on the ERC-1271 surface, and through
+///         `Account._validateUserOp` the EntryPoint sees a reverted validation
+///         (time-0 failure) instead of a silent "signature invalid". Both are
+///         failures — but an integrator decoding the revert can tell
+///         underfunding from forgery.
+contract Stealth7913Account4337 is Account, Pq7913Signer, IERC1271 {
     IEntryPoint private immutable _entryPoint;
 
-    constructor(bytes memory signer_, IEntryPoint entryPoint_) SignerERC7913(signer_) {
+    constructor(bytes memory signer_, IEntryPoint entryPoint_) Pq7913Signer(signer_) {
         _entryPoint = entryPoint_;
     }
 
