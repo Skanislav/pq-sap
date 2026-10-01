@@ -103,17 +103,26 @@ variable (preimage    : SpendKey → SS → Bytes) -- COMMIT ‖ spend_key ‖ o
 
 Design decisions, with reasons:
 
-1. **Two oracles, one composite.** The opener hash and the
-   commitment/CREATE2 composite are separate oracle types in the interface
-   (`Bytes →ₒ SS`, `Bytes →ₒ Addr`), but the adversary-facing game queries
-   only through the composite — the challenger queries the inner oracle once
-   (to draw the opener) and hands the result to the outer. This is the
-   `addrSpec := unifSpec + (Bytes →ₒ Addr)` pattern (`BlindingROM.lean:38`)
-   with one extra spec. Reason: the §3 sketch's union bound runs over the
-   *outer* oracle's query budget (`qH` guesses at 2⁻²⁵⁶ openers through the
-   inner oracle each), and keeping the inner oracle explicit lets the module
-   state the uniform-output property at the inner level as a lemma rather
-   than folding it into an assumption.
+1. **Two oracles, one composite — and an explicit bridge obligation
+   (review F3).** The opener hash and the commitment/CREATE2 composite are
+   separate oracle types in the interface (`Bytes →ₒ SS`, `Bytes →ₒ Addr`),
+   but the adversary-facing game queries only through the composite — the
+   challenger queries the inner oracle once (to draw the opener) and hands
+   the result to the outer. This is the `addrSpec := unifSpec +
+   (Bytes →ₒ Addr)` pattern (`BlindingROM.lean:38`) with one extra spec.
+   Reason: the §3 sketch's union bound runs over the *outer* oracle's query
+   budget (`qH` hidden-preimage guesses at 2⁻²⁵⁶ each), and keeping the inner
+   oracle explicit lets the module state the uniform-output property at the
+   inner level as a lemma rather than folding it into an assumption.
+   **What this interface does not yet model:** the adversary's queries to
+   the *real* intermediate hashes — the concrete commitment hash and the
+   concrete keccak256 initcode hash — on adversarially chosen inputs. The
+   composite abstraction hides that access; a faithful instantiation
+   argument must either simulate those queries in the reduction or prove the
+   composite inherits per-hash ROM uniformity under composed queries. That
+   bridge is **open work**, recorded here and in the companion note §3;
+   theorems proved over this interface are statements about the abstract
+   game, not yet about the deployed commitment/CREATE2 chain.
 2. **`SpendKey` is a public constant, not a secret.** The interface does not
    model `spend_key` generation — it is a parameter handed to the game,
    exactly like `rho : Bool → Rho` in `blindGameRO` (`BlindingROM.lean:103`).
@@ -127,14 +136,26 @@ Design decisions, with reasons:
    performed and priced by the generic chain (`sharedSecretHiding`,
    `SharedSecretHiding.lean:187`); the module must not (and does not) redo
    it. No circularity, per the companion note §3 assumption 2.
-4. **`Tag` un-modelled.** The view tag is a deterministic function of `ss'`
-   alone — the `taggedAux` shape (`Soundness.lean:305`) — so it is
+4. **`Tag` carried opaquely, with the deployed-tag condition stated
+   (review F3).** The view tag is a deterministic function of `ss'` alone —
+   the `taggedAux` shape (`Soundness.lean:305`) — so it is
    branch-independent once `ss'` is fixed and drops out of the
    branch-distribution advantage by the same argument as
    `blindingAdvantageRO_eq_zero_of_no_query` (`BlindingROM.lean:134`) uses
-   for the tag there. Carrying it as an opaque `Tag` constant in the aux
-   pair keeps the statement shape-faithful to `ofKEMFull` (aux is
-   `Tag × Addr`) while the proof treats it as public decoration.
+   for the tag there. **Branch-independence alone is not the harmless
+   property.** An opaque `tagOf : SS → Tag` could be `tagOf ss = ss` —
+   secret-revealing, and the adversary would compute both candidate
+   destinations through the public hashes, breaking the game. The
+   drop-out argument needs the *deployed* tag's properties jointly with
+   the opener/address derivation: (i) the tag is a truncation of a hash of
+   `ss'`, so it leaks nothing the oracle does not already gate behind a
+   hidden-preimage query; (ii) the one-byte tag cannot steer a query
+   toward the challenge address. Carrying `Tag` opaquely in the interface
+   is therefore a *statement-shape* choice (aux is `Tag × Addr`,
+   shape-faithful to `ofKEMFull`); instantiating the drop-out lemma for
+   any concrete profile must analyze that profile's actual tag function —
+   the companion note §3 assumption 4 does this for the deployed
+   SHA-256(ss)[0:1].
 
 ## 4. The game, and the four planned theorems
 

@@ -9,8 +9,13 @@ originally built for. Analysis only; no protocol change is proposed.
 
 Every theorem cited is sorry-free in `lean/PqStealth/` (guarded by the
 `Axioms.lean` audit); line numbers are from `main` at `7d5e15e`. The ROM
-argument of §3 is a sketch for review, not a theorem — §5 states the boundary
-precisely.
+argument of §3 is a sketch for review, not a theorem: it rests on a
+composite-oracle abstraction whose bridge to the real commitment/CREATE2
+instantiation is **not proved**, and its `2^-175` figure is an estimate
+under that abstraction — §3 and §5 state the boundary precisely. Classical
+ROM only: quantum oracle access, ANO-CCA (active) and the MLWE reduction of
+the KEM terms remain outside this note exactly as in the rest of the
+development.
 
 ## 1. The instantiation
 
@@ -140,29 +145,54 @@ preimage:
    *preimage*: distinguishing branches is distinguishing oracle outputs on
    two public prefixes — impossible without querying the oracle on a point
    whose preimage involves the branches' differing secret draw.
-3. **Union bound.** With at most `qH` queries to the outer oracle, the
-   probability any query lands on the challenger's address point is at most
-   `qH · 2^-160` per branch (each query guesses one of `2^160` addresses — or,
-   read at the preimage level, one of `2^256` openers through the inner
-   oracle: `qH · 2^-256`). Summing both branches and both oracle levels:
+3. **Bad event, defined precisely (review F3).** Two distinct events must
+   not be conflated:
+   - **(a) Hidden-preimage query:** the adversary queries an oracle at a
+     preimage whose secret slot is the challenger's `ss'`. Per-query
+     probability `2^-256` against a uniform 256-bit secret it has not seen.
+   - **(b) Unrelated colliding output:** some query happens to produce the
+     challenge *address* (a 160-bit target) without touching the hidden
+     preimage — e.g. programming the outer oracle, or querying a different
+     preimage that happens to land on the same address.
+   Event (a) is bounded by `qH · 2^-256` per oracle level. Event (b) would be
+   bounded by `qH · 2^-160` **only if** the adversary could steer queries
+   toward the address point; under the composite-oracle abstraction below it
+   cannot, and (b) collapses into (a) — but that collapse is exactly the
+   abstraction's content, not a consequence of the union bound. The earlier
+   draft summed a `2^-160` and a `2^-256` term and dismissed the larger as
+   dominated — that step is invalid as a union-bound argument; the two events
+   are different, and the `2^-160` term is absent from the final bound
+   *because of the abstraction*, as now stated.
 
 ```
-auxKeyIndependence ≤ 2·qH·2^-256   (inner-oracle reading; the 2^-160 outer
-                                     reading is looser in the exponent that
-                                     matters and dominated by the same qH)
+auxKeyIndependence ≤ 2·qH·2^-256
 ```
 
-The bound shape is `blindBadProb_le_queryBound` (`BlindingEntropy.lean:94`)
-— `blindBadProb ≤ qH·β` per branch, `2·qH·β` total — with the commitment
-point mass `β = 2^-256` in place of the lattice β. `qH = 2^80` queries leave
-`2·qH·2^-256 = 2^-175`.
+   — *under the composite-oracle abstraction*, per branch; the two branches
+   share the same hidden `ss'`, so the hidden-preimage event is the same
+   event counted once per oracle level, not a fresh `2^-160` guess per
+   branch.
+
+**The composite-oracle abstraction is a stronger assumption, stated as
+such (review F3).** Modeling commitment-hash + CREATE2 as one ideal oracle
+`Bytes → Addr` ignores that the adversary can query the *intermediate*
+hashes (the real commitment hash, the real keccak256 initcode hash) on
+adversarially chosen inputs. A faithful reduction would have to simulate
+those intermediate oracles and argue the composite inherits their
+uniformity — the natural plan mirrors `BlindingROM.lean` (one composite
+oracle, identical-until-bad, query-budget bound), but **no such module
+exists in the Lean tree**. Until `CommitmentAnonymity.lean` lands, §3 is a
+**sketch under an unproved abstraction bridge**, and the `2^-175` figure
+below is an *estimate under that abstraction*, not a theorem-derived bound.
 
 Assumptions, stated precisely:
 
 1. **ROM on SHA-256 (opener) and on the keccak256 composite (commitment +
-   CREATE2 chain).** The standard assumption the development already carries
-   everywhere it reasons about hashes (D-015's SHA-256/keccak discipline;
-   the ERC evidence map keeps the concrete primitives unmodelled).
+   CREATE2 chain), modeled as ONE composite oracle.** Stronger than the
+   standard per-hash ROM the development carries elsewhere: the abstraction
+   hides the adversary's ability to query the real intermediate hashes.
+   Labeled here as an **unproved bridge** (see above); discharging it is the
+   recorded open obligation (`CommitmentAnonymity.lean`, future work).
 2. **`ss'` uniform by construction.** In the `randAuxBranch` game the
    challenger draws `ss'` uniform — that is *by construction*, not an
    assumption. Getting there from the real game is the IND-CPA step, which
@@ -171,16 +201,33 @@ Assumptions, stated precisely:
    that assumption. No circularity.
 3. **Both recipients share the deployment binding (and profile).** The
    factory, creation code, salt, verifier, and frame context enter the
-   address preimage as public constants *common to both branches*. If the two
-   recipients use different bindings or profiles, their aux distributions
-   differ for public reasons — that channel is auxiliary information outside
-   the `auxGen` model (`unlinkSetup` draws both recipients from one
-   `keygen`), and SECURITY_ANALYSIS.md's profile-narrowing paragraph covers
-   it. The ERC text must state the single-profile/common-binding condition
-   as a property.
+   address preimage as public constants *common to both branches*. If the
+   two recipients use different bindings or profiles, their aux
+   distributions differ for public reasons — that channel is auxiliary
+   information outside the `auxGen` model (`unlinkSetup` draws both
+   recipients from one `keygen`), and SECURITY_ANALYSIS.md's
+   profile-narrowing paragraph covers it. The ERC text must state the
+   single-profile/common-binding condition as a property.
+4. **The tag function is the deployed one-byte tag.** `tagOf =
+   SHA-256(ss)[0:1]` is branch-independent (depends on `ss'` only), and its
+   output is one byte. Branch-independence alone is NOT a generic harmless
+   property: a tag function that leaked the secret (e.g. `tagOf(ss) = ss`)
+   would let the adversary compute both candidate destinations through the
+   public hashes and break the argument. What makes the deployed tag
+   harmless *in this model* is the combination — (i) it is a truncation of
+   a hash of the secret, so learning the tag byte requires querying the
+   oracle on the hidden `ss'`; (ii) even knowing the full tag byte does not
+   steer any oracle query toward the challenge address. The generic
+   `taggedAux` machinery makes no claim about other tag choices; **each
+   profile's tag must be analyzed jointly with its opener and address
+   derivation**, which §4b's instantiation does for this profile.
 
-**Reading the bound.** The commitment-side channel contributes at most
-`2·qH·2^-256` — with a generous `qH = 2^80`, `2^-175` per payment pair. The
+**Reading the estimate (review F3).** Under the composite-oracle abstraction
+above, the commitment-side channel contributes at most `2·qH·2^-256` — with
+a generous `qH = 2^80`, `2^-175` per payment pair. This is an **estimate
+under an unproved abstraction**, not a bound discharged by a Lean theorem;
+the four-term decomposition itself is proved, but this aux term is the
+sketched one (see §3 and §5). The
 dominant terms of the format-`0x02` privacy bound are the KEM terms — ML-KEM
 IND-CPA (twice) and ML-KEM ciphertext anonymity — which remain named
 MLWE-level terms exactly as for Construction A. **The privacy story for format
@@ -202,14 +249,16 @@ and `unlinkAdvantageN_ofKEMFull_le` (`MultiRecipient.lean:358`) gives
 not paper composites — the per-hybrid adversary's four-term sum is the §2
 bound each time.
 
-A concrete reading for the write-up: with `qH = 2^80`, the aux term at `q`
-observed announcements is `q · 2^-175`. Even a full-chain window of
-`q = 2^20` announcements to the pair keeps it at `2^-155`; a `2^40` window at
-`2^-135`. Whatever window the threat model picks, the commitment-side
-channel stays negligible against the KEM terms — the statement the
-security-analysis write-up should make quantitative, with the window `q`
-stated explicitly (`announcement-model.md`'s guidance: the single-challenge
-target must be `ε ≤ 2^-k / q` for a `k`-bit claim).
+A concrete reading for the write-up — *conditional on the §3 abstraction*:
+with `qH = 2^80`, the aux term at `q` observed announcements is `q · 2^-175`.
+Even a full-chain window of `q = 2^20` announcements to the pair keeps it
+at `2^-155`; a `2^40` window at `2^-135`. These figures inherit the §3
+sketch's status: proved decomposition, sketched aux term. Whatever window
+the threat model picks, the commitment-side channel stays negligible
+against the KEM terms — the statement the security-analysis write-up should
+make quantitative, with the window `q` stated explicitly
+(`announcement-model.md`'s guidance: the single-challenge target must be
+`ε ≤ 2^-k / q` for a `k`-bit claim).
 
 **Correction to the in-tree reading.** `lean/docs/announcement-model.md` says
 the composition of `MultiUnlink`/`MultiRecipient` with `unlinkAdvantage_ofKEMFull_le`
@@ -256,8 +305,11 @@ announcements is on paper (not in Lean), as the essay already records.
   (`CommitmentAnonymity.lean`, future work; the natural plan mirrors
   `BlindingROM.lean`: one composite oracle, identical-until-bad, query-budget
   bound). Until it lands, §3 is a review artifact for the ERC's
-  security-considerations text — the *assumption list* is rigorous, the bound
-  is a sketch.
+  security-considerations text — the *assumption list* is rigorous, the
+  `2^-175` figure is an estimate under the stated composite-oracle
+  abstraction (an unproved bridge), **not an established bound**. Per
+  review F3: do not quote `2^-175` as a derived quantity; quote it as
+  "estimated under the §3 abstraction, open proof obligation".
 
 **Explicitly not claimed:**
 
@@ -280,14 +332,16 @@ announcements is on paper (not in Lean), as the essay already records.
 
 ## Reproduce
 
-Numbers in §2–§4 from exact arithmetic (no dependencies):
+Numbers in §2–§4 from exact arithmetic (no dependencies). The `aux_term`
+line is the §3 sketch's estimate **under the composite-oracle abstraction**
+— it reproduces the arithmetic, not the proof (review F3):
 
 ```python
 from fractions import Fraction as F
 
-beta_commitment = F(1, 2**256)        # point mass per address-point guess
+beta_commitment = F(1, 2**256)        # hidden-preimage point mass (§3 event (a))
 qH = 2**80                            # generous joint oracle-query budget
-aux_term = 2 * qH * beta_commitment   # = 2^-175
+aux_term = 2 * qH * beta_commitment   # = 2^-175 (under the §3 abstraction)
 assert aux_term == F(1, 2**175)
 
 # Construction A contrast (ML-DSA-65): lattice point-mass
