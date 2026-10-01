@@ -78,6 +78,11 @@ const SECTIONS = [
       ['lean/docs/vcvio-pin.md', 'lean/vcvio-pin', 'VCVio pin'],
       ['lean/docs/vcvio-upstream.md', 'lean/vcvio-upstream', 'Upstream work'],
       ['lean/docs/lean-study-notes.md', 'lean/lean-study-notes', 'Study notes'],
+      [
+        'lean/docs/commitment-anonymity-design.md',
+        'lean/commitment-anonymity-design',
+        'Commitment anonymity module design',
+      ],
       ['lean/docs/etheorem-lessons.md', 'lean/etheorem-lessons', 'Engineering lessons'],
       ['lean/docs/improvements.md', 'lean/improvements', 'Historical improvement log'],
     ],
