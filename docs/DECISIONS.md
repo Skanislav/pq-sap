@@ -1232,3 +1232,39 @@ bytecode (Nethermind's Clear, Yul → Lean 4, or an EVM semantics such as
 EvmYul) is the upgrade path; both need Mathlib and belong in the multi-hour
 `lean.yml` lane, not the seconds-fast `ci.yml` job this package runs in.
 Nothing here is deployed.
+
+## D-029 — The opener and view tag hash only the shared secret; a KEM is admissible to a profile only if its own derivation binds the encapsulation key and ciphertext — **FINDING / direction (2026-09-29; issue #38)**
+
+Question (issue #38): the ethresear.ch hybrid combiner derives its per-payment
+secret from `SHA3-256(DS ‖ r_ec ‖ r_pq ‖ epk ‖ ct ‖ viewing_pk_ec ‖ ek)`,
+hashing the ciphertext and both public keys into the transcript. Here the
+opener is `SHA-256(open_domain ‖ ss)` and the view tag is `SHA-256(ss)[0:1]`;
+neither includes `ct` or `ek`. Should they?
+
+**No — the binding is already inside `ss`.** FIPS 203 ML-KEM.Encaps derives
+`ss = KDF_256(K̄ ‖ H(ek) ‖ H(ct))`: both the encapsulation-key hash and the
+ciphertext hash are hashed into the shared secret by the KEM itself, and
+decapsulation re-encrypts before deriving (implicit rejection on mismatch).
+A substituted `(ek′, ct′)` reproducing a given `ss` therefore needs a
+SHAKE256 KDF collision (~2²⁵⁶), and a `(ct, ss)` replayed against another
+meta-address fails decaps before the opener is ever derived — the recipient
+binding the thread's `viewing_pk` inclusion provides in a classical combiner
+is provided here by the KEM's own transcript. External re-hashing would change
+every derived address, invalidate every vector set and the Lean size checks,
+and buy nothing the internal binding does not already give.
+
+**Admissibility requirement (normative for profiles).** A KEM is admissible to
+a profile only if its shared-secret derivation internally binds the
+encapsulation-key hash and the ciphertext hash. ML-KEM (FIPS 203) and X-Wing
+qualify; a plain combiner without internal transcript binding must instead
+use new domain strings — a new profile revision, not an edit of existing ones,
+since renaming a domain moves funds. Stated in
+`docs/TECHNICAL_SPEC.md` §4 so ERC reviewers' "why isn't the ciphertext in
+the transcript" has a canonical answer.
+
+**View tag.** The thread's naive-view-tag attack (tag as a prefix of the
+address scalar) does not apply: the tag and the address inputs are different
+hashes of `ss`, and a format-`0x02` address has no EC scalar. The one-byte
+tag is a post-decapsulation filter, not a soundness surface — a tag match
+alone proves nothing, and a false positive falls through to the full address
+comparison (`check_commit_announcement` returns `None`).
