@@ -235,10 +235,12 @@ branch.
   prerequisite for any nontrivial `zetaWide` and hence for composing
   `CmaToNmaLossNN`.
 - **QROM blinding.** Even with all of the above, key blinding for lattice
-  schemes has no QROM proof — the open problem recorded in
-  `research/key-blinding-bibliography.md` (Eaton et al.'s generic framework
-  is symmetric-scheme-only; Balumuri et al. 2024/945 is MPCitH). The `z`
-  analysis here is classical-ROM throughout.
+  schemes has no QROM proof — the open problem recorded in the
+  [key-blinding bibliography](key-blinding-bibliography.md) (Eaton et al.'s
+  generic framework is ROM-only at every family it covers, Dilithium
+  included; Balumuri et al. 2024/945 is the MPCitH QROM proof, Basso et al.
+  2026 an unconditional isogeny result). The `z` analysis here is
+  classical-ROM throughout.
 
 ## Reproduce
 
