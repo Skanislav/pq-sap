@@ -62,13 +62,20 @@ spending route. They are not removed by narrowing the ERC's scope.
 
 - Construction A has a related-key **ownership-witness** reduction; its
   signature EUF-CMA layer remains uncomposed and widened HVZK currently has
-  the trivial bound `1`. The concrete content of that gap: the honest widened
-  signer aborts a `z`-gate round with probability `1 − 0.383 ≈ 0.617` at
-  ML-DSA-65 (`mldsa65_widened_z_accept_prob`, `WidenedSigning.lean:590`),
-  while the pinned simulator's ring-uniform `z` passes the widened gate with
-  probability ≈ 10⁻¹¹⁵⁶ — the distance is ≈ 0.617 before any transcript
-  coupling is even measured (research note
-  [widened-z distribution](research/widened-z-distribution.md) §4).
+  the trivial bound `1`. Concrete `z`-gate content of that gap (research
+  note [widened-z distribution](research/widened-z-distribution.md) §4,
+  corrected per review F4 2026-10-01): the honest widened signer aborts a
+  `z`-gate round with probability `1 − 0.383 ≈ 0.617` at ML-DSA-65
+  (`mldsa65_widened_z_accept_prob`, `WidenedSigning.lean:590`), while the
+  pinned simulator's ring-uniform `z` **aborts with probability ≈ 1** (its
+  gate-pass probability is ≈ 10⁻¹¹⁵⁶). Comparing the two abort masses, the
+  `z`-gate-only transcript-distance contribution is
+  `|0.617 − 1| ≈ 0.383` — not ≈ 0.617; the earlier text subtracted the
+  simulator's success probability from the honest abort mass. Even the
+  0.383 figure is a `z`-gate-only floor, not a full-scheme bound: the
+  honest prover's other rejection gates (`r₀`, hint) change the honest
+  abort mass, and no nontrivial full-scheme HVZK distance is claimed until
+  the cube-source simulator and its exact transcript experiment land.
 - The tightened gates are themselves a disclosure channel. A widened
   signature's coefficients are all `‖z‖∞ < γ₁ − 2β` by construction; a stock
   signature lands entirely below that bound only with probability

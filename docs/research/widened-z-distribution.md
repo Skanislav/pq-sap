@@ -8,8 +8,14 @@ signatures, and maps the spend-side linkability channels — absorbing the
 analyses behind issues #29 and #33 — against the proven announcement
 unlinkability bound. Analysis only; no protocol change proposed.
 
-Every displayed probability is exact (rational) and derived from the theorems
-cited; decimal values are computed from the rationals, never hand-rounded.
+Model scope (review F4, 2026-10-01): every probability in this note is exact
+(rational) **for the `z` gate alone** — the fixed-shift, cube-uniform
+rejection-sampling model of §2, derived from the cited theorems; decimals are
+computed from the rationals, never hand-rounded. The full published-signature
+distribution — after Fiat–Shamir challenge generation, the `r₀` gate, and the
+hint check — is **not** analyzed here: the stock-side distinguishability
+figures of §3 are z-gate-model numbers, not exact full-signature
+distinguishability probabilities, and no full-scheme HVZK theorem is claimed.
 
 ## 1. Setup: the widened gates
 
@@ -98,13 +104,16 @@ band coefficient is `1 − 0.619536^k`:
 
 Caveats, stated precisely:
 
-- The exactness above is for the `z` gate alone. The published signature is
-  additionally conditioned on the `r₀` and hint gates (a fresh `y` per retry),
-  which couples `z` with `w = A·y` and perturbs the stock marginal. The
-  *widened* side is unaffected — its gate forces the band-avoidance event with
-  probability exactly 1 — so the per-signature numbers are exact for the
-  widened signer and z-gate-model-exact for the stock signer; the direction of
-  the full-gate perturbation of the stock probability is not analyzed here.
+- The exactness above is for the `z` gate alone (review F4 scope note). The
+  published signature is additionally conditioned on the `r₀` and hint gates
+  (a fresh `y` per retry), which couples `z` with `w = A·y` and perturbs the
+  *stock* marginal. The widened side's band-avoidance is forced with
+  probability exactly 1 by its own gate, so the *widened signer's
+  band-avoidance event* is exact — but the per-signature **distinguishing
+  advantage** numbers are z-gate-model numbers for the stock side, and the
+  direction of the full-gate perturbation of the stock probability is not
+  analyzed here. No exact full-signature distinguishability probability is
+  claimed.
 - **What leaks is the route class, not the recipient.** `z` is key-independent
   (§2), so the channel reveals "this signature was produced with a widened,
   i.e. blinded, key" — it does not by itself connect two widened signatures to
@@ -112,32 +121,60 @@ Caveats, stated precisely:
   Construction-A-family spend, narrowing an observer's candidate set to
   `0x01`-format recipients before any key is revealed. It composes with the
   two disclosure channels below rather than replacing them.
-- This is the quantitative statement of why `widened_ids_hvzk` cannot be
-  sharpened to zero (next section): a widened transcript is not distributed as
-  a stock transcript.
+- **Widened-vs-stock distinguishability is a different quantity from HVZK**
+  (review F4). The §3 advantage says a stock signer and a widened signer
+  produce differently-distributed published `z` vectors. The HVZK property of
+  §4 is *not* the claim "widened transcripts look like stock ML-DSA
+  transcripts" — a simulator for the widened scheme must reproduce the
+  **widened protocol's own** transcript distribution (challenge from the
+  Fiat–Shamir hash, `z` uniform on the accepted ball, the same
+  retry/abort behavior), not stock ML-DSA's. The two statements must not be
+  conflated: §3 is a route-class disclosure channel about published
+  signatures; §4 is about whether the widened identification scheme itself
+  is zero-knowledge.
 
 ## 4. Why `widenedHvzkDistance` is pinned trivial — and the concrete floor
 
 The pinned HVZK simulator `widenedHvzkSimulator` (`WidenedSigning.lean:548`)
 draws `z` uniform over the full ring `Rq` (modulus `q = 8 380 417` per
 coefficient) and only then applies the widened gate. Its acceptance
-probability is `(1047791/8380417)^1280 ≈ 10^−1156`: the simulator essentially
-never outputs a transcript. The honest prover, by contrast, aborts a round with
-probability `1 − 0.383425 ≈ 0.616575`. The abort marginals alone put the
-transcript distance at `≥ 0.6166 − 10^−1156 ≈ 0.6166` — this is the concrete
-content hidden in the trivial pin `widenedHvzkDistance = 1`
-(`WidenedSigning.lean:568`).
+probability is `(1047791/8380417)^1280 ≈ 10^−1156`: the simulator aborts with
+probability essentially 1. The honest prover, by contrast, **accepts** the
+`z` gate with probability `0.383425` and aborts with probability
+`1 − 0.383425 ≈ 0.616575`. Both distributions must be compared on the same
+experiment (review F4): the abort-probability *difference* is
 
-The sharpening path is mechanical: draw the simulator's `z` from the cube
-(`sampleMaskCube`) instead of the ring, resampling until the gate passes. Then
-the `z` marginal matches the honest prover exactly (both are uniform on the
-accepted ball, §2), and the remaining transcript distance collapses to the
-`(w₁, h)`-vs-`z` coupling plus the `r₀`/hint gate conditioning — the same
-shape as upstream `MLDSA.hvzkBoundReal`, which the pin's docstring names as
-the intended target. Until that simulator lands, `CmaToNmaLossNN` consumes
-`zetaWide = widenedHvzkDistance = 1` (`SpendSecurity.lean:255`) and the
-signature-layer composition stays open, exactly as
-`construction-a-security.md` §3 records.
+`|0.616575 − (1 − 10^−1156)| ≈ 0.383425`
+
+— **not** `0.616575`, the error in the earlier draft of this section, which
+subtracted the simulator's success probability from the honest abort mass
+instead of comparing the two abort masses. The `z`-gate abort marginals alone
+therefore put the transcript distance at only `≈ 0.3834`, and even that is a
+`z`-gate-only floor: the honest prover's other rejection gates (`r₀`, hint —
+not modeled here) change the honest abort mass, so no proved full-scheme
+distance floor follows from this section. What remains true is the pin
+itself: `widenedHvzkDistance = 1` (`WidenedSigning.lean:568`) records that
+*this* simulator's transcripts are far from the honest ones; the concrete
+`z`-gate contribution is the `≈ 0.3834` abort-marginal gap above.
+
+The sharpening path is subtle, not mechanical (review F4): draw the
+simulator's `z` from the cube (`sampleMaskCube`) instead of the ring,
+**resampling until the gate passes**. That makes the *accepted-`z`* marginal
+match the honest prover's exactly (both uniform on the accepted ball, §2) —
+but resampling-until-acceptance conditions the simulator on success and
+changes its abort mass: the resampling simulator never aborts, while the
+honest prover aborts a round with `z`-gate probability `0.616575` (and more
+once the `r₀`/hint gates are counted). The simulator must therefore match the
+exact transcript experiment being defined — if the experiment conditions the
+honest side on acceptance too, the abort-marginal gap of the first paragraph
+does not apply, and the remaining distance is the `(w₁, h)`-vs-`z` coupling
+plus the `r₀`/hint gate conditioning; if the experiment keeps aborts, the
+simulator must reproduce the abort behavior as well. Which experiment
+`CmaToNmaLossNN` needs is part of the open work, and until that simulator and
+experiment land, `zetaWide = widenedHvzkDistance = 1`
+(`SpendSecurity.lean:255`) and the signature-layer composition stays open,
+exactly as `construction-a-security.md` §3 records. No nontrivial full-HVZK
+theorem is claimed here.
 
 ## 5. Unlinkability across payments — the channel map
 
@@ -160,14 +197,25 @@ covered by a theorem:
 | `spend_key` hash linkage (#33) | any direct ML-DSA-44 commit spend | revealed `pk` hashes to the published `spend_key`; all direct spends link from the first one | `test_profiles.py:262`, vectors' `linkage` block; recommendation: informative, not normative |
 | Widened-`z` band (this note) | any published blinded signature | route class ("widened/blinded key"), not the recipient; per-signature advantage 0.38 (L3) / 0.46 (level-2) | §3 above; quantifies the trivial-HVZK gap |
 
-Composed reading: a recipient who uses only the receive/scan path is covered
-by the announcement bound. The first *direct* spend is linkable twice over
-(`rho` + `spend_key` hash) and additionally flags the blinded route via the
-`z` band. Unlinkable spending requires routes that never reveal the key
-(ZK/preimage) — and even those, if they publish widened signatures, reveal the
-route class. The ERC text (human-written, D-024) should carry this as one
-security-considerations paragraph spanning #29/#33 and this note; the
-accompanying decision record is drafted as D-030 on the #28/#33 branch.
+Composed reading (review F4 correction): the `rho` and `spend_key`-hash
+channels are **profile-specific and not automatically simultaneous**.
+Construction A's retained `rho` (#29) is a channel of the `0x01` direct route;
+the commitment profile's revealed master-key hash is a channel of the
+`ml-dsa-44-commit/v0` direct route. A recipient on one profile does not
+automatically expose the other's channel — the two co-occur only for a
+recipient observed across both routes, and "the first direct spend is
+linkable twice over" applies to that cross-profile recipient, not to every
+spend. Stated per profile: a `0x01` recipient's first key-revealing spend
+exposes `rho` (linking all its revealed keys and its meta-address); an
+`ml-dsa-44-commit/v0` recipient's first direct spend exposes the
+`spend_key`-hash linkage (#33). Both additionally flag the blinded route via
+the `z` band where widened signatures are published. Unlinkable spending
+requires routes that never reveal the key (ZK/preimage) — and even those, if
+they publish widened signatures, reveal the route class. The ERC text
+(human-written, D-024) should carry this as one security-considerations
+paragraph spanning #29/#33 and this note, with the per-profile condition
+stated; the accompanying decision record is drafted as D-030 on the #28/#33
+branch.
 
 ## 6. What would change the numbers
 
@@ -200,8 +248,11 @@ g1, b, wb, n = 2**19, 196, 392, 1280
 p_wide  = F(2*(g1-wb)-1, 2*g1)**n     # widened accept      = 0.383425…
 p_stock = F(2*(g1-b)-1,  2*g1)**n     # stock accept       = 0.618891…
 band    = 1 - F(2*(g1-wb)-1, 2*(g1-b)-1)**n   # stock avoids band = 0.619536…
-adv     = 1 - band                    # per-signature advantage = 0.380464…
-abort   = 1 - p_wide                  # honest abort marginal = 0.616575…
+adv     = 1 - band                    # per-signature advantage (z-gate model only) = 0.380464…
+abort   = 1 - p_wide                  # honest z-gate abort marginal = 0.616575…
+# HVZK abort-marginal gap (review F4): simulator aborts w.p. ~1, honest w.p. abort:
+# distance contribution = |abort_sim - abort_honest| = 1 - 0.616575 = 0.383425
+# (the earlier draft's 0.6166 subtracted the simulator's SUCCESS probability)
 
 # Level-2 shape (gamma1=2^17, beta=78, beta'=156, l*256=1024): 0.294232 / 0.543393 / adv 0.456607
 
