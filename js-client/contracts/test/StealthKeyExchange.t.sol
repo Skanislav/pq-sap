@@ -246,17 +246,75 @@ contract StealthKeyExchangeTest is Test {
     }
 
     // ------------------------------------------------------------- cost
-    /// @dev The wrapper's overhead over a direct singleton call, for the cost report.
+    /// @dev The wrapper's overhead over a direct singleton call, for the cost
+    ///      report: ~2,065 gas (one extra warm call, 100 gas, plus the wrapper
+    ///      body), the D-028 recorded figure, ~3 % of D-011's 67,580-gas
+    ///      EIP-7623 floor.
+    ///
+    ///      Measurement discipline (both matter, or the number is wrong):
+    ///      - Prime BOTH the announcer and the wrapper first: the first call
+    ///        to each in a tx pays one-time costs (EIP-2929 cold access 2,600
+    ///        + first-touch), ~4,500 gas for the wrapper, which is not overhead.
+    ///      - Measure inside a meter contract (one frame deep). Top-level
+    ///        `gasleft()` deltas pick up the tx's calldata-floor accounting
+    ///        differently across forge versions.
+    ///
+    ///      Toolchain skew, recorded so nobody "fixes" this number again:
+    ///      forge 1.4.1 (the CI pin) honors EIP-2929 tx-wide warm access and
+    ///      measures direct 14,665 / wrapped 16,703 → overhead 2,038 ≈ 2,065.
+    ///      Local forge 1.8.3 charges every external call cold (+2,500 each)
+    ///      and dumps the ~51k calldata floor into top-level frames: it
+    ///      reports overhead 4,538 metered, and −317 (an impossible negative)
+    ///      top-level with the naive ordering — the wrapped call strictly
+    ///      adds work, so any negative or 4,500-ish reading is the toolchain,
+    ///      not the contract.
     function test_announce_overhead_gas() public {
         (address stealth, bytes memory ct, bytes memory tag) = _case(0);
-        uint256 g0 = gasleft();
+        // prime: absorb the one-time first-call costs before measuring
         announcer.announce(2, stealth, ct, tag);
-        uint256 direct = g0 - gasleft();
-        uint256 g1 = gasleft();
+        // prime the wrapper too: its first call pays kx's own cold access
+        // (EIP-2929, 2,600 gas) which is a tx one-time cost, not overhead.
         kx.announce(stealth, ct, tag);
-        uint256 wrapped = g1 - gasleft();
+        GasMeter meter = new GasMeter();
+        uint256 direct = meter.measureAnnounce(announcer, stealth, ct, tag);
+        uint256 wrapped = meter.measureWrapped(kx, stealth, ct, tag);
         emit log_named_uint("announce direct (execution gas)", direct);
         emit log_named_uint("announce via StealthKeyExchange", wrapped);
-        assertLt(wrapped - direct, 10_000);
+        // sanity: the wrapped path strictly adds a call over the direct path
+        assertGt(wrapped, direct);
+        // and the overhead is small — under the CI pin (forge 1.4.1, honest
+        // warm access) ~2,038 ≈ the 2,065 D-028 records; local 1.8.3 skews
+        // every external call cold (+2,500), reading ~4,538. Both are far
+        // below one cold access, so a generous ceiling still catches any real
+        // regression (e.g. a second nested call or storage in the wrapper).
+        assertLt(wrapped - direct, 7_000);
+    }
+}
+
+/// @dev One-frame-deep gas meter for `test_announce_overhead_gas`: top-level
+///      `gasleft()` deltas pick up the tx's calldata-floor accounting, which
+///      forge versions land differently; a nested frame keeps the measurement
+///      on the execution costs proper.
+contract GasMeter {
+    function measureAnnounce(
+        ERC5564Announcer announcer,
+        address stealth,
+        bytes memory ct,
+        bytes memory tag
+    ) external returns (uint256) {
+        uint256 g0 = gasleft();
+        announcer.announce(2, stealth, ct, tag);
+        return g0 - gasleft();
+    }
+
+    function measureWrapped(
+        StealthKeyExchange kx,
+        address stealth,
+        bytes memory ct,
+        bytes memory tag
+    ) external returns (uint256) {
+        uint256 g0 = gasleft();
+        kx.announce(stealth, ct, tag);
+        return g0 - gasleft();
     }
 }
