@@ -102,6 +102,18 @@ profile with a different verifier.
 The existing names are byte-level inputs; changing them changes destinations.
 Ethereum Keccak-256 is not SHA3-256.
 
+**KEM admissibility (D-029).** The opener and view tag hash only `ss`; they do not
+re-hash the ciphertext or the encapsulation key. This is sound only because the
+profile's KEM already binds them internally: FIPS 203 ML-KEM derives
+`ss = KDF_256(K̄ || H(ek) || H(ct))`, and decapsulation re-encrypts before deriving.
+A KEM is admissible to a profile only if its shared-secret derivation internally
+binds the encapsulation-key hash and the ciphertext hash (ML-KEM and X-Wing do; a
+plain combiner without internal transcript binding must instead use new domain
+strings — a new profile revision, not an edit of existing ones, since renaming a
+domain moves funds). The one-byte view tag is a post-decapsulation filter, not a
+soundness surface: a tag match alone proves nothing, and a false positive falls
+through to the full address comparison.
+
 The implemented deployment record supplies a 20-byte factory, account creation
 code, 20-byte verifier, 20-byte frame-context address, and 32-byte salt (default
 zero). Constructor arguments are encoded as three 32-byte words:
