@@ -86,11 +86,26 @@ contract TrustedMlDsa44KeyRegistry is IMlDsa44ExpandedKeys {
     /// @notice Re-bind an already registered key to a corrected `aHat`. Registrar
     ///         only; see the contract note for the trust this implies. The previous
     ///         `PKContract` stays deployed but is no longer what the registry answers.
+    ///         Re-binding to the CURRENT binding is explicit reuse: the deployment
+    ///         for that exact `(pk, aHat)` already exists, so the registry answers
+    ///         it instead of re-deploying into the CREATE2 collision (review F1,
+    ///         2026-10-01 — otherwise a correct -> incorrect -> correct recovery
+    ///         would be impossible: re-deriving the original address reverts
+    ///         because the first `PKContract` is still there).
     function replace(bytes calldata pk, uint256[][][] calldata aHat) external returns (address pointer) {
         if (msg.sender != REGISTRAR) revert NotRegistrar(msg.sender);
         bytes32 pkHash = keccak256(pk);
         address previous = expandedKey[pkHash];
         if (previous == address(0)) revert NotRegistered(pkHash);
+        // review F1: if the deterministic deployment for this exact binding
+        // already exists (e.g. re-binding to a previous, still-live binding),
+        // reuse it instead of re-deploying into the CREATE2 collision.
+        address existing = _existingDeploymentFor(pk, pkHash, aHat);
+        if (existing != address(0)) {
+            expandedKey[pkHash] = existing;
+            emit KeyReplaced(pkHash, previous, existing);
+            return existing;
+        }
         pointer = _bind(pk, pkHash, aHat);
         emit KeyReplaced(pkHash, previous, pointer);
     }
@@ -112,11 +127,25 @@ contract TrustedMlDsa44KeyRegistry is IMlDsa44ExpandedKeys {
                 if (aHat[i][j].length != 32) revert BadMatrixShape();
             }
         }
-        bytes memory tr = trOf(pk);
-        uint256[][] memory t1 = unpackT1(pk);
         bytes32 salt = keccak256(abi.encodePacked(pkHash, keccak256(abi.encode(aHat))));
-        pointer = address(new PKContract{salt: salt}(aHat, tr, t1));
+        pointer = address(new PKContract{salt: salt}(aHat, trOf(pk), unpackT1(pk)));
         expandedKey[pkHash] = pointer;
+    }
+
+    /// @notice True when the registry already answers the deterministic
+    ///         deployment address for `(pk, aHat)` with that exact deployment —
+    ///         i.e. this binding was deployed here before and its contract
+    ///         code is still live (review F1: reuse over re-deploy).
+    function _existingDeploymentFor(bytes calldata pk, bytes32 pkHash, uint256[][][] calldata aHat)
+        internal
+        view
+        returns (address existing)
+    {
+        bytes32 salt = keccak256(abi.encodePacked(pkHash, keccak256(abi.encode(aHat))));
+        bytes32 initHash =
+            keccak256(abi.encodePacked(type(PKContract).creationCode, abi.encode(aHat, trOf(pk), unpackT1(pk))));
+        existing = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initHash)))));
+        if (existing.code.length == 0) existing = address(0);
     }
 
     /// @notice FIPS 204 `tr = H(pk, 64)` with H = SHAKE256, computed with the

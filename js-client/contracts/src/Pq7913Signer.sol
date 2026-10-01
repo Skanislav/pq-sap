@@ -64,6 +64,12 @@ abstract contract Pq7913Signer is SignerERC7913 {
         (bool ok, bytes memory ret) = address(bytes20(signer)).staticcall(
             abi.encodeCall(IERC7913SignatureVerifier.verify, (Bytes.slice(signer, 20), hash, signature)));
         if (!ok) revert VerifierCallFailed(ret);
-        return ret.length >= 32 && abi.decode(ret, (bytes32)) == bytes32(IERC7913SignatureVerifier.verify.selector);
+        // A completed call must answer exactly one canonical word: the ERC-7913
+        // magic selector, ABI-encoded as a lone bytes4 (selector left-aligned,
+        // 28 zero bytes after). Shorter, longer, or non-canonical returns are
+        // malformed responses — a verifier malfunction, not a forgery verdict
+        // (review F5, 2026-10-01).
+        if (ret.length != 32) revert VerifierCallFailed(ret);
+        return abi.decode(ret, (bytes32)) == bytes32(abi.encode(IERC7913SignatureVerifier.verify.selector));
     }
 }
