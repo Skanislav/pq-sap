@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SignerERC7913} from "@openzeppelin/contracts/utils/cryptography/signers/SignerERC7913.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import {IFrameTxContext} from "./IFrameTxContext.sol";
+import {Pq7913Signer} from "../Pq7913Signer.sol";
 
 /// @title Stealth8141Account
 /// @notice Stealth account spent through an EIP-8141 frame transaction, authorized by a
@@ -34,7 +33,12 @@ import {IFrameTxContext} from "./IFrameTxContext.sol";
 ///             nconsigny/SPHINCS-'s frame account).
 ///         So the PQ signature authorizes exactly one (sponsor, nonce, frames) tuple: it
 ///         cannot be replayed, re-sponsored, or attached to an altered spend.
-contract Stealth8141Account is SignerERC7913, IERC1271 {
+///
+///         `Pq7913Signer` (issue #32): the frame route bypasses the ERC-1271
+///         swallow too — `executeFrame` validates through `_validate7913`, so a
+///         verifier call that does not complete reverts `VerifierCallFailed`
+///         instead of `NotAuthorized`.
+contract Stealth8141Account is Pq7913Signer, IERC1271 {
     /// @notice EIP-8141 ENTRY_POINT: the caller of DEFAULT and VERIFY frames.
     address public constant ENTRY_POINT = address(0xaa); // 0x…00aa
 
@@ -44,7 +48,7 @@ contract Stealth8141Account is SignerERC7913, IERC1271 {
     error NotAuthorized();
     error CallFailed(bytes returnData);
 
-    constructor(bytes memory signer_, IFrameTxContext frameCtx_) SignerERC7913(signer_) {
+    constructor(bytes memory signer_, IFrameTxContext frameCtx_) Pq7913Signer(signer_) {
         FRAME_CTX = frameCtx_;
     }
 
@@ -56,8 +60,10 @@ contract Stealth8141Account is SignerERC7913, IERC1271 {
         if (msg.sender != ENTRY_POINT) revert NotEntryPoint(msg.sender);
         bytes32 digest = FRAME_CTX.sigHash();
         bytes memory sig = FRAME_CTX.signature(sigIndex);
-        // same ERC-7913 path as _rawSignatureValidation, for a memory signature
-        if (!SignatureChecker.isValidSignatureNow(signer(), digest, sig)) revert NotAuthorized();
+        // same ERC-7913 path as _rawSignatureValidation, for a memory signature —
+        // through Pq7913Signer, so an underfunded verifier reverts instead of
+        // reporting "not authorized" (issue #32)
+        if (!_validate7913(digest, sig)) revert NotAuthorized();
         (bool ok, bytes memory ret) = to.call{value: value}(data);
         if (!ok) revert CallFailed(ret);
     }

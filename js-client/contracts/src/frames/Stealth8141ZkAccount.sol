@@ -21,6 +21,13 @@ interface IProofVerifier {
 ///         signature at `sigIndex`, and the statement binds `sig_hash` (TXPARAM 0x08), so a
 ///         proof authorizes exactly one (sponsor, nonce, frames) tuple.
 ///
+///         Gas-exhaustion semantics (issue #32): `executeFrame` checks a gas
+///         floor (`MIN_PROOF_GAS`) before the verifier call and no longer
+///         swallows a verifier revert — underfunding surfaces as
+///         `GasFloorExceeded`, a reverting backend as `ProofCallFailed`, and
+///         only a completed `verify == false` is `NotAuthorized`. The tooling
+///         surface `isValidProof` keeps the bool contract.
+///
 ///         The verifier is a rotatable pointer, not an immutable, because the proof system
 ///         is the part expected to change: UltraHonk (BN254/KZG) is classically sound only,
 ///         so before a CRQC the owner swaps in a hash-based (STARK) verifier for the same
@@ -41,6 +48,26 @@ contract Stealth8141ZkAccount {
     error NotSelf(address caller);
     error NotAuthorized();
     error CallFailed(bytes returnData);
+    /// @notice The frame's remaining gas is below `MIN_PROOF_GAS`, so the proof
+    ///         verify cannot be trusted to have completed; distinct from
+    ///         `NotAuthorized` so an integrator tells underfunding from a bad
+    ///         proof (issue #32).
+    error GasFloorExceeded(uint256 floor, uint256 available);
+    /// @notice The proof verifier call did not complete (it reverted with
+    ///         `returnData`); distinct from `NotAuthorized`.
+    error ProofCallFailed(bytes returnData);
+
+    /// @notice Minimum gas the frame must still hold for the proof verify. The
+    ///         shipped backends measure (whole call, forge/solc 0.8.30/prague,
+    ///         GasExhaustion.t.sol): preimage-ownership ~3.0 M, UltraHonk C13
+    ///         ~3.6 M; 4 M leaves headroom for larger proofs of the same
+    ///         statements. Below this, `executeFrame` fails fast and cheap with
+    ///         `GasFloorExceeded` instead of letting the verifier run out of
+    ///         gas mid-call, which `_verify` would collapse into "not
+    ///         authorized". A cheaper replacement backend still works — the
+    ///         floor is a caller budget, not a verifier cost — but a sponsor
+    ///         must supply at least this much.
+    uint256 public constant MIN_PROOF_GAS = 4_000_000;
 
     constructor(bytes32 commitment_, IProofVerifier verifier_, IFrameTxContext frameCtx_) {
         COMMITMENT = commitment_;
@@ -56,9 +83,14 @@ contract Stealth8141ZkAccount {
         if (msg.sender != ENTRY_POINT) revert NotEntryPoint(msg.sender);
         bytes32 digest = FRAME_CTX.sigHash();
         bytes memory proof = FRAME_CTX.signature(sigIndex);
-        if (!_verify(digest, proof)) revert NotAuthorized();
-        (bool ok, bytes memory ret) = to.call{value: value}(data);
-        if (!ok) revert CallFailed(ret);
+        if (gasleft() < MIN_PROOF_GAS) revert GasFloorExceeded(MIN_PROOF_GAS, gasleft());
+        (bool ok, bytes memory ret) = address(verifier).staticcall(
+            abi.encodeWithSelector(IProofVerifier.verify.selector, proof, publicInputs(digest)));
+        // a completed call with a malformed return is a malfunction, not a bad proof
+        if (!ok || ret.length != 32) revert ProofCallFailed(ret);
+        if (!abi.decode(ret, (bool))) revert NotAuthorized();
+        (bool callOk, bytes memory callRet) = to.call{value: value}(data);
+        if (!callOk) revert CallFailed(callRet);
     }
 
     /// @notice Swap the proof backend. Only callable by the account itself, i.e. through an
