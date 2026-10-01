@@ -1233,6 +1233,7 @@ EvmYul) is the upgrade path; both need Mathlib and belong in the multi-hour
 `lean.yml` lane, not the seconds-fast `ci.yml` job this package runs in.
 Nothing here is deployed.
 
+
 ## D-029 — The opener and view tag hash only the shared secret; a KEM is admissible to a profile only if its own derivation binds the encapsulation key and ciphertext — **FINDING / direction (2026-09-29; issue #38)**
 
 Question (issue #38): the ethresear.ch hybrid combiner derives its per-payment
@@ -1268,3 +1269,75 @@ hashes of `ss`, and a format-`0x02` address has no EC scalar. The one-byte
 tag is a post-decapsulation filter, not a soundness surface — a tag match
 alone proves nothing, and a false positive falls through to the full address
 comparison (`check_commit_announcement` returns `None`).
+## D-030 — Registry trust is deployment policy, not ERC scope; direct-signature spend routes are informative, and their linkability is a stated property — **FINDING (2026-09-30; issues #28, #33, #29)**
+
+Three questions arrived together and are decided together, because they are
+one question: how much of the spend side belongs in the ERC, and what the
+ERC says about the parts that stay out.
+
+**Registry trust (#28) is deployment policy.** `MlDsa44KeyRegistry.sol` (the
+issue title says `TrustedMlDsa44KeyRegistry`; the contract is named
+`MlDsa44KeyRegistry`) has an immutable-set `REGISTRAR`, recomputes `tr` and
+`t1` from the key bytes on chain, and trusts the registrar only for
+`aHat = ExpandA(rho)` — the ~40 M-gas operation that is issue #27's unsolved
+problem. `register` binds once; registrar-only `replace(pk, aHat)` re-binds
+(`KeyRegistered`, `KeyReplaced` events). Two failures to avoid, and they pull
+opposite ways: removing `replace` strands every account already committed to
+a key (signer, adapter and account addresses all pin the registry instance,
+so a wrong first `aHat` is permanent for funds already at a counterfactual
+address), while blessing `replace` unconditionally hides that registrar
+trust is ongoing rather than one-shot. The decision: **keep `replace`, and
+take the whole question out of normative scope** — exactly as D-014 took
+meta-address distribution out. Registry mechanics are profile-deployment
+policy. What a compliant registry must still do: emit both events so
+observers can audit re-binds, and the deployment must document who holds the
+role and how it is retired (multisig or time-lock; retire by transferring
+the role to an address that never calls it once #27 removes the need).
+§7 of `docs/ml-dsa-commit-profile.md` already describes the registrar as a
+live trust assumption with a correction path; this record upgrades that to
+the ERC-facing answer. No contract change.
+
+**Direct-signature spend routes (#33) are informative, not normative.**
+Every direct ML-DSA spend reveals `pk`, whose `keccak256(KEY ‖ pk)` is the
+published `spend_key`: all spent addresses of one recipient link to each
+other and to the meta-address from the first spend
+(`python/tests/test_profiles.py::test_two_direct_spends_are_linkable`, the
+vectors' `linkage` block, profile doc §5). Making that route normative
+would force every conforming wallet to implement a route that breaks the
+scheme's headline property for anyone who uses it. The repository already
+separates receive/scan conformance from optional spend-profile conformance
+(profile doc §6); the ERC mirrors that split: **normative = receive/scan**
+(announcement handling, view tag, address derivation, profile dispatch);
+**informative annex = direct-signature spend** (ML-DSA-44 commit signer,
+C13 commit signer), with the linkability property stated in the annex's
+first paragraph: revealing the key links all spent addresses of the
+recipient to the meta-address; unlinkable spending requires routes that
+never reveal the key (ZK / preimage). The contracts and vectors stay as
+they are — they are the evidence the annex describes; the UI does not
+expose the route. No code change.
+
+**Construction A's `rho` (#29) is a property, not a defect; `0x01` stays.**
+`stealth_pk = pack_pk(rho, t1')` carries the recipient's matrix seed
+verbatim, and `rho` is the first 32 bytes of the `0x01` meta-address
+(construction-a.md §4.1, pinned by `python/tests/test_construction_a_rho.py`).
+Announcements expose only `keccak256(stealth_pk)[12:]`, so receive-time
+privacy is unaffected; the exposure is at disclosure — on-chain ML-DSA
+verify, a deployed `PKContract`, pointer-signature key tables. Repairs
+considered and rejected here: per-stealth-key `rho' = H(rho ‖ ss)` breaks
+the correctness identity unless the recipient's key is re-derived per
+payment (a different scheme; it also re-opens the D-021 security freeze
+that `lean/` binds `pack rho` injectivity into), and a common-seed `rho`
+kills the per-recipient partition at the cost of making `ExpandA` global
+state and weakening the MLWE instance argument. Decision: keep `0x01` with
+post-disclosure linkability stated as a property, and note that it
+composes with #33 — a revealed `0x01` direct spend is linkable twice over
+(`rho` + spend-key hash), which is exactly what the informative annex says.
+If a repaired `0x01` is ever wanted, that is a new version byte / new
+profile with its own analysis, under the same new-domain-strings rule as
+D-029.
+
+**ERC text.** The one shared security-considerations paragraph covering
+both linkability channels is left for the human-authored `erc-draft.md`
+(D-024); the wording above is the record's language, not the draft's.
+Cross-links on issues #28, #33 and #29 are the remaining GitHub action,
+pending the maintainer's OK.
