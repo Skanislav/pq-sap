@@ -76,18 +76,19 @@ spending route. They are not removed by narrowing the ERC's scope.
   honest prover's other rejection gates (`r₀`, hint) change the honest
   abort mass, and no nontrivial full-scheme HVZK distance is claimed until
   the cube-source simulator and its exact transcript experiment land.
-- The tightened gates are themselves a disclosure channel. A widened
-  signature's coefficients are all `‖z‖∞ < γ₁ − 2β` by construction; a stock
-  signature lands entirely below that bound only with probability
-  `(1047791/1048183)^1280 ≈ 0.620` at ML-DSA-65 (≈ 0.543 at the deployed
-  level-2 profile). The boolean band test therefore distinguishes widened
-  from stock signing with per-signature advantage ≈ 0.38 (0.46 level-2),
-  reaching 0.978 across 8 signatures. What leaks is the **route class** —
-  "blinded-key spend" — not the recipient (`z` is uniform on the accepted
-  ball independent of the key, `cube_shift_accept_prob`,
-  `WidenedSigning.lean:351`); it narrows an observer's candidate set to
-  `0x01`-format recipients and composes with the `rho` and `spend_key`
-  channels below rather than replacing them (note §3).
+- The tightened `z` gate is a potential disclosure channel only in the
+  fixed-shift, cube-uniform `z`-gate model. A widened `z` is always
+  `‖z‖∞ < γ₁ − 2β`; a stock `z` lands entirely below that bound with
+  probability `(1047791/1048183)^1280 ≈ 0.620` at ML-DSA-65 (≈ 0.543 at the
+  deployed level-2 profile). A band coefficient rules out a widened
+  `z`-gate response, but band avoidance is only probabilistic evidence: a
+  stock response has the probability above. In that model the test has
+  per-response advantage ≈ 0.38 (0.46 level-2), reaching 0.978 across eight
+  independent responses. It does not establish a full published-signature
+  classifier or recipient/key linkability result: Fiat–Shamir, `r₀`, and
+  hint conditioning are outside the model. An observer therefore cannot use
+  this calculation alone to label an observed signature as a blinded-key
+  spend or narrow candidates to `0x01` recipients (note §3).
 - Direct C13 spending exposes the recipient key and can link spends.
 - Direct ML-DSA-44 committed-key spending (D-027) likewise reveals `pk`,
   whose hash is the published `spend_key`; spent addresses of one recipient
@@ -102,12 +103,12 @@ spending route. They are not removed by narrowing the ERC's scope.
   (`Adv_unlink_q ≤ q · ε_single`, `unlinkAdvantageMulti_le_mul`,
   `MultiUnlink.lean:241`) covers a recipient who only receives and scans.
   A direct spend breaks that coverage through the key-disclosure channels —
-  `rho` for any revealed Construction A key, the `spend_key` hash for the
-  commit profile — and a blinded-key spend additionally flags the route
-  class via the widened `z` band. Unlinkable spending requires routes that
-  never reveal the key (ZK/preimage) — and even those, if they publish
-  widened signatures, reveal the route class. The channel-by-channel map is
-  note §5.
+  `rho` for any revealed Construction A key and the `spend_key` hash for the
+  commit profile. The widened `z`-band calculation is only a z-gate-model
+  discriminator with substantial stock false positives; it does not flag a
+  blinded route in a published signature. Unlinkable spending requires routes
+  that never reveal the key (ZK/preimage). The channel-by-channel map is note
+  §5.
 - The D-023/D-025 ZK demos use a non-PQ-sound proof backend. The intended
   witness privacy and ownership statement do not change that assumption.
 - Prospective aggregation does not automatically supply zero knowledge,
