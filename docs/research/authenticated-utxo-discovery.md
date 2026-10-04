@@ -10,6 +10,8 @@ combines EIP-8304 recipient-range completeness with UTXO Proof Tables (UPT)
 authenticating output fields. Current spent-state proofs answer the separate
 question of whether those outputs remain unspent. These layers complement one
 another; an output opening commitment is distinct from our recipient commitment.
+EIP-8304 is a Draft Core EIP and UPT is a research proposal, so both remain
+mutable dependencies rather than available protocol guarantees.
 
 The proposed flow is:
 
@@ -32,6 +34,13 @@ also need receipt proofs or another authenticated payload mechanism. The wallet
 must cover the intended history range and anchor proofs to independently
 authenticated canonical headers and roots. Commitments do not ensure that
 providers retain or serve the underlying bytes.
+
+For an ERC-5564 announcement, the wallet must join index entries at the same
+`(block, transaction, log)` position: the announcer address; `topics[0]` as
+the `Announcement` event signature; `topics[1]` as the expected scheme ID;
+and `topics[2]` as `leftpad32(S)`. It must then verify the ciphertext and
+metadata from that same receipt-log position. Separately valid index entries
+from different logs are not evidence of one announcement.
 
 This composition does not make the initial scan sublinear: the current scanner
 decapsulates each candidate ciphertext before checking its view tag. Nor does
