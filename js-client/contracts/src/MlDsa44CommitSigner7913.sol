@@ -108,6 +108,8 @@ contract MlDsa44CommitSigner7913 is IERC7913SignatureVerifier {
         // longer, or non-canonical returns are verifier malfunctions, not
         // forgeries (review F5, 2026-10-01).
         if (ret.length != 32) revert VerifierCallFailed(ret);
-        return abi.decode(ret, (bytes32)) == bytes32(abi.encode(IERC7913SignatureVerifier.verify.selector)) ? MAGIC : FAIL;
+        bytes32 response = abi.decode(ret, (bytes32));
+        if (uint224(uint256(response)) != 0) revert VerifierCallFailed(ret);
+        return bytes4(response) == MAGIC ? MAGIC : FAIL;
     }
 }

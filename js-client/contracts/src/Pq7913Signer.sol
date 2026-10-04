@@ -70,6 +70,8 @@ abstract contract Pq7913Signer is SignerERC7913 {
         // malformed responses — a verifier malfunction, not a forgery verdict
         // (review F5, 2026-10-01).
         if (ret.length != 32) revert VerifierCallFailed(ret);
-        return abi.decode(ret, (bytes32)) == bytes32(abi.encode(IERC7913SignatureVerifier.verify.selector));
+        bytes32 response = abi.decode(ret, (bytes32));
+        if (uint224(uint256(response)) != 0) revert VerifierCallFailed(ret);
+        return bytes4(response) == IERC7913SignatureVerifier.verify.selector;
     }
 }

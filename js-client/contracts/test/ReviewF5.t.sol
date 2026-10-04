@@ -7,6 +7,8 @@ import {IProofVerifier, Stealth8141ZkAccount} from "../src/frames/Stealth8141ZkA
 import {IFrameTxContext} from "../src/frames/IFrameTxContext.sol";
 import {Pq7913Signer} from "../src/Pq7913Signer.sol";
 import {Stealth7913Account} from "../src/Stealth7913Account.sol";
+import {IMlDsa44Erc7913Verifier, MlDsa44CommitSigner7913} from "../src/MlDsa44CommitSigner7913.sol";
+import {IMlDsa44ExpandedKeys} from "../src/MlDsa44KeyRegistry.sol";
 
 /// F5 (review 2026-10-01): malformed verifier responses lose their intended
 /// error classification. Policy under test:
@@ -56,6 +58,26 @@ contract MagicExtraBytes7913Verifier is IERC7913SignatureVerifier {
         // magic + trailing bytes: the ABI encoder never appends dirt to a
         // bytes4, so this is a malformed response, not a pass
         assembly ("memory-safe") { mstore(0, shl(224, 0x024ad318)) mstore(32, 0) return(0, 64) }
+    }
+}
+
+contract MagicDirtyPadding7913Verifier is IERC7913SignatureVerifier {
+    function verify(bytes calldata, bytes32, bytes calldata) external pure returns (bytes4) {
+        // A bytes4 response occupies the high four bytes of its ABI word; this
+        // has the right selector but nonzero padding and is therefore malformed.
+        assembly ("memory-safe") { mstore(0, or(shl(224, 0x024ad318), 1)) return(0, 32) }
+    }
+}
+
+contract MagicDirtyPaddingMlDsaVerifier is IMlDsa44Erc7913Verifier {
+    function verify(bytes calldata, bytes32, bytes calldata) external pure returns (bytes4) {
+        assembly ("memory-safe") { mstore(0, or(shl(224, 0x024ad318), 1)) return(0, 32) }
+    }
+}
+
+contract NonzeroExpandedKeys is IMlDsa44ExpandedKeys {
+    function expandedKey(bytes32) external pure returns (address) {
+        return address(1);
     }
 }
 
@@ -125,6 +147,18 @@ contract ReviewF5Test is Test {
         account.isValidSignature(DIGEST, abi.encode(bytes32(uint256(1))));
     }
 
+    function test_f5a_magic_with_dirty_padding_is_verifier_call_failed() public {
+        Stealth7913Account account = new Stealth7913Account(
+            abi.encodePacked(address(new MagicDirtyPadding7913Verifier()), bytes32(uint256(1))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Pq7913Signer.VerifierCallFailed.selector,
+                abi.encodePacked(bytes32((uint256(uint32(MAGIC)) << 224) | 1))
+            )
+        );
+        account.isValidSignature(DIGEST, abi.encode(bytes32(uint256(1))));
+    }
+
     function test_f5a_canonical_non_magic_word_is_invalid_not_crash() public {
         Stealth7913Account account = new Stealth7913Account(abi.encodePacked(address(new NonMagicWord7913Verifier()), bytes32(uint256(1))));
         assertEq(uint32(account.isValidSignature(DIGEST, abi.encode(bytes32(uint256(1))))), uint32(0xffffffff));
@@ -134,6 +168,22 @@ contract ReviewF5Test is Test {
         Stealth7913Account account = new Stealth7913Account(abi.encodePacked(address(new MagicWord7913Verifier()), bytes32(uint256(1))));
         // SignerERC7913 answers the ERC-1271 magic word when the 7913 check passes
         assertEq(uint32(account.isValidSignature(DIGEST, abi.encode(bytes32(uint256(1))))), uint32(0x1626ba7e));
+    }
+
+    function test_f5a_commit_signer_dirty_padding_is_verifier_call_failed() public {
+        MlDsa44CommitSigner7913 signer = new MlDsa44CommitSigner7913(
+            new MagicDirtyPaddingMlDsaVerifier(), new NonzeroExpandedKeys());
+        bytes memory pk = new bytes(signer.PUBLIC_KEY_LENGTH());
+        bytes32 opener = bytes32(uint256(2));
+        bytes memory key = abi.encodePacked(signer.commitment(signer.spendKey(pk), opener));
+        bytes memory signature = bytes.concat(pk, abi.encodePacked(opener), new bytes(signer.ML_DSA_44_SIGNATURE_LENGTH()));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MlDsa44CommitSigner7913.VerifierCallFailed.selector,
+                abi.encodePacked(bytes32((uint256(uint32(MAGIC)) << 224) | 1))
+            )
+        );
+        signer.verify(key, DIGEST, signature);
     }
 
     // ---------------- ZK route (Stealth8141ZkAccount) ----------------

@@ -1287,8 +1287,8 @@ Consequences for the opener/tag design:
 to a profile on stated *security properties*, not on a syntactic formula:
 
 1. **Confidentiality:** IND-CCA under the standard experiment for the KEM's
-   parameter set (for ML-KEM-768: FIPS 203, ~2¹⁹²-bit category-1 security
-   from the underlying MLWE assumption). Implicit rejection must be part of
+   parameter set (ML-KEM-768 is FIPS 203's NIST security category 3 parameter
+   set). Implicit rejection must be part of
    the KEM's specification — a decapsulated-but-invalid ciphertext yields a
    pseudorandom secret, never an explicit failure observable to the sender.
 2. **Recipient binding under substitution:** decapsulation of any ciphertext
