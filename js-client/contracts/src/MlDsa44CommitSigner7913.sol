@@ -102,7 +102,14 @@ contract MlDsa44CommitSigner7913 is IERC7913SignatureVerifier {
         (bool ok, bytes memory ret) = address(VERIFIER).staticcall(
             abi.encodeWithSelector(IMlDsa44Erc7913Verifier.verify.selector, abi.encodePacked(pointer), hash, sig)
         );
-        if (!ok || ret.length != 32) revert VerifierCallFailed(ret);
-        return abi.decode(ret, (bytes4)) == MAGIC ? MAGIC : FAIL;
+        if (!ok) revert VerifierCallFailed(ret);
+        // a completed call must answer exactly one canonical word: the 7913
+        // magic selector, ABI-encoded as a lone bytes4 (left-aligned). Shorter,
+        // longer, or non-canonical returns are verifier malfunctions, not
+        // forgeries (review F5, 2026-10-01).
+        if (ret.length != 32) revert VerifierCallFailed(ret);
+        bytes32 response = abi.decode(ret, (bytes32));
+        if (uint224(uint256(response)) != 0) revert VerifierCallFailed(ret);
+        return bytes4(response) == MAGIC ? MAGIC : FAIL;
     }
 }

@@ -173,6 +173,10 @@ export const generatedSidebar = [
         "link": "/research/original-project-plan"
       },
       {
+        "text": "Pairwise mode: why fresh encapsulation per announcement stays",
+        "link": "/research/pairwise-mode"
+      },
+      {
         "text": "Poseidon2 + Merkle trees + zk-STARKs for a customized registry/discovery layer",
         "link": "/research/poseidon2-stark-discovery"
       },
