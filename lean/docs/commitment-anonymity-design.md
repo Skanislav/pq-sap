@@ -97,23 +97,22 @@ variable {Bytes SS Tag Addr SpendKey : Type}
 variable [DecidableEq Bytes] [SampleableType SS] [SampleableType Addr]
 variable (openOracle  : Bytes →ₒ SS)          -- SHA-256(OPEN ‖ ·), idealized
 variable (auxOracle   : Bytes →ₒ Addr)        -- composite commit+CREATE2, idealized
-variable (tagOf       : SS → Tag)             -- SHA-256(ss)[0:1], un-modelled
+variable (tagOracle   : SS →ₒ Tag)             -- SHA-256(·)[0:1], idealized
 variable (preimage    : SpendKey → SS → Bytes) -- COMMIT ‖ spend_key ‖ opener
 ```
 
 Design decisions, with reasons:
 
-1. **Two oracles, one composite — and an explicit bridge obligation
-   (review F3).** The opener hash and the commitment/CREATE2 composite are
-   separate oracle types in the interface (`Bytes →ₒ SS`, `Bytes →ₒ Addr`),
-   but the adversary-facing game queries only through the composite — the
-   challenger queries the inner oracle once (to draw the opener) and hands
-   the result to the outer. This is the `addrSpec := unifSpec +
-   (Bytes →ₒ Addr)` pattern (`BlindingROM.lean:38`) with one extra spec.
-   Reason: the §3 sketch's union bound runs over the *outer* oracle's query
-   budget (`qH` hidden-preimage guesses at 2⁻²⁵⁶ each), and keeping the inner
-   oracle explicit lets the module state the uniform-output property at the
-   inner level as a lemma rather than folding it into an assumption.
+1. **Three accessible hash interfaces and one joint budget — plus an explicit
+   bridge obligation (review F3/F4).** The tag hash, opener hash, and
+   commitment/CREATE2 composite are separate oracle types in the interface
+   (`SS →ₒ Tag`, `Bytes →ₒ SS`, `Bytes →ₒ Addr`). The adversary-facing game
+   must expose all three and charge them to one `qH` budget: the published tag
+   lets an adversary filter candidate secrets before trying the opener/address
+   path. With only an outer-oracle budget, a tag-matching candidate has
+   conditional point mass `2⁻²⁴⁸`, so `qH·2⁻²⁵⁶` would not follow. This is the
+   `addrSpec := unifSpec + (Bytes →ₒ Addr)` pattern (`BlindingROM.lean:38`)
+   extended with the two domain-separated SHA-256 interfaces.
    **What this interface does not yet model:** the adversary's queries to
    the *real* intermediate hashes — the concrete commitment hash and the
    concrete keccak256 initcode hash — on adversarially chosen inputs. The
@@ -136,40 +135,33 @@ Design decisions, with reasons:
    performed and priced by the generic chain (`sharedSecretHiding`,
    `SharedSecretHiding.lean:187`); the module must not (and does not) redo
    it. No circularity, per the companion note §3 assumption 2.
-4. **`Tag` carried opaquely, with the deployed-tag condition stated
-   (review F3).** The view tag is a deterministic function of `ss'` alone —
-   the `taggedAux` shape (`Soundness.lean:305`) — so it is
-   branch-independent once `ss'` is fixed and drops out of the
-   branch-distribution advantage by the same argument as
-   `blindingAdvantageRO_eq_zero_of_no_query` (`BlindingROM.lean:134`) uses
-   for the tag there. **Branch-independence alone is not the harmless
-   property.** An opaque `tagOf : SS → Tag` could be `tagOf ss = ss` —
-   secret-revealing, and the adversary would compute both candidate
-   destinations through the public hashes, breaking the game. The
-   drop-out argument needs the *deployed* tag's properties jointly with
-   the opener/address derivation: (i) the tag is a truncation of a hash of
-   `ss'`, so it leaks nothing the oracle does not already gate behind a
-   hidden-preimage query; (ii) the one-byte tag cannot steer a query
-   toward the challenge address. Carrying `Tag` opaquely in the interface
-   is therefore a *statement-shape* choice (aux is `Tag × Addr`,
-   shape-faithful to `ofKEMFull`); instantiating the drop-out lemma for
-   any concrete profile must analyze that profile's actual tag function —
-   the companion note §3 assumption 4 does this for the deployed
-   SHA-256(ss)[0:1].
+4. **The deployed tag is public and query-accounted (review F4).** The view
+   tag is a deterministic function of `ss'` alone — the `taggedAux` shape
+   (`Soundness.lean:305`) — but the announced byte is immediately visible to
+   the adversary. **Branch-independence alone is not the harmless property.**
+   A tag function that leaked the secret (e.g. `tagOf ss = ss`) would let the
+   adversary compute both candidate destinations through the public hashes.
+   For the deployed tag, the game uses the accessible domain-separated
+   `tagOracle`; its eight-bit candidate filtering is charged to the joint
+   budget from decision 1. A future soundness instantiation also needs the
+   separate assumption that this truncated oracle is uniform on uniform
+   secrets. Any concrete profile must analyze its actual tag jointly with the
+   opener and address derivation.
 
 ## 4. The game, and the four planned theorems
 
 The game mirrors `blindGameRO` (`BlindingROM.lean:103`) branch-for-branch:
 
 ```lean
-/-- Branch b: draw uniform ss', draw the opener via the inner oracle,
-    build the address via the composite, hand (tag, addr) to the adversary. -/
+/-- Branch b: draw uniform ss', query the tag and opener oracles, build the
+    address via the composite, then hand (tag, addr) to the adversary. -/
 noncomputable def commitGameRO (spendKey : Bool → SpendKey) (b : Bool)
     (adv : Tag × Addr → ROMComp Bool) : ProbComp Bool := do
   let ss' ← ($ᵗ SS)
+  let tag    ← tagOracle ss'                    -- public tag-oracle query
   let opener ← hashOpenRO ss'                    -- inner-oracle query
   let addr  ← auxRO (preimage (spendKey b) opener) -- composite query
-  adv (tagOf ss', addr)
+  adv (tag, addr)
 ```
 
 Planned theorem ladder (names provisional, statement shapes final):
@@ -194,8 +186,8 @@ Planned theorem ladder (names provisional, statement shapes final):
    (`ROMUpToBad.lean:24-26`): branch distance ≤ probability the adversary
    queries the branch's address point. Direct reuse of
    `blindingAdvantageRO_le_blindBadProb`'s proof shape.
-4. **`commitBadProb_le_queryBound`** — the union bound closing the gap:
-   `Pr[bad] ≤ qH · 2⁻²⁵⁶` per branch, then
+4. **`commitBadProb_le_queryBound`** — the union bound closing the gap under
+   a joint tag/opener/composite query budget: `Pr[bad] ≤ qH · 2⁻²⁵⁶` per branch, then
    **`commitAdvantageRO_le_queryBound : commitAdvantageRO ≤ 2 · qH · 2⁻²⁵⁶`**.
    The `BlindingEntropy.lean:94-121` proof replays with two simplifications:
    the point-mass hypothesis `BlindPointMassBound` is replaced by the trivial
@@ -240,8 +232,8 @@ needs an inhabitance witness so the audit stays honest. The module's
 hypotheses are byte-level parameters, and the witnesses are trivial to
 state:
 
-- `IsQueryBoundP` (the adversary's outer-oracle budget, the
-  `BlindingEntropy.lean:40` shape): witnessed by the constant-`false`
+- `IsQueryBoundP` (the adversary's joint tag/opener/composite-oracle budget,
+  extending the `BlindingEntropy.lean:40` shape): witnessed by the constant-`false`
   adversary, which makes no queries.
 - The `SampleableType`/`DecidableEq` instances: witnessed by `Bytes :=
   Fin 32 → Bool`-style finite types (or VCVio's byte-vector types) in the

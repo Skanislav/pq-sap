@@ -12,10 +12,11 @@ Every theorem cited is sorry-free in `lean/PqStealth/` (guarded by the
 argument of §3 is a sketch for review, not a theorem: it rests on a
 composite-oracle abstraction whose bridge to the real commitment/CREATE2
 instantiation is **not proved**, and its `2^-175` figure is an estimate
-under that abstraction — §3 and §5 state the boundary precisely. Classical
-ROM only: quantum oracle access, ANO-CCA (active) and the MLWE reduction of
-the KEM terms remain outside this note exactly as in the rest of the
-development.
+under that abstraction. Its `qH` is a joint budget over the tag, opener, and
+address-composite oracle calls; §3 and §5 state the boundary precisely.
+Classical ROM only: quantum oracle access, ANO-CCA (active) and the MLWE
+reduction of the KEM terms remain outside this note exactly as in the rest of
+the development.
 
 ## 1. The instantiation
 
@@ -52,9 +53,11 @@ auxGen ss pk := ( SHA-256(ss)[0:1],
 Two structural facts make this the faithful instance of the generic model:
 
 - **The view tag is a function of the shared secret alone** — exactly the
-  `taggedAux viewTag rest` shape (`Soundness.lean:305`), which is what the
-  detection-soundness chain consumes
-  (`soundWithin_ofKEMFull_oneByteTag`, `Soundness.lean:373`).
+  `taggedAux viewTag rest` shape (`Soundness.lean:305`). This establishes the
+  syntactic shape required by the generic detection theorem; applying
+  `soundWithin_ofKEMFull_oneByteTag` additionally requires its `hUnif`
+  hypothesis, here a classical-ROM assumption that truncated `SHA-256` of a
+  uniform secret is uniform. That concrete assumption is not formalized.
 - **The address is a deterministic function of `(ss, spend_key)`** — the
   recipient dependence enters through the *public* `spend_key` slot of
   `auxGen`'s second argument and nowhere else. There is no recipient-side
@@ -65,17 +68,17 @@ Two structural facts make this the faithful instance of the generic model:
   structure at all**. The account's spending scheme is behind the commitment
   hash — that is the point of D-024 (and D-018 for C13).
 
-Everything downstream of `auxGen` in the generic chain therefore applies
-verbatim, with no new Lean statement needed for the composition: the
-four-term bound `unlinkAdvantage_ofKEMFull_le` (`KEMAnonymity.lean:236`), the
-IND-CPA identification of the hiding terms
+The generic chain supplies the result shapes needed by this manual mapping:
+the four-term bound `unlinkAdvantage_ofKEMFull_le`
+(`KEMAnonymity.lean:236`), the IND-CPA identification of the hiding terms
 (`sharedSecretHiding_eq_indCpaAdvantage`, `SharedSecretHiding.lean:187`), the
 multi-payment hybrid `unlinkAdvantageMulti_ofKEMFull_le` (`MultiUnlink.lean:281`),
 and the n-recipient pair-guessing bound `unlinkAdvantageN_ofKEMFull_le`
-(`MultiRecipient.lean:358`). The generic chain fixes the *shape* of the bound;
-the only term whose value it does not fix is `auxKeyIndependence`
-(`KEMAnonymity.lean:228`), because that is the term that depends on
-`auxGen`'s concrete structure.
+(`MultiRecipient.lean:358`). No checked `commitKem` / `commitAuxGen` wrapper
+yet instantiates these definitions for the deployed profile, so this note is
+not itself a concrete Lean instantiation. The generic chain fixes the *shape*
+of the intended bound; `auxKeyIndependence` (`KEMAnonymity.lean:228`) is the
+term whose value depends on `auxGen`'s concrete structure.
 
 ## 2. The single-payment bound, instantiated
 
@@ -121,9 +124,17 @@ meta-addresses `(spend_key₀, ek₀)`, `(spend_key₁, ek₁)` — the full pub
 view, per `unlinkSetup`. The term asks: can aux built from `spend_key_b` and
 uniform `ss'` be told from aux built from `spend_key_{1−b}` and uniform `ss'`?
 
-The argument is the ROM argument for a hash chain whose secret input is
-uniform and whose recipient-dependence enters via a public constant in the
-preimage:
+The view tag is part of the public view; it is not learned through an oracle
+query. The ROM sketch must therefore give the adversary access to the
+domain-separated tag hash as well as the opener and address composite, and
+`qH` below counts **all** such calls jointly. This prevents the tag from
+creating an uncharged filtering step: an adversary can hash candidate secrets,
+keep those whose first byte matches the announced tag, and only then query the
+opener/address path.
+
+Subject to that joint budget, the argument is the ROM argument for a hash
+chain whose secret input is uniform and whose recipient-dependence enters via
+a public constant in the preimage:
 
 1. **Inner hash (opener).** Model `ss' ↦ SHA-256(OPEN_DOMAIN ‖ ss')` as a
    random oracle. For a fresh `ss'` never queried before, `opener` is a fresh
@@ -131,8 +142,8 @@ preimage:
    the uniform-output property, the same shape as BlindingROM's
    `run_hashAddrRO_empty` (`BlindingROM.lean:67`): uniform output *whatever*
    the input hashed. The adversary may program/observe queries on the inner
-   oracle too; each query is a fresh uniform draw, and only a query on
-   exactly the challenger's `ss'` (probability `2^-256` per guess) could
+   oracle too. A query on exactly the challenger's `ss'` (probability
+   `2^-256` per candidate before the public tag is used) is the event that can
    correlate the branches.
 2. **Outer hash (commitment) and CREATE2 chain (address).** Model the
    composite `(spend_key, opener) ↦ address` — i.e. `keccak256(0xff ‖ factory
@@ -145,33 +156,33 @@ preimage:
    *preimage*: distinguishing branches is distinguishing oracle outputs on
    two public prefixes — impossible without querying the oracle on a point
    whose preimage involves the branches' differing secret draw.
-3. **Bad event, defined precisely (review F3).** Two distinct events must
-   not be conflated:
+3. **Bad event and budget, defined precisely (review F3/F4).** Two distinct
+   events must not be conflated:
    - **(a) Hidden-preimage query:** the adversary queries an oracle at a
      preimage whose secret slot is the challenger's `ss'`. Per-query
-     probability `2^-256` against a uniform 256-bit secret it has not seen.
+     probability is `2^-256` against a uniform 256-bit secret it has not
+     seen, when the query is charged to the joint budget.
    - **(b) Unrelated colliding output:** some query happens to produce the
      challenge *address* (a 160-bit target) without touching the hidden
      preimage — e.g. programming the outer oracle, or querying a different
      preimage that happens to land on the same address.
-   Event (a) is bounded by `qH · 2^-256` per oracle level. Event (b) would be
-   bounded by `qH · 2^-160` **only if** the adversary could steer queries
-   toward the address point; under the composite-oracle abstraction below it
-   cannot, and (b) collapses into (a) — but that collapse is exactly the
-   abstraction's content, not a consequence of the union bound. The earlier
-   draft summed a `2^-160` and a `2^-256` term and dismissed the larger as
-   dominated — that step is invalid as a union-bound argument; the two events
-   are different, and the `2^-160` term is absent from the final bound
-   *because of the abstraction*, as now stated.
+   Event (a) is bounded by `qH · 2^-256` only when `qH` includes tag-hash
+   candidate tests as well as opener and composite calls. If it counted only
+   outer-composite calls, tag-filtered candidates would instead have
+   conditional point mass `2^-248`, so the stated `2^-256` per-outer-query
+   step would be invalid. Event (b) does not identify the hidden preimage and
+   is not a branch discriminator under the composite-oracle abstraction. The
+   earlier draft's `2^-160` union-bound term remains absent because of that
+   abstraction, not because it is dominated by `2^-256`.
 
 ```
 auxKeyIndependence ≤ 2·qH·2^-256
 ```
 
-   — *under the composite-oracle abstraction*, per branch; the two branches
-   share the same hidden `ss'`, so the hidden-preimage event is the same
-   event counted once per oracle level, not a fresh `2^-160` guess per
-   branch.
+   — *under the composite-oracle abstraction and the joint query budget*;
+   the factor two accounts for the two comparison branches. The two branches
+   share the same hidden `ss'`, so this is not a fresh `2^-160` address guess
+   per branch.
 
 **The composite-oracle abstraction is a stronger assumption, stated as
 such (review F3).** Modeling commitment-hash + CREATE2 as one ideal oracle
@@ -193,13 +204,18 @@ Assumptions, stated precisely:
    hides the adversary's ability to query the real intermediate hashes.
    Labeled here as an **unproved bridge** (see above); discharging it is the
    recorded open obligation (`CommitmentAnonymity.lean`, future work).
-2. **`ss'` uniform by construction.** In the `randAuxBranch` game the
+2. **Joint query budget, including the public tag oracle.** `qH` bounds every
+   adversarial query to `SHA-256(·)` used for the announced tag,
+   `SHA-256(OPEN_DOMAIN ‖ ·)` used for the opener, and the modeled address
+   composite. The domains keep outputs independent in the classical ROM; the
+   shared budget prevents tag filtering from being free.
+3. **`ss'` uniform by construction.** In the `randAuxBranch` game the
    challenger draws `ss'` uniform — that is *by construction*, not an
    assumption. Getting there from the real game is the IND-CPA step, which
    the four-term decomposition already performs and prices into the
    `ssHiding` terms — so the aux argument consumes, rather than duplicates,
    that assumption. No circularity.
-3. **Both recipients share the deployment binding (and profile).** The
+4. **Both recipients share the deployment binding (and profile).** The
    factory, creation code, salt, verifier, and frame context enter the
    address preimage as public constants *common to both branches*. If the
    two recipients use different bindings or profiles, their aux
@@ -208,19 +224,15 @@ Assumptions, stated precisely:
    recipients from one `keygen`), and SECURITY_ANALYSIS.md's
    profile-narrowing paragraph covers it. The ERC text must state the
    single-profile/common-binding condition as a property.
-4. **The tag function is the deployed one-byte tag.** `tagOf =
-   SHA-256(ss)[0:1]` is branch-independent (depends on `ss'` only), and its
-   output is one byte. Branch-independence alone is NOT a generic harmless
-   property: a tag function that leaked the secret (e.g. `tagOf(ss) = ss`)
-   would let the adversary compute both candidate destinations through the
-   public hashes and break the argument. What makes the deployed tag
-   harmless *in this model* is the combination — (i) it is a truncation of
-   a hash of the secret, so learning the tag byte requires querying the
-   oracle on the hidden `ss'`; (ii) even knowing the full tag byte does not
-   steer any oracle query toward the challenge address. The generic
-   `taggedAux` machinery makes no claim about other tag choices; **each
-   profile's tag must be analyzed jointly with its opener and address
-   derivation**, which §4b's instantiation does for this profile.
+5. **The tag function is the deployed one-byte tag.** `tagOf =
+   SHA-256(ss)[0:1]` is public and branch-independent once `ss'` is fixed.
+   Branch-independence alone is NOT a generic harmless property: a tag
+   function that leaked the secret (e.g. `tagOf(ss) = ss`) would let the
+   adversary compute both candidate destinations through the public hashes.
+   The deployed tag only offers an eight-bit candidate filter; §3 charges its
+   oracle evaluations to the joint budget. The generic `taggedAux` machinery
+   makes no claim about other tag choices; **each profile's tag must be
+   analyzed jointly with its opener and address derivation**.
 
 **Reading the estimate (review F3).** Under the composite-oracle abstraction
 above, the commitment-side channel contributes at most `2·qH·2^-256` — with
@@ -271,32 +283,37 @@ those instantiations. The essay is updated in this branch's companion commit.
 
 ## 4b. Detection soundness (the tag side)
 
-The scan-side question is separately proved and equally instantiation-clean.
-With a one-byte view tag the false-positive rate of `ofKEMFull` is at most
-`1/256 + decapsRoR` (`soundWithin_ofKEMFull_oneByteTag`, `Soundness.lean:373`),
-where `decapsRoR` is the same named real-or-random IND-CPA-shaped term as in
-the unlinkability chain (a distinguisher that tells the recipient's real
-decapsulated secret from a fresh uniform one inside `FalsePositiveExp`;
-`Soundness.lean` names it rather than sweeping it into the statement). The
-commitment profile's tag is exactly the `taggedAux` shape (`Soundness.lean:305`):
-tag from the secret alone, address in `rest`. No lattice term appears on the
-soundness side either. The `n`-fold union bound for a scanner sweeping `n`
-announcements is on paper (not in Lean), as the essay already records.
+The scan-side theorem is generic and conditional. Given `hUnif` — that the
+one-byte tag of a uniform secret is uniform — the false-positive rate of
+`ofKEMFull` is at most `1/256 + decapsRoR`
+(`soundWithin_ofKEMFull_oneByteTag`, `Soundness.lean:373`). `decapsRoR` is the
+same named real-or-random IND-CPA-shaped term as in the unlinkability chain (a
+distinguisher that tells the recipient's real decapsulated secret from a fresh
+uniform one inside `FalsePositiveExp`; `Soundness.lean` names it rather than
+sweeping it into the statement). The commitment profile has the required
+`taggedAux` *shape* (`Soundness.lean:305`), but no Lean definition establishes
+`hUnif` for truncated `SHA-256`; that is a classical-ROM assumption here. No
+lattice term appears on the soundness side either. The `n`-fold union bound for
+a scanner sweeping `n` announcements is on paper (not in Lean), as the essay
+already records.
 
 ## 5. What is and is not discharged
 
-**Discharged — generic, sorry-free, applies verbatim to format `0x02`:**
+**Discharged — generic, sorry-free result shapes (not a checked `0x02`
+instantiation):**
 
 - The four-term decomposition and its IND-CPA identification
   (`KEMAnonymity.lean:236`, `SharedSecretHiding.lean:187`).
 - The multi-payment and n-recipient composites (`MultiUnlink.lean:281`,
   `MultiRecipient.lean:358`).
-- Detection soundness at the deployed tag shape (`Soundness.lean:373`,
-  `taggedAux` at `Soundness.lean:305`).
+- Detection soundness conditional on `hUnif` (`Soundness.lean:373`), with
+  `taggedAux` at `Soundness.lean:305` supplying only the required shape.
 - Detection completeness (`perfectlyComplete_ofKEMFull`, `KEMAnonymity.lean:160`).
 
 **Instantiation-specific — argued here, not proved:**
 
+- The concrete `commitKem` / `commitAuxGen` wrapper connecting the deployed
+  profile to the generic Lean types and experiments.
 - The `auxKeyIndependence` ROM bound (§3). The shape is
   `run_hashAddrRO_empty`'s uniform-output property plus the
   `blindBadProb_le_queryBound` union bound, but the commitment `auxGen` has a
@@ -310,6 +327,9 @@ announcements is on paper (not in Lean), as the essay already records.
   abstraction (an unproved bridge), **not an established bound**. Per
   review F3: do not quote `2^-175` as a derived quantity; quote it as
   "estimated under the §3 abstraction, open proof obligation".
+- Uniformity of `SHA-256(ss)[0:1]` for uniform `ss`, the `hUnif` premise of
+  the generic detection theorem; this note treats it as a classical-ROM
+  assumption.
 
 **Explicitly not claimed:**
 
