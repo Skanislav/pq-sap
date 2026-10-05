@@ -1,6 +1,7 @@
 # The announcement model
 
-Scope: generic announcement model with a Construction A instantiation. This essay does not instantiate the D-024 commitment/CREATE2 profile. Current claim boundaries and reading order: [ERC evidence](../../docs/ERC_EVIDENCE.md).
+Scope: generic announcement model with a Construction A instantiation. This essay does not instantiate the D-024 commitment/CREATE2 profile; that instantiation is written up in
+[docs/research/commitment-announcement-privacy.md](../../docs/research/commitment-announcement-privacy.md) (research note — the `auxKeyIndependence` argument there is a sketch, not a theorem). Current claim boundaries and reading order: [ERC evidence](../../docs/ERC_EVIDENCE.md).
 
 Background for `PqStealth/Games.lean`, `PqStealth/KEMAnonymity.lean`,
 `PqStealth/ConstructionA.lean` and the game-layer controls. Everything here is
@@ -415,13 +416,12 @@ the theorem; the observation window `q` is a parameter of the threat model, and
 the write-up should state the value it picks (taking the whole chain as the
 window costs `log₂ q` bits off the single-payment advantage).
 
-The composition with `unlinkAdvantage_ofKEMFull_le` is **on paper, not in Lean**:
-`MultiUnlink.lean` does not import `KEMAnonymity` and no theorem here mentions
-`ofKEMFull`. The composition is nevertheless legitimate, because
-`unlinkAdvantage_ofKEMFull_le` holds for *every* `UnlinkAdv` and can therefore be
-instantiated at each `hybridAdv k (q − k − 1)`, multiplying every term on its
-right (two shared-secret-hiding terms, `auxKeyIndependence`, anonymity) by the
-same `q`. Discharging that instantiation in Lean is a small follow-up.
+The composition with `unlinkAdvantage_ofKEMFull_le` is **in Lean**, as
+`unlinkAdvantageMulti_ofKEMFull_le` (`MultiUnlink.lean:281`), which instantiates
+it at each `hybridAdv k (q − k − 1)` — so every term on the right (two
+shared-secret-hiding terms, `auxKeyIndependence`, anonymity) is multiplied by
+the same `q`. `MultiUnlink.lean` imports `KEMAnonymity`; the derived adversary
+of each hybrid is legitimate for the same reason as before.
 
 **Why the derived adversary is legitimate.** It has to produce the other `q − 1`
 announcements itself. That is free: adversaries are `ProbComp` computations and
@@ -450,9 +450,9 @@ stated separately because it has nothing to do with stealth addresses.
 
 **`n` recipients** is the orthogonal generalisation and lives in
 `MultiRecipient.lean`; see the next section. It composes with the hybrid above
-on paper the same way `unlinkAdvantage_ofKEMFull_le` does — the two-recipient
-statement it reduces to holds for every `UnlinkAdv`, `hybridAdv` included —
-giving `Adv_{n,q} ≤ n·(n−1)·q·ε`; that composition is not in Lean.
+on paper the same way `unlinkAdvantage_ofKEMFull_le` does — and that
+composition is in Lean too, as `unlinkAdvantageN_ofKEMFull_le`
+(`MultiRecipient.lean:358`), giving `Adv_{n,q} ≤ n·(n−1)·q·ε`.
 
 ## `n`-recipient unlinkability
 
@@ -534,10 +534,13 @@ exchangeability and wrong-guess steps discharge it inline.)
   same recipient twice is a degenerate challenge in any case: both branches of
   the game are then the same computation.
 
-**What is NOT proved.** The composition with `MultiUnlink`'s `q`-challenge
-hybrid, and the composition with `unlinkAdvantage_ofKEMFull_le` — both are
-instantiations of theorems that hold for every adversary, both are legitimate on
-paper, neither is discharged in Lean.
+**What is NOT proved.** The composition of the `n`-recipient pair-guessing bound
+with `MultiUnlink`'s `q`-challenge hybrid (the joint `n`-recipient,
+`q`-announcement game, loss `n·(n−1)·q`). The two single-direction
+compositions with `unlinkAdvantage_ofKEMFull_le` are in Lean —
+`unlinkAdvantageMulti_ofKEMFull_le` (`MultiUnlink.lean:281`) and
+`unlinkAdvantageN_ofKEMFull_le` (`MultiRecipient.lean:358`) — both legitimate
+instantiations of theorems that hold for every adversary.
 
 ## Controls: why the definitions have teeth
 
