@@ -120,6 +120,7 @@ another key over the recipient's `pk`.
 | --- | --- |
 | `ZKNOX_dilithium` (vendored, `lib/ETHDILITHIUM` @ `df999ed`) | The real ML-DSA-44 verifier. Expanded-key form: reads `(aHat, tr, t1)` from a `PKContract` pointer |
 | `TrustedMlDsa44KeyRegistry` (new) | Key setup: `keccak256(pk) → PKContract`. Recomputes `tr = SHAKE256(pk, 64)` and unpacks `t1` from the key bytes on chain; **trusts its registrar for `aHat = ExpandA(rho)`**. `register` binds once; registrar-only `replace` corrects a wrong binding (each binding is its own CREATE2 `PKContract`, salted by `pk` and `aHat`) |
+| `TrustlessMlDsa44KeyRegistry` (new) | Key setup with **no registrar**: `begin` pins rho, sixteen permissionless `stage` calls expand one matrix entry each on chain (FIPS 204 `ExpandA` via `Shake128.sol`) and store only its `keccak256` (~2.45 M gas/entry, ~39.2 M total), `finalize` (≈ 11.0 M) takes the 16×32 words as calldata, checks them against the stored hashes and deploys the `PKContract`. Same `IMlDsa44ExpandedKeys` interface — needs its own signer/adapter/factory instances, so its own counterfactual addresses |
 | `MlDsa44CommitSigner7913` (new) | ERC-7913 verifier: `key` = commitment, `signature` = payload; steps 1–4 above. Uniform `0xffffffff` for a bad payload or an invalid signature; **reverts** with `VerifierCallFailed` if the inner verify does not complete (out of gas, malformed return) |
 | `MlDsa44CommitFrameVerifier` (new) | `IProofVerifier` adapter so the unchanged `Stealth8141ZkAccount` / `Stealth8141ZkFactory` bind `(commitment, adapter, frameCtx)` |
 | `Stealth7913Account` / `Stealth7913Account4337` (existing) | Hold `verifier ‖ commitment` (52 B) as OpenZeppelin `SignerERC7913` signer bytes; exercised through ERC-1271 |
@@ -134,27 +135,48 @@ the canonical key bytes (`forge test --match-contract MlDsa44CommitAccount`,
 describes the parameter set (identical to ML-DSA-44) and not a different
 message or key format.
 
-**What is blocked: trustless key setup.** The verifier needs `aHat =
+**Trustless key setup: shipped, staged.** The verifier needs `aHat =
 ExpandA(rho)`, sixteen SHAKE128 polynomial expansions. With the vendored
 Solidity Keccak-f, one SHAKE256 over the 1,312-byte key costs ≈ 4.4 M gas, so
-a full expansion is ≈ 40 M gas — more than one transaction can do today and
-far more than a per-spend budget. The registry therefore does **not** verify
+a full expansion in one transaction is ≈ 40 M — more than one transaction can
+comfortably carry. `TrustedMlDsa44KeyRegistry` therefore does **not** verify
 `aHat`; a dishonest registrar could bind a matrix of its choosing to the
-recipient's `pk` and then spend from every account committed to it. Anyone can
-audit a registration off chain (`PKContract.getPublicKey().aHat ==
-ExpandA(pk[0:32])`); nothing on chain does. Consequently:
+recipient's `pk` and then spend from every account committed to it. Anyone
+can audit a registration off chain (`PKContract.getPublicKey().aHat ==
+ExpandA(pk[0:32])`); nothing on chain does. `TrustlessMlDsa44KeyRegistry`
+(#27) closes the gap the staged way: rho pinned at `begin`, one entry per
+permissionless `stage` (each recomputes one FIPS 204 `ExpandA` stream on
+chain, ~2.45 M gas, pinned by its stored `keccak256` rather than stored
+word-for-word; 16 stages ≈ 39.2 M total), `finalize` (≈ 11.0 M) re-receives
+the 16×32 words as calldata — anyone can recompute them from the pinned rho
+— checks each entry against its stored hash (`EntryWordsMismatch` on any
+substitution) and deploys the PKContract with `tr`/`t1` derived
+on chain. The per-entry hash pins the matrix exactly as tightly as storing
+the words would: only the staged values themselves can pass. The whole flow
+is 18 transactions and no privileged role exists —
+a racing stager can only precompute what the deterministic function outputs.
+Verified by `TrustlessKeySetup.t.sol`: byte-equality with the fixture
+(aHat/tr/t1, with the hash check itself asserting the calldata words equal
+the on-chain expansion), the negatives (pre-begin, out-of-range entry, early
+finalize, double finalize, rho-flip aliasing, tampered calldata words), the
+two routes agreeing word-for-word
+on the same key, and the #27 acceptance spend through the real verifier.
+Consequently:
 
-* the contract path is a **local, reviewed-registrar integration**, not a
-  working trustless spend route and not a deployment;
-* the registrar's trust is **ongoing**: `replace` exists so that a registrar
-  *mistake* does not strand funds (every account address pins the registry
-  through the signer and adapter, so "deploy a new registry" is not a remedy
-  for money already at a counterfactual address), which means a registrar
-  compromised later can re-bind a key and spend. Both events are logged; a
-  deployment that prefers immutability can retire the registrar address;
-* removing the trust needs either a staged on-chain expansion (≈ 16
-  transactions per recipient key), a cheaper SHAKE, or a verifier that takes
-  the raw key — D-014's still-open "stateless raw-key verifier";
+* the contract path is a **local, reviewed integration with two routes**: a
+  one-transaction registrar-attested one (`TrustedMlDsa44KeyRegistry`) and an
+  18-transaction trustless one (`TrustlessMlDsa44KeyRegistry`) — the choice
+  is a deployment-policy decision, not a protocol difference;
+* the registrar's trust is **ongoing** in the trusted route: `replace` exists
+  so that a registrar *mistake* does not strand funds (every account address
+  pins the registry through the signer and adapter, so "deploy a new
+  registry" is not a remedy for money already at a counterfactual address),
+  which means a registrar compromised later can re-bind a key and spend. Both
+  events are logged; a deployment that prefers immutability can retire the
+  registrar address, or use the trustless route from the start;
+* what remains open is the cheaper path — a SHAKE with precompute or a
+  verifier that takes the raw key: D-014's still-open "stateless raw-key
+  verifier";
 * no ML-DSA-44 verifier, registry, signer or factory of this profile is
   deployed anywhere; the vectors' binding is synthetic.
 
@@ -249,9 +271,18 @@ implementation may claim the former without the latter.
 
 ## 7. Open items
 
-* Trustless key setup or a raw-key ML-DSA-44 verifier (§4). Until then the
-  registrar is a live trust assumption with a correction path, not a one-shot
-  ceremony; a deployment must decide who holds that role and how it is retired.
+* A cheaper key setup — precomputed SHAKE or a raw-key ML-DSA-44 verifier
+  (D-014's still-open "stateless raw-key verifier"). The staged trustless
+  route (§4) removes the registrar trust today at 18 transactions /
+  ≈ 50.2 M gas (39.2 M staging + 11.0 M finalize, `begin` negligible,
+  measured with argument marshalling outside the gas window); the redesign
+  (per-entry hash, words returned as calldata at finalize) saves
+  ≈ 10.9 M over per-word storage, all of it staging-side (stage ≈ 2.45 M
+  /entry instead of ≈ 3.13 M; finalize is a wash end-to-end — the
+  registry-side saving is repaid as the finalize tx's calldata cost). A
+  deployment that picks the one-transaction trusted route
+  instead keeps the registrar as a live trust assumption with a correction
+  path, and must decide who holds that role and how it is retired.
 * Gas-exhaustion semantics across the stack: the signer reverts, but the
   OpenZeppelin and frame-account wrappers convert any revert into "not
   authorized"; an integrator under a gas cap cannot tell the two apart at

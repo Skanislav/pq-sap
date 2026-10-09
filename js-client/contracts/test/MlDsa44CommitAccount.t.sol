@@ -101,6 +101,10 @@ contract MlDsa44CommitAccountTest is Test {
         bytes memory shortPk = new bytes(1311);
         vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.BadKeyLength.selector, 1311));
         registry.register(shortPk, aHat);
+        // pointerFor with a wrong-length pk is refused (same guard as
+        // register; without it a truncated key would zero-fill t1 reads)
+        vm.expectRevert(abi.encodeWithSelector(TrustedMlDsa44KeyRegistry.BadKeyLength.selector, 1311));
+        registry.pointerFor(shortPk, aHat);
     }
 
     function testRegistrarCanCorrectABinding() public {

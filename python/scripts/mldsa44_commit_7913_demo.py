@@ -89,6 +89,13 @@ def main() -> None:
         [compact_256(a_hat[i, j].coeffs) for j in range(DSA.l)] for i in range(DSA.k)
     ]
     t1_compact = [compact_256(t1[i, 0].coeffs) for i in range(DSA.k)]
+    # flat row-major by entry: entry e = row e/4, col e%4 occupies words
+    # 32*e .. 32*e+31 — the layout `TrustlessMlDsa44KeyRegistry.finalize`
+    # takes, so tests decode ONE static array instead of the triple-nested
+    # uint256[][][] (whose legacy-codegen decoder overflows the EVM stack).
+    flat_words = [
+        w for i in range(DSA.k) for j in range(DSA.l) for w in a_hat_compact[i][j]
+    ]
     public_key_data = encode(
         ["bytes", "bytes", "bytes"],
         [
@@ -119,6 +126,7 @@ def main() -> None:
         "tr": hx(tr),
         "a_hat": a_hat_compact,
         "t1": t1_compact,
+        "flat_words": hx(encode(["uint256[512]"], [flat_words])),
         "public_key_data": hx(public_key_data),
         "kem_ct": hx(ann.ephemeral_pub_key),
         "view_tag": hx(ann.view_tag),

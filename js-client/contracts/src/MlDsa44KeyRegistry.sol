@@ -112,6 +112,7 @@ contract TrustedMlDsa44KeyRegistry is IMlDsa44ExpandedKeys {
 
     /// @notice Address the `PKContract` for `(pk, aHat)` is or would be deployed at.
     function pointerFor(bytes calldata pk, uint256[][][] calldata aHat) external view returns (address) {
+        if (pk.length != PUBLIC_KEY_LENGTH) revert BadKeyLength(pk.length);
         bytes32 salt = keccak256(abi.encodePacked(keccak256(pk), keccak256(abi.encode(aHat))));
         bytes32 initHash = keccak256(abi.encodePacked(type(PKContract).creationCode, abi.encode(aHat, trOf(pk), unpackT1(pk))));
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initHash)))));
