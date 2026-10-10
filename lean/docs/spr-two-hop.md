@@ -351,15 +351,44 @@ nothing but the primitive idealization.
 simulated branch. `simulatorGap_le` splits it, by one triangle inequality, into
 
 * `encodingRegularity` — `compressDU`/`compressDV` followed by `byteEncodeDUVec`
-  / `byteEncodeDV` applied to *uniform ring elements*, against `sim` (for
-  ML-KEM-768, uniform 1088 FIPS 203 bytes). This is a regularity property of the
-  concrete encoding, it is **not** in `Encoding.Laws`, and stating it needs the
-  `private` `byteEncode_size` discussed above. Compression is lossy, so this is
-  a genuine statistical claim, not a bijection argument.
+  / `byteEncodeDV` applied to *uniform ring elements*, against `sim`. For
+  ML-KEM-768 it is not a small gap against uniform 1088-byte output: at
+  `du = 10`, 257 compressed coefficient values have four preimages modulo
+  3329 and 767 have three. The one-coefficient total-variation distance from
+  uniform 10-bit output is `0.0578248794`; for the 768 independent `u`
+  coefficients it is `0.9262656353`. The latter is the exact product
+  distance, computed by grouping products by their count of four-preimage
+  values. A uniform-byte simulator is therefore unsuitable for a negligible
+  SPR bound.
 * `keyRestoration` — putting the honest key distribution back once the challenge
   ciphertext is key-independent. Bounded by the same primitive-idealization and
   key-hop content applied to a ciphertext-blind distinguisher; naming it
   separately keeps the encoding claim clean.
+
+`keyRestoration` is no longer an opaque epsilon in the strongest in-tree
+statement. `keyRestorationAdv` is a third explicit seeded-MLWE adversary, and
+`keyRestoration_le_mlwe_add_keyIdealization` proves its bound by that advantage
+plus `keyIdealization`. Consequently `sprAdv_le_three_mlwe` and its
+ML-KEM-768 specialization `mlkem768_sprAdv_le_three_mlwe` state:
+
+```text
+SPR ≤ ε_prim + MLWE_key + MLWE_ciphertext
+      + ε_encoding + MLWE_restore + ε_key-idealization.
+```
+
+This is not a two-MLWE theorem: the three epsilon terms retain exactly the
+non-lattice claims that still require a ROM/PRF or encoding argument.
+
+`mlkem768CompressedUniformCiphertext` samples the final
+compressed-uniform ideal distribution directly.
+`encodingRegularity_mlkem768CompressedUniformCiphertext` proves the resulting
+encoding term is exactly zero, and
+`mlkem768_sprAdv_le_three_mlwe_compressed` removes `ε_encoding` from the
+concrete ML-KEM-768 bound.
+
+`sprAdv_le_three_mlwe_hypotheses_inhabited` also witnesses that the generic
+conditional theorem is non-vacuous: each residual bound can be the maximum of
+its two Boolean-branch distances.
 
 **Implicit rejection is irrelevant here.** SPR is a CPA-level notion: the
 distinguisher gets two public keys and one ciphertext and no decapsulation
