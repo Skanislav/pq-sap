@@ -438,6 +438,14 @@ def mlkem768CtHopProblem :
       (RqVec mlkem768.k × Rq) :=
   ctHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives
 
+/-- A key-independent simulator with the exact compressed-ciphertext
+distribution of the final ideal MLWE game. It is deliberately not uniform
+1088-byte output: FIPS 203 compression of a uniform `Rq` coefficient is biased
+because 3329 is not divisible by `2 ^ du`. -/
+def mlkem768CompressedUniformCiphertext :
+    ProbComp (Ciphertext mlkem768 mlkem768Encoding) :=
+  randCt mlkem768Encoding
+
 /-- **The SPR term of the ML-KEM-768 unlinkability decomposition, opened up.**
 Two of the four terms are decision-MLWE advantages of explicit reduction
 adversaries; the other two are named and unbounded here. -/
@@ -591,6 +599,96 @@ theorem sprAdv_le_mlwe (b : Bool)
         · exact hRestore b
     _ = _ := by ring
 
+/-- **SPR bounded by three explicit MLWE reductions and three named
+idealizations.** Unlike `sprAdv_le_mlwe`, the key-restoration term is opened:
+its reduction adversary and its remaining key-generation idealization are both
+visible in the statement. -/
+theorem sprAdv_le_three_mlwe (b : Bool)
+    (epsilonPrim epsilonEnc epsilonKeyIdeal : ℝ)
+    (hPrim : ∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim)
+    (hEnc : ∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc)
+    (hKeyIdeal : ∀ b, keyIdealization ring encoding prims adv sim b ≤ epsilonKeyIdeal) :
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+            (keyHopAdv ring encoding prims adv b)
+        + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+            (ctHopAdv ring encoding prims adv b)
+        + epsilonEnc
+        + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+            (keyRestorationAdv ring encoding prims adv sim b)
+        + epsilonKeyIdeal := by
+  calc
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b
+      ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + simulatorGap ring encoding prims adv sim b :=
+        sprAdv_le_two_hop_decomposition ring encoding prims adv sim b
+    _ ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (encodingRegularity ring encoding prims adv sim b
+            + keyRestoration ring encoding prims adv sim b) := by
+        gcongr
+        exact simulatorGap_le ring encoding prims adv sim b
+    _ ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (encodingRegularity ring encoding prims adv sim b
+            + (LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+                (keyRestorationAdv ring encoding prims adv sim b)
+              + keyIdealization ring encoding prims adv sim b)) := by
+        gcongr
+        exact keyRestoration_le_mlwe_add_keyIdealization ring encoding prims adv sim b
+    _ ≤ epsilonPrim
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (epsilonEnc
+            + (LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+                (keyRestorationAdv ring encoding prims adv sim b)
+              + epsilonKeyIdeal)) := by
+        gcongr
+        · exact hPrim b
+        · exact hEnc b
+        · exact hKeyIdeal b
+    _ = _ := by ring
+
+/-- The three hypotheses of `sprAdv_le_three_mlwe` are jointly inhabitable:
+take the maximum of each residual's two branch values. This prevents the
+conditional bound from being vacuous. -/
+theorem sprAdv_le_three_mlwe_hypotheses_inhabited :
+    ∃ epsilonPrim epsilonEnc epsilonKeyIdeal : ℝ,
+      (∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim)
+        ∧ (∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc)
+        ∧ (∀ b, keyIdealization ring encoding prims adv sim b ≤ epsilonKeyIdeal) := by
+  refine ⟨max (primitiveIdealization ring encoding prims adv false)
+      (primitiveIdealization ring encoding prims adv true),
+    max (encodingRegularity ring encoding prims adv sim false)
+      (encodingRegularity ring encoding prims adv sim true),
+    max (keyIdealization ring encoding prims adv sim false)
+      (keyIdealization ring encoding prims adv sim true), ?_, ?_, ?_⟩
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+
 end Assumptions
 
 
@@ -619,6 +717,86 @@ theorem mlkem768_sprAdv_le_mlwe (b : Bool)
         + epsilonRestore :=
   sprAdv_le_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
     mlkem768UniformCiphertext b epsilonPrim epsilonEnc epsilonRestore hPrim hEnc hRestore
+
+/-- **ML-KEM-768 SPR with every seeded-MLWE reduction exposed.** The remaining
+three assumptions are respectively FIPS primitive idealization,
+compression/encoding regularity, and key-generation idealization; none is
+silently charged to MLWE. -/
+theorem mlkem768_sprAdv_le_three_mlwe (b : Bool)
+    (epsilonPrim epsilonEnc epsilonKeyIdeal : ℝ)
+    (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 b ≤ epsilonPrim)
+    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 mlkem768UniformCiphertext b ≤ epsilonEnc)
+    (hKeyIdeal : ∀ b, keyIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 mlkem768UniformCiphertext b ≤ epsilonKeyIdeal) :
+    mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage mlkem768KeyHopProblem
+            (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage mlkem768CtHopProblem
+            (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + epsilonEnc
+        + LearningWithErrors.advantage mlkem768KeyHopProblem
+            (keyRestorationAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+              mlkem768UniformCiphertext b)
+        + epsilonKeyIdeal :=
+  sprAdv_le_three_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+    mlkem768UniformCiphertext b epsilonPrim epsilonEnc epsilonKeyIdeal hPrim hEnc hKeyIdeal
+
+/-- Against `mlkem768CompressedUniformCiphertext`, the encoding-regularity
+residual is identically zero because the simulator is the final ideal game's
+own `randCt` distribution. -/
+theorem encodingRegularity_mlkem768CompressedUniformCiphertext (b : Bool) :
+    encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768CompressedUniformCiphertext b = 0 := by
+  simp only [encodingRegularity, mlkem768CompressedUniformCiphertext,
+    ProbComp.boolDistAdvantage, sub_self, abs_zero]
+
+/-- **ML-KEM-768 SPR against the compressed-uniform simulator.** FIPS 203
+compression makes a uniform-byte simulator observably different, so this exact
+ideal-game simulator removes the encoding residual rather than assuming it
+small. The remaining non-MLWE terms are the two explicit primitive
+idealizations. -/
+theorem mlkem768_sprAdv_le_three_mlwe_compressed (b : Bool)
+    (epsilonPrim epsilonKeyIdeal : ℝ)
+    (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 b ≤ epsilonPrim)
+    (hKeyIdeal : ∀ b, keyIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 mlkem768CompressedUniformCiphertext b ≤ epsilonKeyIdeal) :
+    mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext adv768 b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage
+            (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage
+            (ctHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage
+            (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (keyRestorationAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+              mlkem768CompressedUniformCiphertext b)
+        + epsilonKeyIdeal := by
+  calc
+    mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext adv768 b
+      ≤ epsilonPrim
+          + LearningWithErrors.advantage
+              (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+          + LearningWithErrors.advantage
+              (ctHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+          + 0
+          + LearningWithErrors.advantage
+              (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (keyRestorationAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+                mlkem768CompressedUniformCiphertext b)
+          + epsilonKeyIdeal :=
+        sprAdv_le_three_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+          mlkem768CompressedUniformCiphertext b epsilonPrim 0 epsilonKeyIdeal hPrim
+          (fun b => le_of_eq (encodingRegularity_mlkem768CompressedUniformCiphertext adv768 b))
+          hKeyIdeal
+    _ = _ := by ring
 
 end Mlkem768Closed
 
