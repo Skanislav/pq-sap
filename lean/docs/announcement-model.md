@@ -156,6 +156,45 @@ random shared secret rather than the real one. That game is exactly what
 separates the two distinct assumptions a shared-secret-only model silently
 merged into one term.
 
+## ERC-8441 scheme 3: typed boundary
+
+`Scheme3.lean` instantiates this announcement shape at the draft's typed
+boundary:
+
+```text
+MetaPub      = (spending_pk, viewing_pk_ec, ek)
+TrackingKey  = (viewing_ec, dk)
+Ciphertext   = (epk, ct)
+Announcement = (epk, ct, view_tag(ss), stealth_address(ss))
+```
+
+`HybridKEM.lean` now constructs the hybrid KEM rather than merely naming one.
+`KEM.parallel` runs an ECDH KEM as its first component and an ML-KEM KEM as
+its second component, creates `(epk, ct)`, and passes, in that exact component
+order:
+
+```text
+viewing_pk_ec, ek, epk, ct, ss_ec, ss_pq
+```
+
+to the caller-supplied domain-separated combiner. Public-key reconstruction
+functions make decapsulation supply the same recipient bindings without
+including them in the ciphertext. `scheme3HybridKEMOfComponents` then adds an
+independently generated spending public key to form the registered
+meta-address.
+
+`parallel_perfectlyCorrect` proves that perfect correctness of both components,
+plus public-key reconstruction on honest key generation, gives correctness of
+the hybrid KEM. `scheme3HybridKEMOfComponents_perfectlyCorrect` transfers that
+result to the scheme-3 scanner. `scheme3_unlinkAdvantage_le` still supplies the
+four-term announcement unlinkability decomposition.
+
+This is not a proof that the hybrid combiner has one-of-two security, or that
+secp256k1 ECDH meets a classical assumption. Those are explicit assumptions in
+the component KEMs and combiner. It also does not model fixed-width
+serialization `epk || ct`; malformed-byte rejection and point/key validation
+belong to the ERC parser before construction of `Scheme3Ciphertext`.
+
 ## `cipherOf`: the induced ciphertext-anonymity adversary
 
 `StealthScheme.UnlinkAdv.cipherOf adv auxGen` turns a full-announcement
