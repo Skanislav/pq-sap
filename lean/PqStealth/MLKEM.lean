@@ -112,8 +112,10 @@ theorem size_uEncoded_encrypt_mlkem768
 /-! ## The uniform-ciphertext-bytes simulator -/
 
 /-- Uniform over the ML-KEM-768 ciphertext byte space: 960 bytes of `u`, 128 of
-`v`. The key-independent simulator the SPR argument compares real encapsulations
-against, and sharper than uniform-over-the-encoded-type would be. -/
+`v`. It is a key-independent simulator, but FIPS 203 compression makes it
+statistically far from the compressed-uniform ideal ciphertext distribution;
+use `mlkem768CompressedUniformCiphertext` from `SPRTwoHop` for the zero
+encoding-residual route. -/
 def mlkem768UniformCiphertext : ProbComp (Ciphertext mlkem768 mlkem768Encoding) := do
   let u ← $ᵗ (Bytes (uEncodedBytes mlkem768))
   let v ← $ᵗ (Bytes (vEncodedBytes mlkem768))

@@ -2,6 +2,8 @@ import PqStealth.Blinding
 import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
+import PqStealth.HybridKEM
+import PqStealth.Scheme3
 import PqStealth.MultiUnlink
 import PqStealth.MultiRecipient
 import PqStealth.ConstructionA
@@ -107,6 +109,11 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le
 
+/-! ## Parallel hybrid KEM (`HybridKEM`) -/
+
+/-- info: 'PqStealth.KEM.parallel_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.parallel_perfectlyCorrect
+
 /-! ## Shared-secret hiding as a real-or-random bias (`SharedSecretHiding`) -/
 
 /-- info: 'PqStealth.sharedSecretHiding_eq_rorBias' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -116,6 +123,21 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.KEM.anonAdvantage_le_sprAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.anonAdvantage_le_sprAdv
+
+
+/-! ## ERC-8441 scheme-3 abstract model (`Scheme3`) -/
+
+/-- info: 'PqStealth.scheme3_perfectlyComplete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_perfectlyComplete
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le
+
+/-- info: 'PqStealth.scheme3HybridKEM_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3HybridKEM_perfectlyCorrect
+
+/-- info: 'PqStealth.scheme3HybridKEMOfComponents_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3HybridKEMOfComponents_perfectlyCorrect
 
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition
@@ -302,6 +324,21 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.mlkem768_sprAdv_le_two_hop_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_two_hop_decomposition
+
+/-- info: 'PqStealth.sprAdv_le_three_mlwe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe
+
+/-- info: 'PqStealth.mlkem768_sprAdv_le_three_mlwe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_three_mlwe
+
+/-- info: 'PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext
+
+/-- info: 'PqStealth.mlkem768_sprAdv_le_three_mlwe_compressed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_three_mlwe_compressed
+
+/-- info: 'PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited
 
 /-! ## Spend forgery as matrix-SIS (`Ownership`) -/
 
