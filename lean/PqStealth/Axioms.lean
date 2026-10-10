@@ -12,6 +12,7 @@ import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
 import PqStealth.SPRTwoHop
+import PqStealth.ClosedUnlinkability
 import PqStealth.Ownership
 import PqStealth.DKSAP
 import PqStealth.DKSAPOracle
@@ -339,6 +340,11 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited
+
+/-! ## Closed ML-KEM-768 unlinkability (`ClosedUnlinkability`) -/
+
+/-- info: 'PqStealth.mlkem768_unlinkAdvantage_le_three_mlwe_compressed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_unlinkAdvantage_le_three_mlwe_compressed
 
 /-! ## Spend forgery as matrix-SIS (`Ownership`) -/
 
