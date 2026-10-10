@@ -396,9 +396,11 @@ oracle, so `decapsInternal`, `jReject` and the `c = c'` re-encryption check neve
 appear in any game of the chain. The implicit-rejection caveat belongs to the
 ANO-CCA lift (Maram–Xagawa), not to this file.
 
-**Not attempted:** chaining `mlkem768_sprAdv_le_two_hop_decomposition` into
-`mlkem768_unlinkAdvantage_le_full_decomposition`. It is one `calc` over
-`gcongr`, but would produce an eight-term inequality; the two statements compose
-by hand. Issue #7's acceptance also asks for the "remaining lattice step"
-paragraph of `AnonymityFromSPR.lean`'s module docstring to be rewritten to point
-here — that file belongs to another work item and is left untouched.
+`ClosedUnlinkability.lean` proves the full composition:
+`mlkem768_unlinkAdvantage_le_three_mlwe_compressed` chains the per-branch
+SPR bound into `unlinkAdvantage_ofKEMFull_le_full_decomposition` against the
+compressed-uniform simulator, so the ML-KEM-768 stealth unlinkability advantage
+is bounded by the two hiding terms, key independence, both named
+idealizations, and six seeded-MLWE advantages (keyHopAdv/ctHopAdv per branch,
+keyRestorationAdv per restoration). The encoding term vanishes by
+`encodingRegularity_mlkem768CompressedUniformCiphertext`.
