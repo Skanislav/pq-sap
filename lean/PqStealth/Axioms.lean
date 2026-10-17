@@ -4,6 +4,8 @@ import PqStealth.Games
 import PqStealth.KEMAnonymity
 import PqStealth.HybridKEM
 import PqStealth.Scheme3
+import PqStealth.ANOAssumption
+import PqStealth.Scheme3Wire
 import PqStealth.MultiUnlink
 import PqStealth.MultiRecipient
 import PqStealth.ConstructionA
@@ -125,6 +127,23 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.KEM.anonAdvantage_le_sprAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.anonAdvantage_le_sprAdv
 
+/-- info: 'PqStealth.KEM.simulateQ_toANO_CCA' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.simulateQ_toANO_CCA
+
+/-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr
+
+/-! ## ERC-8441 ANO-CCA assumption layer (`ANOAssumption`) -/
+
+/-- info: 'PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed
+
+/-- info: 'PqStealth.scheme3ParallelHybrid768' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3ParallelHybrid768
+
+/-- info: 'PqStealth.hybrid768AnonAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.hybrid768AnonAdvantage
+
 
 /-! ## ERC-8441 scheme-3 abstract model (`Scheme3`) -/
 
@@ -133,6 +152,20 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.scheme3_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le
+
+/-! ## Scheme-3 wire-format and fail-closed-scanning invariants (`Scheme3Wire`) -/
+
+/-- info: 'PqStealth.scheme3EphemeralPubKey_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3EphemeralPubKey_roundtrips
+
+/-- info: 'PqStealth.mlkem768_decaps_total' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_decaps_total
+
+/-- info: 'PqStealth.mlkem768_scan_is_total_and_pure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_scan_is_total_and_pure
 
 /-- info: 'PqStealth.scheme3HybridKEM_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3HybridKEM_perfectlyCorrect

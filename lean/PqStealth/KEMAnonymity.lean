@@ -12,11 +12,31 @@ also carries `auxGen sharedSecret pk` and whose scan recomputes it, with
 shared-secret-hiding terms, `auxKeyIndependence`, and anonymity; and detection
 completeness of `ofKEMFull` from VCVio's `KEMScheme.PerfectlyCorrect`.
 
-Assumed: nothing here. `anonymity → MLWE` for ML-KEM is the open piece
-(`AnonymityFromSPR`). See `docs/announcement-model.md`.
+The oracle-backed recipient-anonymity games live in `OracleGames`: ANO-CPA
+(two-phase wrapper over `AnonExp`) and oracle-backed ANO-CCA on a Bool-keyed,
+level-0 decapsulation oracle (`anonOracleSpec spec C K = spec + ((Bool × C)
+→ₒ Option K)`, matching VCVio's `IND_CCA` shape). `simulateQ_toANO_CCA` and
+`toANO_CCA_pre/PostChallenge` prove the oracle-ignoring CPA adversary is
+identical across the two games phase-for-phase. `ANO_CCA_Advantage_le_of_spr`
+closes the reduction: a CPA anonymity adversary lifted into the CCA game is
+bounded by the two per-branch SPR terms against a key-independent simulator,
+under explicit runtime-coherence hypotheses (`heval_pure/bind/liftProbComp`,
+and `hnf` totality on `Bool` computations) — the same pattern VCVio's
+KEM+DEM reduction carries.
+
+These are the local stand-ins for upstream `Verified-zkEVM/VCVio#848`; if that
+lands, this section is what gets upstreamed and replaced. The unlinkability
+chain still bottoms out in the CPA anonymity term `anonAdvantage`; the CCA
+variant here is the deployed-adversary refinement and the payload to fold into
+`Scheme3`/the capstone next. The bound only covers adversaries that ignore the
+decapsulation oracle; extending it to adversaries that *query* decap is the FO
+anonymity-preservation lift — see `docs/fo-anonymity-lift.md`. `anonymity →
+MLWE` for ML-KEM is the open piece (`AnonymityFromSPR`).
 -/
 
 open OracleComp OracleSpec
+
+universe u
 
 namespace PqStealth
 
@@ -99,6 +119,377 @@ theorem anonAdvantage_eq_branchDistAdvantage :
       (kem.anonSetup >>= kem.anonBranch adv true).boolDistAdvantage
       (kem.anonSetup >>= kem.anonBranch adv false) :=
   ProbComp.boolBiasAdvantage_bind_uniformBool_branch kem.anonSetup (kem.anonBranch adv)
+
+/-! ## Recipient anonymity as a security game
+
+Two variants, mirroring VCVio's `IND-CPA` / `IND-CCA` split and held back from
+upstream until `Verified-zkEVM/VCVio#848` lands.
+
+* **ANO-CPA** is the hidden-bit key-privacy game already proved above as
+  `AnonExp` / `anonAdvantage`; this section adds the two-phase
+  `ANO_CPA_Adversary` wrapper and a reusable experiment.
+
+* **ANO-CCA** adds a live decapsulation oracle keyed by the recipient bit,
+  modelled exactly like VCVio's `IND_CCA_Game`: the adversary runs against
+  `spec + ((Bool × C) →ₒ Option K)` (base, then `(whichKey, ciphertext)`), the
+  post-challenge oracle masks its own challenge ciphertext to `none` on both
+  keys, and the adversary is simulated back into `OracleComp spec` with the real
+  `decaps`. This is the game a deployed ERC-5564 adversary actually plays — it
+  can decapsulate every registered candidate's announcements. The two recipients
+  share one `Type 0` oracle (index `Bool × C`) so the whole development stays in
+  VCVio's level-0 `simulateQ`/`SubSpec` API — the same shape as `IND_CCA`. -/
+
+section OracleGames
+
+/-- Oracle spec for the anonymity games: the base `spec` plus a decapsulation
+oracle taking `(whichKey : Bool, ciphertext : C)` to the shared key `K`. Both
+recipient keys share one oracle, selected by the Boolean, exactly as VCVio's
+`IND_CCA_oracleSpec` shares one `C →ₒ Option K` for its single key. -/
+@[reducible] def anonOracleSpec {ι : Type} (spec : OracleSpec ι) (C K : Type) :
+    OracleSpec (ι ⊕ Bool × C) :=
+  spec + ((Bool × C) →ₒ Option K)
+
+/-- Two-phase ciphertext-only anonymity adversary. The hidden bit selects which
+of two public keys the challenge ciphertext encapsulates to; `postChallenge`
+sees both public keys and the challenge ciphertext but never the encapsulated
+secret. -/
+structure ANO_Adversary {ι : Type} (spec : OracleSpec ι) (PK C : Type) where
+  /-- Internal adversary state carried across the challenge. -/
+  State : Type
+  /-- Pre-challenge phase: sees both public keys, returns a state. -/
+  preChallenge : PK → PK → OracleComp spec State
+  /-- Post-challenge phase: sees the state and the challenge ciphertext. -/
+  postChallenge : State → C → OracleComp spec Bool
+
+/-- Fixed-branch ANO-CPA experiment: no decapsulation oracle, matching
+`IND_CPA_Exp` but on the challenge ciphertext rather than the shared key. -/
+def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (b : Bool)
+    (adv : ANO_Adversary spec PK C) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, _) ← kem.keygen
+    let (pk1, _) ← kem.keygen
+    let st ← adv.preChallenge pk0 pk1
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    adv.postChallenge st cStar
+
+/-- Single-bit ANO-CPA experiment. -/
+def ANO_CPA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) :
+    SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, _) ← kem.keygen
+    let (pk1, _) ← kem.keygen
+    let st ← adv.preChallenge pk0 pk1
+    let b ← runtime.liftProbComp ($ᵗ Bool)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    let b' ← adv.postChallenge st cStar
+    return (b == b')
+
+/-- ANO-CPA anonymity advantage: bias of the hidden-bit guessing game. -/
+noncomputable def ANO_CPA_Advantage {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) : ℝ :=
+  (ANO_CPA_Game kem runtime adv).boolBiasAdvantage
+
+/-- Two-phase ANO-CCA anonymity adversary with a decapsulation oracle for both
+keys. Neither phase ever sees the challenge shared secret; both phases may
+query decapsulation of `(whichKey, ciphertext)` through the ambient
+`OracleComp (anonOracleSpec …)`. -/
+structure ANO_CCA_Adversary {ι : Type} (spec : OracleSpec ι) (PK C K : Type) where
+  /-- Internal adversary state carried across the challenge. -/
+  State : Type
+  /-- Pre-challenge phase: sees both public keys, may decapsulate under both. -/
+  preChallenge : PK → PK → OracleComp (anonOracleSpec spec C K) State
+  /-- Post-challenge phase: sees the state and ciphertext, oracle still live. -/
+  postChallenge : State → C → OracleComp (anonOracleSpec spec C K) Bool
+
+/-- Pre-challenge ANO-CCA oracle implementation: real decapsulation under the
+key selected by the Boolean. -/
+def anoPreChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) (sk0 sk1 : SK) :
+    QueryImpl (anonOracleSpec spec C K) (OracleComp spec) :=
+  (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) +
+    (fun (bc : Bool × C) => if bc.1 then kem.decaps sk1 bc.2 else kem.decaps sk0 bc.2)
+
+/-- Post-challenge ANO-CCA oracle implementation: the challenge ciphertext maps
+to `none` under either key, everything else decapsulates for real. -/
+def anoPostChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) [DecidableEq C]
+    (sk0 sk1 : SK) (cStar : C) :
+    QueryImpl (anonOracleSpec spec C K) (OracleComp spec) :=
+  (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) +
+    (fun (bc : Bool × C) => if bc.2 = cStar then return none
+      else if bc.1 then kem.decaps sk1 bc.2 else kem.decaps sk0 bc.2)
+
+/-- ANO-CCA experiment: the hidden bit picks which key encapsulates the
+challenge ciphertext; both decapsulation oracles stay live throughout, each
+masking its own challenge. -/
+def ANO_CCA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let b ← runtime.liftProbComp ($ᵗ Bool)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    let b' ← simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+    return (b == b')
+
+/-- ANO-CCA anonymity advantage: bias of the hidden-bit guessing game. -/
+noncomputable def ANO_CCA_Advantage {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) : ℝ :=
+  (ANO_CCA_Game kem runtime adv).boolBiasAdvantage
+
+/-- Embed a ciphertext-only CPA anonymity adversary into the CCA game by
+ignoring the decapsulation oracle. The lift is `simulateQ` with the base-`spec`
+handler `HasQuery.toQueryImpl`, which — by `HasQuery.toQueryImpl_eq_id'` — is the
+identity semantics, so no randomness enters and the CPA branch is preserved
+exactly. This is the anonymity analogue of VCVio's
+`IND_CPA_Adversary.toIND_CCA`. -/
+def ANO_Adversary.toANO_CCA {ι : Type} {spec : OracleSpec ι} {PK C K : Type}
+    (adv : ANO_Adversary spec PK C) : ANO_CCA_Adversary spec PK C K where
+  State := adv.State
+  preChallenge pk0 pk1 := simulateQ
+    (HasQuery.toQueryImpl (spec := spec) (m := OracleComp (anonOracleSpec spec C K)))
+    (adv.preChallenge pk0 pk1)
+  postChallenge st c := simulateQ
+    (HasQuery.toQueryImpl (spec := spec) (m := OracleComp (anonOracleSpec spec C K)))
+    (adv.postChallenge st c)
+
+/-- Composing the game handler `base + decapOracle` with the oracle-ignoring
+lift collapses to the identity: an adversary phase that never queries
+decapsulation is simulated away exactly. This is the anonymity form of VCVio's
+`IND_CPA_Game_eq_IND_CCA_Game_toIND_CCA`, at the level-0 `spec + ((Bool × C)
+→ₒ Option K)` oracle so the stock `simulateQ` / `SubSpec` lemmas apply. -/
+theorem simulateQ_toANO_CCA {ι : Type} {spec : OracleSpec ι} {K C : Type} (SK : Type)
+    (impl₂ : QueryImpl ((Bool × C) →ₒ Option K) (OracleComp spec))
+    {α : Type} (oa : OracleComp spec α) :
+    simulateQ ((HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) + impl₂)
+      (simulateQ (HasQuery.toQueryImpl (spec := spec)
+        (m := OracleComp (anonOracleSpec spec C K))) oa) = oa := by
+  rw [← QueryImpl.simulateQ_compose]
+  have : (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec) + impl₂) ∘ₛ
+      HasQuery.toQueryImpl (spec := spec)
+        (m := OracleComp (anonOracleSpec spec C K)) = QueryImpl.id' spec := by
+    ext t
+    simp only [QueryImpl.compose, QueryImpl.id']
+    change simulateQ (QueryImpl.id' spec + impl₂)
+      (liftM (liftM (spec.query t) : OracleQuery (anonOracleSpec spec C K) _)) = _
+    simp [simulateQ_query]
+  rw [this, simulateQ_id']
+
+/-- Pre-challenge phase of the oracle-ignoring adversary is exactly the CPA
+phase: the decapsulation oracle contributes nothing it does not query. -/
+theorem toANO_CCA_preChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) (sk0 sk1 : SK)
+    (adv : ANO_Adversary spec PK C) (pk0 pk1 : PK) :
+    simulateQ (anoPreChallengeImpl kem sk0 sk1)
+      ((ANO_Adversary.toANO_CCA adv).preChallenge pk0 pk1) = adv.preChallenge pk0 pk1 :=
+  simulateQ_toANO_CCA SK _ _
+
+/-- Post-challenge phase of the oracle-ignoring adversary is exactly the CPA
+phase, even though the real handler masks the challenge ciphertext — the
+adversary never queries it. -/
+theorem toANO_CCA_postChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) [DecidableEq C]
+    (sk0 sk1 : SK) (cStar : C) (adv : ANO_Adversary spec PK C) (st : adv.State) (c : C) :
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar)
+      ((ANO_Adversary.toANO_CCA adv).postChallenge st c) = adv.postChallenge st c :=
+  simulateQ_toANO_CCA SK _ _
+
+/-! ### The SPR reduction: ANO-CCA advantage ≤ sum of per-branch SPR terms
+
+For the oracle-ignoring CPA-to-CCA lift `adv.toANO_CCA`, the hidden-bit ANO-CCA
+advantage decomposes — via the fair-coin hidden-bit lemma — into the
+distinguishing advantage between the two fixed-branch CCA experiments, which is
+then bounded branch-by-branch by the SPR (simulated pseudo-randomness)
+advantage of replacing the challenge encapsulation with the key-independent
+simulator `sim`. All distribution-level steps are carried out for a general
+`ProbCompRuntime`, passing the required coherence of `runtime.evalDist` with
+`pure`/`>>=`, its agreement with `𝒟` on lifted `ProbComp` sampling, and its
+totality on `Bool`-valued computations as explicit hypotheses — exactly the
+pattern of VCVio's `ind_cpa_one_time_bias_advantage_compose_with_dem_le`. -/
+
+/-- Fixed-branch ANO-CCA experiment: the hidden bit is fixed to `b`, so the
+challenge ciphertext is always encapsulated to public key `b`; both
+decapsulation oracles stay live (pre-challenge unmasked, post-challenge masking
+its own challenge). -/
+def ANO_CCA_Branch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (b : Bool) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+
+/-- Key-independent simulator branch: the challenge ciphertext is drawn from
+`sim` instead of an encapsulation, both decapsulation oracles stay live, and the
+adversary's verdict is returned. -/
+def ANO_CCA_SimBranch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let cStar ← runtime.liftProbComp sim
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+
+/-- SPR (simulated pseudo-randomness) advantage of branch `b`: the distinguishing
+advantage between honestly encapsulating the challenge ciphertext under public
+key `b` and drawing it from the key-independent simulator `sim`. -/
+noncomputable def ANO_SPR_Term {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) (b : Bool) : ℝ :=
+  (ANO_CCA_Branch kem runtime adv b).boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv sim)
+
+/-- The SPR reduction: the ANO-CCA advantage of the oracle-ignoring lift
+`adv.toANO_CCA` is at most the sum of the per-branch SPR terms. The proof has
+two stages:
+
+* **Hidden-bit decomposition.** The single ANO-CCA game equals a fair-coin
+  branch over the two fixed-branch experiments — the branches re-run exactly
+  the game's own phases for the lift `adv.toANO_CCA`, and the independent
+  draws are commuted (`bind_swap` from `probOutput_bind_bind_swap`) so the coin
+  sits in front — so its bias advantage equals the distinguishing advantage
+  between the branches (`boolBiasAdvantage_eq_boolDistAdvantage_coin_branch`,
+  with the fair-coin probabilities from `probOutput_uniformSample`).
+
+* **Branch-wise SPR bound.** The `true` SPR term is definitionally the
+  `true`-branch-to-simulator distinguishing advantage, and the `false` term is
+  the same advantage with arguments flipped (`abs_sub_comm`); one application
+  of `boolDistAdvantage_triangle` through the key-independent simulator branch
+  bounds the inter-branch advantage by their sum.
+
+The coherence hypotheses on the general `runtime` are the standard ones:
+monad-morphism laws for `runtime.evalDist` (`heval_pure`, `heval_bind`),
+agreement with `𝒟` on lifted `ProbComp` sampling (`heval_liftProbComp`, giving
+the fair coin), and totality on `Bool`-valued computations (`hnf`, giving the
+per-branch totality the coin-branch decomposition requires). -/
+theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
+    [IsUniformSpec spec]
+    {K PK SK C : Type} [DecidableEq C]
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec))
+    (adv : ANO_Adversary spec PK C)
+    (sim : ProbComp C)
+    (heval_pure : ∀ {α : Type} (a : α),
+      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+      (f : α → OracleComp spec β),
+      runtime.evalDist (mx >>= f) =
+        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+      runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
+    (hnf : ∀ (mx : OracleComp spec Bool),
+      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+    {sprTrue sprFalse : ℝ}
+    (hT : ANO_SPR_Term kem runtime adv.toANO_CCA sim true ≤ sprTrue)
+    (hF : ANO_SPR_Term kem runtime adv.toANO_CCA sim false ≤ sprFalse) :
+    ANO_CCA_Advantage kem runtime adv.toANO_CCA ≤ sprTrue + sprFalse := by
+  -- Local SPMF-level commutation of independent draws (`bind_swap`), proved by
+  -- pointwise `probOutput_bind_bind_swap` exactly as in VCVio's KEMDEM proof.
+  have bind_swap : ∀ {α β γ : Type} (mx : SPMF α) (my : SPMF β)
+      (f : α → β → SPMF γ),
+      (mx >>= fun a => my >>= fun b => f a b) =
+        (my >>= fun b => mx >>= fun a => f a b) := by
+    intro α β γ mx my f
+    ext x
+    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
+  have hite_false : (false : Bool) = true ↔ False := ⟨Bool.noConfusion, False.elim⟩
+  have hite_true : (true : Bool) = true ↔ True := ⟨fun _ => trivial, fun _ => rfl⟩
+  -- Fairness of the runtime coin: it is a uniform `Bool` sample observed via `𝒟`.
+  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
+      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+    constructor
+    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
+          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
+          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+  -- The hidden-bit decomposition, packaged for arbitrary branch SPMFs.
+  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
+      Pr[= true | Y] + Pr[= false | Y] = 1 →
+      (𝒟[uniformSample Bool] >>= fun b =>
+          (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
+        SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
+    SPMF.boolBiasAdvantage_eq_boolDistAdvantage_coin_branch (𝒟[uniformSample Bool]) X Y
+      hcoin.1 hcoin.2 hX hY
+  -- Stage 1: the hidden-bit ANO-CCA game of the lift is the fair-coin branch
+  -- over the two fixed branches, with the coin drawn first. Both sides of each
+  -- branch are the same computation, because the game's adversary is exactly
+  -- the lift `adv.toANO_CCA` whose phases the branch experiments re-run.
+  have hgame : ANO_CCA_Game kem runtime adv.toANO_CCA =
+      𝒟[uniformSample Bool] >>= fun b =>
+        (if b then ANO_CCA_Branch kem runtime adv.toANO_CCA true
+              else ANO_CCA_Branch kem runtime adv.toANO_CCA false) >>=
+          fun z => pure (b == z) := by
+    simp only [ANO_CCA_Game, ANO_CCA_Branch, ANO_Adversary.toANO_CCA,
+      heval_bind, heval_pure, heval_liftProbComp]
+    simp_rw [bind_swap (my := 𝒟[uniformSample Bool])]
+    congr 1
+    funext b
+    cases b
+    · simp only [hite_false, ite_false, bind_assoc]
+    · simp only [ite_true, bind_assoc]
+  -- Stage 2: the bias of the hidden-bit game is the distinguishing advantage
+  -- between the branches; totality of each branch is `hnf` at the branch
+  -- experiment (`ANO_CCA_Branch … b` is `runtime.evalDist` of an
+  -- `OracleComp spec Bool` computation).
+  have h_cca : ANO_CCA_Advantage kem runtime adv.toANO_CCA =
+      SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+        (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := by
+    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA true] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA true] = 1 :=
+      hnf _
+    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA false] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA false] = 1 :=
+      hnf _
+    change (ANO_CCA_Game kem runtime adv.toANO_CCA).boolBiasAdvantage = _
+    rw [hgame, coin_branch _ _ htotT htotF]
+  -- Stage 3: branch-wise SPR bounds via the triangle inequality. The `true`
+  -- SPR term is definitionally the `true`-branch-to-simulator advantage; the
+  -- `false` SPR term is the same advantage read on the other argument order.
+  have htriT : SPMF.boolDistAdvantage
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA false) ≤
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim true +
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim false := by
+    have h := SPMF.boolDistAdvantage_triangle (ANO_CCA_Branch kem runtime
+      adv.toANO_CCA true) (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim)
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA false)
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+        (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim) =
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim true from rfl] at h
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim)
+        (ANO_CCA_Branch kem runtime adv.toANO_CCA false) =
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim false from by
+      unfold ANO_SPR_Term
+      exact abs_sub_comm _ _] at h
+    exact h
+  calc ANO_CCA_Advantage kem runtime adv.toANO_CCA
+      = SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+          (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := h_cca
+    _ ≤ ANO_SPR_Term kem runtime adv.toANO_CCA sim true +
+        ANO_SPR_Term kem runtime adv.toANO_CCA sim false := htriT
+    _ ≤ sprTrue + sprFalse := add_le_add hT hF
+
+end OracleGames
 
 end KEM
 

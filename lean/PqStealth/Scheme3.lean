@@ -290,4 +290,44 @@ theorem scheme3_unlinkAdvantage_le
       + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false :=
   unlinkAdvantage_ofKEMFull_le hybridKem (scheme3Aux viewTag stealthAddress) adv
 
+/-- **Scheme-3 unlinkability with the anonymity term discharged by a bound.**
+Same four-term decomposition as `scheme3_unlinkAdvantage_le`, but the hybrid
+anonymity term is replaced by `epsilonAnon` whenever the hybrid KEM's anonymity
+is bounded. `hybridKem_anonBounded` is the abstract slot the concrete
+ERC-8441 assumption (`ANOAssumption.hybrid768_anonAdvantage_le_assumed`) plugs
+into; keeping it abstract here lets the capstone stay combiner-agnostic. -/
+theorem scheme3_unlinkAdvantage_le_of_anonAdvantage_le
+    {SpendingPub ViewingPub EncapsulationKey ViewingSecret DecapsulationKey EphemeralPub KemCiphertext
+      HybridSecret ViewTag Address : Type}
+    [SampleableType HybridSecret] [DecidableEq ViewTag] [DecidableEq Address]
+    (hybridKem : KEM
+      (Scheme3MetaAddress SpendingPub ViewingPub EncapsulationKey)
+      (Scheme3TrackingKey ViewingSecret DecapsulationKey)
+      (Scheme3Ciphertext EphemeralPub KemCiphertext)
+      HybridSecret)
+    (viewTag : HybridSecret → ViewTag)
+    (stealthAddress : SpendingPub → HybridSecret → Address)
+    (adv : StealthScheme.UnlinkAdv
+      (Scheme3MetaAddress SpendingPub ViewingPub EncapsulationKey)
+      (Scheme3Announcement EphemeralPub KemCiphertext ViewTag Address))
+    (epsilonAnon : ℝ)
+    (hAnon : hybridKem.anonAdvantage (adv.cipherOf (scheme3Aux viewTag stealthAddress))
+      ≤ epsilonAnon) :
+    (StealthScheme.scheme3 hybridKem viewTag stealthAddress).unlinkAdvantage adv ≤
+      sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv true
+      + auxKeyIndependence hybridKem (scheme3Aux viewTag stealthAddress) adv
+      + epsilonAnon
+      + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false := by
+  calc (StealthScheme.scheme3 hybridKem viewTag stealthAddress).unlinkAdvantage adv
+      ≤ sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv true
+          + auxKeyIndependence hybridKem (scheme3Aux viewTag stealthAddress) adv
+          + hybridKem.anonAdvantage (adv.cipherOf (scheme3Aux viewTag stealthAddress))
+          + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false :=
+        scheme3_unlinkAdvantage_le hybridKem viewTag stealthAddress adv
+    _ ≤ sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv true
+          + auxKeyIndependence hybridKem (scheme3Aux viewTag stealthAddress) adv
+          + epsilonAnon
+          + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false := by
+        gcongr
+
 end PqStealth

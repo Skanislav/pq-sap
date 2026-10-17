@@ -4,6 +4,8 @@ import PqStealth.Games
 import PqStealth.KEMAnonymity
 import PqStealth.HybridKEM
 import PqStealth.Scheme3
+import PqStealth.ANOAssumption
+import PqStealth.Scheme3Wire
 import PqStealth.MultiUnlink
 import PqStealth.MultiRecipient
 import PqStealth.ConstructionA

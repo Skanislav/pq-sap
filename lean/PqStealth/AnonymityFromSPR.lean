@@ -14,7 +14,9 @@ Assumed: the SPR terms are decomposed in `SPRTwoHop` into three MLWE hops
 (primitive idealization, key-generation idealization); the encoding term
 vanishes by the compressed-uniform simulator. `ClosedUnlinkability` chains the
 per-branch bound into the full unlinkability decomposition. Lifting to ANO-CCA
-must track ML-KEM's implicit-rejection FO transform.
+must track ML-KEM's implicit-rejection FO transform — the naive
+`ANO-CCA ≤ ANO-CPA + ε` is false by the Maram–Xagawa counterexample; the honest
+extended-anonymity shape and VCVio milestone are in `docs/fo-anonymity-lift.md`.
 See `docs/spr-two-hop.md`.
 -/
 
