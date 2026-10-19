@@ -133,6 +133,9 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr
 
+/-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full
+
 /-! ## ERC-8441 ANO-CCA assumption layer (`ANOAssumption`) -/
 
 /-- info: 'PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed' depends on axioms: [propext, Classical.choice, Quot.sound] -/

@@ -27,11 +27,14 @@ KEM+DEM reduction carries.
 These are the local stand-ins for upstream `Verified-zkEVM/VCVio#848`; if that
 lands, this section is what gets upstreamed and replaced. The unlinkability
 chain still bottoms out in the CPA anonymity term `anonAdvantage`; the CCA
-variant here is the deployed-adversary refinement and the payload to fold into
-`Scheme3`/the capstone next. The bound only covers adversaries that ignore the
-decapsulation oracle; extending it to adversaries that *query* decap is the FO
-anonymity-preservation lift — see `docs/fo-anonymity-lift.md`. `anonymity →
-MLWE` for ML-KEM is the open piece (`AnonymityFromSPR`).
+variant here is the deployed-adversary refinement.
+`ANO_CCA_Advantage_le_of_spr_full` extends the bound to the **full CCA
+adversary** — one that queries the decapsulation oracle: the hidden-bit
+decomposition and SPR triangle were generic in the adversary all along.
+Bounding the SPR terms themselves at ML-KEM-768 (seeded-MLWE chain plus the
+ROM/PRF and collision terms of Maram–Xagawa's Theorem 2, per
+the Maram–Xagawa Theorem 2 paper verification) is what remains.
+`anonymity → MLWE` for ML-KEM is the open piece (`AnonymityFromSPR`).
 -/
 
 open OracleComp OracleSpec
@@ -487,6 +490,117 @@ theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
           (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := h_cca
     _ ≤ ANO_SPR_Term kem runtime adv.toANO_CCA sim true +
         ANO_SPR_Term kem runtime adv.toANO_CCA sim false := htriT
+    _ ≤ sprTrue + sprFalse := add_le_add hT hF
+
+/-- **The ANO-CCA SPR bound for the FULL CCA adversary** — the
+decomposition and the branch-wise SPR triangle are generic in the adversary:
+the lift-specific step in the earlier theorem (`toANO_CCA`'s phases re-running)
+was never needed for the coin-branch rewrite — the game's own phases are what
+the branch experiments re-run, for *any* adversary. Hence a decap-*querying*
+adversary's ANO-CCA advantage is bounded by the same two per-branch SPR terms:
+distinguishing honest encapsulation under key `b` from the key-independent
+simulator `sim`, in the full CCA context with live decapsulation oracles.
+
+This is the shape Maram–Xagawa (PKC 2023, eprint 2022/1696) need on the way to
+their SPR-CCA ⇒ ANO-CCA corollary: what remains to close the deployed-adversary
+claim is bounding the SPR terms themselves for ML-KEM-768 — the seeded-MLWE
+chain of `SPRTwoHop` plus the ROM/PRF and collision terms their Theorem 2
+names. Same runtime-coherence hypotheses as the lifted variant; proved with
+the identical tactic structure (verified against the paper text, see
+Maram–Xagawa, eprint 2022/1696). -/
+theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
+    [IsUniformSpec spec]
+    {K PK SK C : Type} [DecidableEq C]
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec))
+    (adv : ANO_CCA_Adversary spec PK C K)
+    (sim : ProbComp C)
+    (heval_pure : ∀ {α : Type} (a : α),
+      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+      (f : α → OracleComp spec β),
+      runtime.evalDist (mx >>= f) =
+        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+      runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
+    (hnf : ∀ (mx : OracleComp spec Bool),
+      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+    {sprTrue sprFalse : ℝ}
+    (hT : ANO_SPR_Term kem runtime adv sim true ≤ sprTrue)
+    (hF : ANO_SPR_Term kem runtime adv sim false ≤ sprFalse) :
+    ANO_CCA_Advantage kem runtime adv ≤ sprTrue + sprFalse := by
+  have bind_swap : ∀ {α β γ : Type} (mx : SPMF α) (my : SPMF β)
+      (f : α → β → SPMF γ),
+      (mx >>= fun a => my >>= fun b => f a b) =
+        (my >>= fun b => mx >>= fun a => f a b) := by
+    intro α β γ mx my f
+    ext x
+    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
+  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
+      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+    constructor
+    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
+          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
+          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
+      Pr[= true | Y] + Pr[= false | Y] = 1 →
+      (𝒟[uniformSample Bool] >>= fun b =>
+          (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
+        SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
+    SPMF.boolBiasAdvantage_eq_boolDistAdvantage_coin_branch (𝒟[uniformSample Bool]) X Y
+      hcoin.1 hcoin.2 hX hY
+  have hgame : ANO_CCA_Game kem runtime adv =
+      𝒟[uniformSample Bool] >>= fun b =>
+        (if b then ANO_CCA_Branch kem runtime adv true
+              else ANO_CCA_Branch kem runtime adv false) >>=
+          fun z => pure (b == z) := by
+    have hite_false : (false : Bool) = true ↔ False := ⟨Bool.noConfusion, False.elim⟩
+    simp only [ANO_CCA_Game, ANO_CCA_Branch, heval_bind, heval_pure,
+      heval_liftProbComp]
+    simp_rw [bind_swap (my := 𝒟[uniformSample Bool])]
+    congr 1
+    funext b
+    cases b
+    · simp only [hite_false, ite_false, bind_assoc]
+    · simp only [ite_true, bind_assoc]
+  have h_cca : ANO_CCA_Advantage kem runtime adv =
+      SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+        (ANO_CCA_Branch kem runtime adv false) := by
+    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv true] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv true] = 1 :=
+      hnf _
+    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv false] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv false] = 1 :=
+      hnf _
+    change (ANO_CCA_Game kem runtime adv).boolBiasAdvantage = _
+    rw [hgame, coin_branch _ _ htotT htotF]
+  have htriT : SPMF.boolDistAdvantage
+      (ANO_CCA_Branch kem runtime adv true)
+      (ANO_CCA_Branch kem runtime adv false) ≤
+      ANO_SPR_Term kem runtime adv sim true +
+      ANO_SPR_Term kem runtime adv sim false := by
+    have h := SPMF.boolDistAdvantage_triangle (ANO_CCA_Branch kem runtime adv true)
+      (ANO_CCA_SimBranch kem runtime adv sim)
+      (ANO_CCA_Branch kem runtime adv false)
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+        (ANO_CCA_SimBranch kem runtime adv sim) =
+      ANO_SPR_Term kem runtime adv sim true from rfl] at h
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv sim)
+        (ANO_CCA_Branch kem runtime adv false) =
+      ANO_SPR_Term kem runtime adv sim false from by
+      unfold ANO_SPR_Term
+      exact abs_sub_comm _ _] at h
+    exact h
+  calc ANO_CCA_Advantage kem runtime adv
+      = SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+          (ANO_CCA_Branch kem runtime adv false) := h_cca
+    _ ≤ ANO_SPR_Term kem runtime adv sim true +
+        ANO_SPR_Term kem runtime adv sim false := htriT
     _ ≤ sprTrue + sprFalse := add_le_add hT hF
 
 end OracleGames
