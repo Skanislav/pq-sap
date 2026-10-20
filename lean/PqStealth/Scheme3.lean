@@ -330,4 +330,41 @@ theorem scheme3_unlinkAdvantage_le_of_anonAdvantage_le
           + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false := by
         gcongr
 
+
+/-- **Scheme-3 unlinkability with the anonymity term decomposed to the two
+CCA-context SPR terms.** When the hybrid KEM's anonymity advantage is bounded
+by per-branch ciphertext-pseudorandomness terms `sprTrue`/`sprFalse` — the
+shape `KEM.ANO_CCA_Advantage_le_of_spr_full` and its concrete instantiation
+`mlkem768_ANO_CCA_Advantage_le_sprTerms` provide against a key-independent
+simulator — the four-term capstone holds with those terms in the anonymity
+slot. This is the tier-1 fold-in: the deployed-adversary (decap-querying) SPR
+terms, not the CPA `anonAdvantage`, are what the scheme-3 bound consumes. -/
+theorem scheme3_unlinkAdvantage_le_of_sprTerms
+    {SpendingPub ViewingPub EncapsulationKey ViewingSecret DecapsulationKey EphemeralPub KemCiphertext
+      HybridSecret ViewTag Address : Type}
+    [SampleableType HybridSecret] [DecidableEq ViewTag] [DecidableEq Address]
+    (hybridKem : KEM
+      (Scheme3MetaAddress SpendingPub ViewingPub EncapsulationKey)
+      (Scheme3TrackingKey ViewingSecret DecapsulationKey)
+      (Scheme3Ciphertext EphemeralPub KemCiphertext)
+      HybridSecret)
+    (viewTag : HybridSecret → ViewTag)
+    (stealthAddress : SpendingPub → HybridSecret → Address)
+    (adv : StealthScheme.UnlinkAdv
+      (Scheme3MetaAddress SpendingPub ViewingPub EncapsulationKey)
+      (Scheme3Announcement EphemeralPub KemCiphertext ViewTag Address))
+    {sprTrue sprFalse : ℝ}
+    (hAnon : hybridKem.anonAdvantage (adv.cipherOf (scheme3Aux viewTag stealthAddress))
+      ≤ sprTrue + sprFalse) :
+    (StealthScheme.scheme3 hybridKem viewTag stealthAddress).unlinkAdvantage adv ≤
+      sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv true
+      + auxKeyIndependence hybridKem (scheme3Aux viewTag stealthAddress) adv
+      + sprTrue
+      + sharedSecretHiding hybridKem (scheme3Aux viewTag stealthAddress) adv false
+      + sprFalse := by
+  have h4 := scheme3_unlinkAdvantage_le hybridKem viewTag stealthAddress adv
+  have h5 := scheme3_unlinkAdvantage_le_of_anonAdvantage_le hybridKem viewTag
+    stealthAddress adv (sprTrue + sprFalse) hAnon
+  linarith
+
 end PqStealth

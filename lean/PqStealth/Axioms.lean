@@ -136,6 +136,24 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full
 
+/-- info: 'PqStealth.neverFail_of_unifSpec' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.neverFail_of_unifSpec
+
+/-- info: 'PqStealth.probComp_hnf' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_hnf
+
+/-- info: 'PqStealth.probComp_heval_pure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_pure
+
+/-- info: 'PqStealth.probComp_heval_bind' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_bind
+
+/-- info: 'PqStealth.probComp_heval_liftProbComp' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_liftProbComp
+
+/-- info: 'PqStealth.mlkem768_ANO_CCA_Advantage_le_sprTerms' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_ANO_CCA_Advantage_le_sprTerms
+
 /-! ## ERC-8441 ANO-CCA assumption layer (`ANOAssumption`) -/
 
 /-- info: 'PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -158,6 +176,9 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le_of_sprTerms' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le_of_sprTerms
 
 /-! ## Scheme-3 wire-format and fail-closed-scanning invariants (`Scheme3Wire`) -/
 

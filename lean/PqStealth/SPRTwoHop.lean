@@ -800,4 +800,36 @@ theorem mlkem768_sprAdv_le_three_mlwe_compressed (b : Bool)
 
 end Mlkem768Closed
 
+
+/-! ## The deployed-adversary (ANO-CCA) bound at ML-KEM-768
+
+`PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full` bounds a *decap-querying*
+adversary's ANO-CCA advantage by the two per-branch SPR terms. At the concrete
+ML-KEM-768 instance the runtime-coherence bundle discharges at `probComp`
+(`probComp_heval_*`, `probComp_hnf`), so this is assumption-free wiring: no
+instance hypotheses, no `sorry`. The SPR terms themselves are the
+open-but-named quantities here — bounded for the CPA context by
+`sprAdv_le_three_mlwe_compressed` above; their CCA-context refinement is the
+Maram–Xagawa Theorem-2 residual (ROM/PRF + collision terms), tracked in
+Maram–Xagawa, eprint 2022/1696. -/
+
+/-- **The ML-KEM-768 ANO-CCA bound for the full deployed adversary**: any
+adversary with live Bool-keyed decapsulation oracles has advantage at most
+SPR(true) + SPR(false) against the compressed-uniform simulator — the concrete
+instantiation of `KEM.ANO_CCA_Advantage_le_of_spr_full` with every coherence
+hypothesis discharged. -/
+theorem mlkem768_ANO_CCA_Advantage_le_sprTerms
+    (adv : KEM.ANO_CCA_Adversary unifSpec
+      (EncapsulationKey mlkem768 mlkem768Encoding)
+      (Ciphertext mlkem768 mlkem768Encoding) SharedSecret) :
+    KEM.ANO_CCA_Advantage mlkem768KEM ProbCompRuntime.probComp adv ≤
+      KEM.ANO_SPR_Term mlkem768KEM ProbCompRuntime.probComp adv
+        mlkem768CompressedUniformCiphertext true
+      + KEM.ANO_SPR_Term mlkem768KEM ProbCompRuntime.probComp adv
+        mlkem768CompressedUniformCiphertext false :=
+  KEM.ANO_CCA_Advantage_le_of_spr_full mlkem768KEM ProbCompRuntime.probComp adv
+    mlkem768CompressedUniformCiphertext
+    probComp_heval_pure probComp_heval_bind probComp_heval_liftProbComp probComp_hnf
+    (le_refl _) (le_refl _)
+
 end PqStealth

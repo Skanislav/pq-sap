@@ -777,4 +777,67 @@ theorem unlinkAdvantage_ofKEMFull_le :
           + Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf := by
         ring
 
+
+/-! ## The `probComp` runtime coherence bundle, discharged once
+
+The ANO-CCA reductions (`ANO_CCA_Advantage_le_of_spr`, `..._full`) carry the
+coherence of a general `ProbCompRuntime` as four explicit hypotheses
+(`heval_pure`, `heval_bind`, `heval_liftProbComp`, `hnf`). At the canonical
+`probComp` runtime every one of them is a theorem: uniform-spec `OracleComp`s
+never fail (pure returns and uniform queries are total, bind preserves
+totality), so consumers at `unifSpec`/`probComp` discharge the bundle with
+these lemmas instead of re-proving it. -/
+
+/-- Uniform-spec `OracleComp` computations never fail: a pure return is
+total, a query's distribution is a total `PMF.uniformOfFintype`, and
+`NeverFail.bind_of_mem_support` propagates totality through the bind. -/
+theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [IsUniformSpec spec]
+    {α : Type} (oa : OracleComp spec α) : NeverFail oa := by
+  induction oa using OracleComp.inductionOn with
+  | pure a => exact inferInstance
+  | query_bind t oa ih =>
+      have hq : ∀ x ∈ support (spec.query t : OracleComp spec _), NeverFail (oa x) := by
+        intro x _
+        exact ih x
+      exact NeverFail.bind_of_mem_support (hx := by
+        constructor
+        simp [probFailure, evalDist_query]) hq
+
+/-- The `hnf` totality hypothesis of the ANO-CCA reductions, at `probComp`. -/
+theorem probComp_hnf : ∀ (mx : OracleComp unifSpec Bool),
+    Pr[= true | ProbCompRuntime.probComp.evalDist mx] +
+      Pr[= false | ProbCompRuntime.probComp.evalDist mx] = 1 := by
+  intro mx
+  have h0 : NeverFail mx := neverFail_of_unifSpec mx
+  have h2 : Pr[= true | mx] + Pr[= false | mx] = 1 - Pr[⊥ | mx] :=
+    probOutput_true_add_false mx (m := ProbComp)
+  have h3 : Pr[⊥ | mx] = 0 := h0.probFailure_eq_zero
+  have h4 : (1 : ENNReal) - 0 = 1 := by norm_num
+  rw [h3, h4] at h2
+  exact h2
+
+/-- The `heval_pure` coherence hypothesis of the ANO-CCA reductions, at
+`probComp`: evaluation of a pure return is the Dirac `SPMF`. -/
+theorem probComp_heval_pure : ∀ {α : Type} (a : α),
+    ProbCompRuntime.probComp.evalDist (pure a : OracleComp unifSpec α) = pure a := by
+  intro α a
+  show liftM (pure a : OracleComp unifSpec α) = pure a
+  exact evalDist_pure a
+
+/-- The `heval_bind` coherence hypothesis: evaluation commutes with bind. -/
+theorem probComp_heval_bind : ∀ {α β : Type} (mx : OracleComp unifSpec α)
+    (f : α → OracleComp unifSpec β),
+    ProbCompRuntime.probComp.evalDist (mx >>= f) =
+      ProbCompRuntime.probComp.evalDist mx >>= fun a => ProbCompRuntime.probComp.evalDist (f a) := by
+  intro α β mx f
+  show liftM (mx >>= f) = liftM mx >>= fun a => liftM (f a)
+  exact evalDist_bind mx f
+
+/-- The `heval_liftProbComp` coherence hypothesis: the identity lift evaluates
+to the plain `ProbComp` distribution. -/
+theorem probComp_heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+    ProbCompRuntime.probComp.evalDist (ProbCompRuntime.probComp.liftProbComp pc) = 𝒟[pc] := by
+  intro α pc
+  show liftM (pc : OracleComp unifSpec α) = 𝒟[pc]
+  rfl
 end PqStealth
