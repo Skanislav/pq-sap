@@ -21,6 +21,13 @@ docs/presentation/SUMMARY.html
 lean/docs-proofs/
 wiki/src/generated/
 
+# doc-review scratch (ERC-8441 review notes and drafts live outside this repo's
+# scope — see D-032). Never commit review scratch here.
+docs-review-ws/
+
+# agent-tool local config (LSP server paths, machine-specific)
+lean/.omp/
+
 # agent worktrees — each carries a `.git` pointer file, and a tree containing
 # `.git` is rejected outright by GitHub's receive-side fsck (hasDotgit), which
 # makes any branch that commits one permanently unpushable

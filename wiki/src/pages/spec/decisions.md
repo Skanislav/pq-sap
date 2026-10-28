@@ -1291,8 +1291,8 @@ Consequences for the opener/tag design:
 to a profile on stated *security properties*, not on a syntactic formula:
 
 1. **Confidentiality:** IND-CCA under the standard experiment for the KEM's
-   parameter set (for ML-KEM-768: FIPS 203, ~2¹⁹²-bit category-1 security
-   from the underlying MLWE assumption). Implicit rejection must be part of
+   parameter set (ML-KEM-768 is FIPS 203's NIST security category 3 parameter
+   set). Implicit rejection must be part of
    the KEM's specification — a decapsulated-but-invalid ciphertext yields a
    pseudorandom secret, never an explicit failure observable to the sender.
 2. **Recipient binding under substitution:** decapsulation of any ciphertext
@@ -1468,3 +1468,45 @@ measured on the shipped forge/solc stack and will drift with the toolchain;
 the assert bounds in `GasExhaustion.t.sol` are deliberately loose (C13
 \< 2 M, i.e. 10× the measured figure) so the tests document rather than
 brittle-pin. Nothing is deployed.
+
+## D-032 — ERC-8441 stays outside this repository; the repo is the EPF cohort artifact and decision log for our own scheme — **LOCKED (2026-10-28)**
+
+External work converged on the same design space: a stealth-address proposal
+for post-quantum recipients with an ML-KEM-768 (and hybrid) discovery layer,
+numbered ERC-8441. It is similar to, and in places ahead of, what this project
+specifies. It is **not** merged into, cited as normative by, or vendored into
+this repository, and it is not a dependency of any implementation here.
+
+**Decision.** This repository stays the record of *our* EPF cohort work: the
+scheme we specify, the vectors it generates, the proofs we checked, the
+decisions we made and the reasons for them. ERC-8441 is treated as external
+prior art at most — a comparison a human can make by reading it — never as a
+second scheme compiled, mirrored, or re-exported from here.
+
+Concretely:
+
+1. No ERC-8441 modules, pages, or decision records land on `main`. The
+   `feat/erc-8441-scheme3-lean` branch carries that work (hybrid-KEM
+   constructor, scheme-3 wire model, ANO-CCA capstones) and stays out; its
+   `docs/DECISIONS.md` numbers D-032–D-034 are therefore **not** part of this
+   log, and a future merge would have to renumber them against this entry.
+2. Review scratch — notes, PR comment drafts, anonymity supplements under
+   `docs-review-ws/` — is untracked and now gitignored. It is working material
+   for reviewing somebody else's proposal, not an artifact of ours.
+3. The generated proof browser must never publish a module the repository does
+   not contain. `lean/scripts/gen_browser.py` previously only ever added
+   pages, so pages generated on a branch survived its removal and
+   `wiki/scripts/sync.mjs` (which mirrors `lean/docs-proofs/*.md` wholesale)
+   would publish them. It now prunes pages with no matching
+   `lean/PqStealth/<Module>.lean`, which is what removed the leftover
+   scheme-3/ANO-CCA pages from a local tree.
+
+**Why record it at all.** Because "we did not do this" is itself a decision
+with a reason, and this repository is the place the reasoning survives
+alongside the work that was done. Anyone reading the log should not have to
+reconstruct from an absent branch whether the omission was an oversight or a
+choice.
+
+**What it does not change.** Scope under D-024/D-025 is unaffected: the
+key-exchange ERC remains the deliverable, spending stays supporting research.
+No vector, contract, proof, or measurement in this repo depends on ERC-8441.

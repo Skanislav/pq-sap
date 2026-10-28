@@ -328,6 +328,10 @@ def main() -> int:
 
     axiom_map = load_axiom_map()
 
+    # Prune pages whose module no longer exists. The wiki mirrors this directory
+    # wholesale, so a stale page left by a deleted/abandoned module would publish
+    # a module the repository does not contain.
+    written: set[str] = set()
     index: dict[str, dict] = {}
     summaries: list[dict] = []
 
@@ -342,6 +346,7 @@ def main() -> int:
 
         page = render_module_page(module, intro, sections, decls, axiom_map)
         (OUT_DIR / f"{module.lower()}.md").write_text(page)
+        written.add(f"{module.lower()}.md")
         summaries.append(module_summary(module, intro, decls, axiom_map))
 
         for decl in decls:
@@ -360,7 +365,13 @@ def main() -> int:
     (OUT_DIR / "index.md").write_text(render_index_page(summaries))
     INDEX_PATH.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
 
-    print(f"gen-browser: wrote {len(list(OUT_DIR.glob('*.md')))} pages to {OUT_DIR}")
+    pruned = [p for p in sorted(OUT_DIR.glob("*.md")) if p.name not in written and p.name != "index.md"]
+    for p in pruned:
+        p.unlink()
+
+    print(f"gen-browser: wrote {len(written) + 1} pages to {OUT_DIR}")
+    if pruned:
+        print(f"gen-browser: pruned {len(pruned)} stale page(s): {', '.join(p.name for p in pruned)}")
     print(f"gen-browser: wrote {len(index)} entries to {INDEX_PATH}")
     return 0
 

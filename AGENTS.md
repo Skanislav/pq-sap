@@ -80,7 +80,7 @@ Key module callouts:
 
 | Directory | Purpose |
 | --- | --- |
-| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-028 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
+| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-032 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
 | `python/` | Executable spec, conformance vectors (`python/vectors/v0/`, `vectors/classical/v0/`), benchmarks, scripts that generate fixtures for TS tests |
 | `js-client/` | TS scanning client, Foundry contracts (`js-client/contracts/`), anvil/fork e2e tests, devnet config |
 | `ui/` | Vite + React demo (receive/send/scan/spend/frames), dev-chain bootstrapping, signer service |
@@ -88,7 +88,7 @@ Key module callouts:
 | `wiki/` | Vocs site mirroring `docs/` + `lean/docs/`; everything under `wiki/src/pages/` is generated |
 | `noir/` | Noir ZK ownership-proof PoC |
 | `pq-sap/`, `ETHDILITHIUM/` | Third-party clones, gitignored at root — do not treat as project code to modify |
-| `docs-review-ws/` | Doc-review scratch workspace, not a buildable subproject |
+| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441); not a subproject and never tracked (D-032) |
 
 ## Development Commands
 
@@ -199,7 +199,7 @@ spec-to-proof-to-impl correspondence.
 
 | File | Why it matters |
 | --- | --- |
-| `docs/DECISIONS.md` | ADR log (D-001–D-028). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
+| `docs/DECISIONS.md` | ADR log (D-001–D-032). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
 | `docs/TECHNICAL_SPEC.md`, `docs/erc-draft.md` | Working spec / ERC text (pre-freeze) |
 | `python/pq_stealth/commit.py` | Commitment-format API; the key-exchange porting contract |
 | `python/vectors/v0/vectors.json` | Conformance vectors consumed by pytest, js-client tests, ui e2e, and `lean/scripts/check_sizes.py` — the cross-language glue |

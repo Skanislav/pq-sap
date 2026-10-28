@@ -18,7 +18,10 @@ the derived address. D-024 leaves final normative format selection open.
    to justify for the commitment profile.
 3. [Security overview](SECURITY_ANALYSIS.md): confidentiality, anonymity,
    full-announcement composition, and adversary boundaries.
-4. [Submission roadmap](research/erc-submission-gap-analysis.md): portable
+4. [Cost report](research/cost-report.md): measured L1/L2 announcement and
+   spend gas, meta-address registration, and client-side scanning, each with
+   its provenance and dated price anchors.
+5. [Submission roadmap](research/erc-submission-gap-analysis.md): portable
    checker and asset-package work.
 
 [Python](../python/README.md) is the byte-level source of truth;
