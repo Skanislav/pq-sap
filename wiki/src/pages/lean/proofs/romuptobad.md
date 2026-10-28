@@ -16,11 +16,12 @@ Proved, for that shape (everything here is stated over an arbitrary `hashSpec`):
 * `tvDist_programmedROImpl_trackingROImpl_le`: the engine bound
   (`tvDist_simulateQ_run_le_probEvent_output_bad`) for `unifFwd + withProgramming policy` vs
   `unifFwd + withCachingTrackingPolicy policy`, with the programming flag as the bad event;
-* `evalDist_run'_programmedROImpl`: the programmed run from `(cache₀, false)` is, on the output
-  marginal, the plain random oracle run from the cache `cache₀` overridden by the policy;
-* `evalDist_run'_trackingROImpl`: the tracking run is, on the output marginal, the plain random
-  oracle run from `cache₀`;
-* `tvDist_run'_romImpl_policy_le_probEvent_bad`: the three combined — the distance between the
+* `relTriple_run'_programmedROImpl_roImpl`: the programmed run from `(cache₀, false)` is, on the
+  output marginal (`evalDist_eq_of_relTriple_eqRel`), the plain random oracle run from the cache
+  `cache₀` overridden by the policy;
+* `relTriple_run'_trackingROImpl_roImpl`: the tracking run is, on the output marginal, the plain
+  random oracle run from `cache₀`;
+* `tvDist_run'_roImpl_cacheOr_le_probEvent_bad`: the three combined — the distance between the
   random oracle run from `cache₀ ⊕ policy` and from `cache₀` is at most the probability that the
   policy fires. This is the lemma `DKSAPOracle` and `BlindingROM` consume.
 
@@ -36,7 +37,7 @@ noncomputable def unifFwdFlagImpl (hashSpec : OracleSpec ι) :
 
 ```
 
-[`ROMUpToBad.lean:42-46 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L42-L46)
+[`ROMUpToBad.lean:43-47 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L43-L47)
 
 ## `roImpl`
 
@@ -48,7 +49,7 @@ noncomputable def roImpl (hashSpec : OracleSpec ι)
 
 ```
 
-[`ROMUpToBad.lean:49-53 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L49-L53)
+[`ROMUpToBad.lean:50-54 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L50-L54)
 
 ## `programmedROImpl`
 
@@ -59,7 +60,7 @@ noncomputable def programmedROImpl (policy : hashSpec.ProgrammingPolicy) :
 
 ```
 
-[`ROMUpToBad.lean:56-59 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L56-L59)
+[`ROMUpToBad.lean:57-60 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L57-L60)
 
 ## `trackingROImpl`
 
@@ -70,7 +71,7 @@ noncomputable def trackingROImpl (policy : hashSpec.ProgrammingPolicy) :
 
 ```
 
-[`ROMUpToBad.lean:62-65 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L62-L65)
+[`ROMUpToBad.lean:63-66 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L63-L66)
 
 ### The implementations
 
@@ -86,7 +87,7 @@ def cacheOr (cache : hashSpec.QueryCache) (policy : hashSpec.ProgrammingPolicy) 
 omit [DecidableEq ι] in
 ```
 
-[`ROMUpToBad.lean:75-79 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L75-L79)
+[`ROMUpToBad.lean:76-80 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L76-L80)
 
 ## `cacheOr_apply`
 
@@ -96,7 +97,7 @@ omit [DecidableEq ι] in
 
 ```
 
-[`ROMUpToBad.lean:81-83 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L81-L83)
+[`ROMUpToBad.lean:82-84 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L82-L84)
 
 ## `cacheOr_cacheQuery`
 
@@ -118,7 +119,7 @@ theorem cacheOr_cacheQuery (cache : hashSpec.QueryCache) (t : hashSpec.Domain)
 
 :::
 
-[`ROMUpToBad.lean:85-93 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L85-L93)
+[`ROMUpToBad.lean:86-94 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L86-L94)
 
 ## `cacheOr_cacheQuery_of_policy`
 
@@ -141,7 +142,7 @@ theorem cacheOr_cacheQuery_of_policy (cache : hashSpec.QueryCache)
 
 :::
 
-[`ROMUpToBad.lean:96-105 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L96-L105)
+[`ROMUpToBad.lean:97-106 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L97-L106)
 
 ### A cache overridden by a policy
 
@@ -154,7 +155,7 @@ theorem unifFwdFlagImpl_run (n : ℕ) (s : hashSpec.QueryCache × Bool) :
 
 ```
 
-[`ROMUpToBad.lean:112-115 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L112-L115)
+[`ROMUpToBad.lean:113-116 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L113-L116)
 
 ## `relTriple_unifFwdFlagImpl_unifFwdImpl`
 
@@ -179,7 +180,7 @@ theorem relTriple_unifFwdFlagImpl_unifFwdImpl
 
 :::
 
-[`ROMUpToBad.lean:122-131 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L122-L131)
+[`ROMUpToBad.lean:123-132 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L123-L132)
 
 ### Running the uniform forwarders
 
@@ -239,7 +240,7 @@ theorem probOutput_withProgramming_eq_withCachingTrackingPolicy_of_not_bad_outpu
 
 :::
 
-[`ROMUpToBad.lean:143-184 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L143-L184)
+[`ROMUpToBad.lean:144-185 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L144-L185)
 
 ## `tvDist_programmedROImpl_trackingROImpl_le`
 
@@ -285,7 +286,7 @@ theorem tvDist_programmedROImpl_trackingROImpl_le {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:188-218 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L188-L218)
+[`ROMUpToBad.lean:189-219 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L189-L219)
 
 ### The engine: programmed vs tracking, identical until the flag fires
 
@@ -337,7 +338,7 @@ theorem relTriple_run'_programmedROImpl_roImpl {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:232-265 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L232-L265)
+[`ROMUpToBad.lean:233-266 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L233-L266)
 
 ## `relTriple_run'_trackingROImpl_roImpl`
 
@@ -376,7 +377,7 @@ theorem relTriple_run'_trackingROImpl_roImpl {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:268-293 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L268-L293)
+[`ROMUpToBad.lean:269-294 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L269-L294)
 
 ## `tvDist_run'_roImpl_cacheOr_le_probEvent_bad`
 
@@ -410,7 +411,7 @@ theorem tvDist_run'_roImpl_cacheOr_le_probEvent_bad {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:297-315 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L297-L315)
+[`ROMUpToBad.lean:298-316 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L298-L316)
 
 ## `probEvent_flag_programmed_eq_tracking`
 
@@ -456,7 +457,7 @@ theorem probEvent_flag_programmed_eq_tracking {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:320-350 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L320-L350)
+[`ROMUpToBad.lean:321-351 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L321-L351)
 
 ### Projections: programmed and tracking runs against the plain random oracle
 
@@ -471,7 +472,7 @@ def pointPolicy (t : hashSpec.Domain) (u : hashSpec.Range t) : hashSpec.Programm
 omit [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t)] in
 ```
 
-[`ROMUpToBad.lean:360-363 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L360-L363)
+[`ROMUpToBad.lean:361-364 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L361-L364)
 
 ## `cacheOr_empty_pointPolicy`
 
@@ -494,7 +495,7 @@ theorem cacheOr_empty_pointPolicy (t : hashSpec.Domain) (u : hashSpec.Range t) :
 
 :::
 
-[`ROMUpToBad.lean:365-374 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L365-L374)
+[`ROMUpToBad.lean:366-375 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L366-L375)
 
 ## `badQueryGame`
 
@@ -508,7 +509,7 @@ noncomputable def badQueryGame {γ : Type} (pre : ProbComp γ)
 
 ```
 
-[`ROMUpToBad.lean:376-382 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L376-L382)
+[`ROMUpToBad.lean:377-383 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L377-L383)
 
 ## `boolDistAdvantage_run'_cacheQuery_run'_empty_le`
 
@@ -569,7 +570,7 @@ theorem boolDistAdvantage_run'_cacheQuery_run'_empty_le {γ : Type} (pre : ProbC
 
 :::
 
-[`ROMUpToBad.lean:386-431 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L386-L431)
+[`ROMUpToBad.lean:387-432 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L387-L432)
 
 ### Programming a single point, and the averaged bound
 
@@ -602,7 +603,7 @@ theorem probEvent_bind_le_const {α β : Type} (mx : ProbComp α) (my : α → P
 
 :::
 
-[`ROMUpToBad.lean:452-465 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L452-L465)
+[`ROMUpToBad.lean:453-466 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L453-L466)
 
 ## `probEvent_flag_trackingROImpl_pointPolicy_le`
 
@@ -658,7 +659,7 @@ theorem probEvent_flag_trackingROImpl_pointPolicy_le {α : Type}
 
 :::
 
-[`ROMUpToBad.lean:469-509 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L469-L509)
+[`ROMUpToBad.lean:470-510 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L470-L510)
 
 ## `roImpl_run_keys_subset`
 
@@ -743,7 +744,7 @@ omit [DecidableEq ι] [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t
 
 :::
 
-[`ROMUpToBad.lean:513-581 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L513-L581)
+[`ROMUpToBad.lean:514-582 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L514-L582)
 
 ## `probEvent_isSome_apply_le`
 
@@ -771,4 +772,4 @@ theorem probEvent_isSome_apply_le {γ : Type} (samp : ProbComp γ) (f : γ → h
 
 :::
 
-[`ROMUpToBad.lean:584-596 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L584-L596)
+[`ROMUpToBad.lean:585-597 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ROMUpToBad.lean#L585-L597)

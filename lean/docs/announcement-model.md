@@ -449,10 +449,12 @@ final telescope, where `k < q` comes from `Finset.mem_range`.
 stated separately because it has nothing to do with stealth addresses.
 
 **`n` recipients** is the orthogonal generalisation and lives in
-`MultiRecipient.lean`; see the next section. It composes with the hybrid above
-on paper the same way `unlinkAdvantage_ofKEMFull_le` does — and that
-composition is in Lean too, as `unlinkAdvantageN_ofKEMFull_le`
-(`MultiRecipient.lean:358`), giving `Adv_{n,q} ≤ n·(n−1)·q·ε`.
+`MultiRecipient.lean`; see the next section. It composes with
+`unlinkAdvantage_ofKEMFull_le` the same way `MultiUnlink` does — in Lean, as
+`unlinkAdvantageN_ofKEMFull_le` (`MultiRecipient.lean:358`), giving
+`Adv_n ≤ n·(n−1)·ε` for a single announcement. Composing that with the
+`q`-challenge hybrid to get the joint `n·(n−1)·q` loss is still on paper (see
+"What is NOT proved" below).
 
 ## `n`-recipient unlinkability
 

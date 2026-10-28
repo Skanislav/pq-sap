@@ -102,9 +102,11 @@ needs the seeded-MLWE blinding hop (`ConstructionA.lean`'s
 `blindingProblem` / `mlweAdvOfUnlinkAdv`, with its `ExpandIsIdeal`
 XOF-idealization assumption), and where a proof-grade ROM bound is wanted, the
 point-mass machinery of `BlindingROM.lean` / `BlindingEntropy.lean` — which
-exists to handle a lattice address point of low min-entropy: at ML-DSA-65 the
-point-mass is `betaAddr = (2¹³/q)^2048 ≈ 2^-20477` per address-point guess
-(`blindPointMassBound_mldsa65`), and the ROM bound is `2·qH·betaAddr`
+exists to handle a lattice address point of low min-entropy: at ML-DSA-65
+(`k = 6`, `ringDegree = 256`) the point-mass is
+`betaAddr = (2¹³/q)^(6·256) ≈ 2^-15358` per address-point guess
+(`blindPointMassBound_mldsa65`; the `^2048` form is ML-DSA-**87**, `k = 8`), and
+the ROM bound is `2·qH·betaAddr`
 (`blindBadProb_le_queryBound`, `BlindingEntropy.lean:94`). The commitment
 address point is a full 256-bit hash *preimage-slot*: the recipient's input to
 the address hash is a public constant (`spend_key`), and the only secret input
@@ -306,7 +308,7 @@ instantiation):**
   (`KEMAnonymity.lean:236`, `SharedSecretHiding.lean:187`).
 - The multi-payment and n-recipient composites (`MultiUnlink.lean:281`,
   `MultiRecipient.lean:358`).
-- Detection soundness conditional on `hUnif` (`Soundness.lean:373`), with
+- Detection soundness conditional on `hUnif` (`Soundness.lean:373-377`), with
   `taggedAux` at `Soundness.lean:305` supplying only the required shape.
 - Detection completeness (`perfectlyComplete_ofKEMFull`, `KEMAnonymity.lean:160`).
 
@@ -365,8 +367,13 @@ aux_term = 2 * qH * beta_commitment   # = 2^-175 (under the §3 abstraction)
 assert aux_term == F(1, 2**175)
 
 # Construction A contrast (ML-DSA-65): lattice point-mass
-# betaAddr = (2^13/q)^2048, q = 8380417  ≈ 2^-20477
+# mldsa65.k = 6, ringDegree = 256, so the exponent is 6 * 256 = 1536:
+# betaAddr = (2^13/q)^1536, q = 8380417  ≈ 2^-15358
 # (blindPointMassBound_mldsa65; needs the seeded-MLWE hop + ExpandIsIdeal)
+# ML-DSA-87 (k = 8) is the ^2048 form, ≈ 2^-20477.
+# Compare in log space: the value underflows a float.
+import math
+assert math.log2(F(2**13, 8380417)) * 1536 < -15357
 ```
 
 Cross-checks: the four-term shape and `randAuxBranch`/`cipherOf` definitions

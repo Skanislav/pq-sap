@@ -4,9 +4,8 @@ Status: design doc for the future Lean module that closes the one
 instantiation-specific gap of the format-`0x02` announcement-privacy story —
 the `auxKeyIndependence` ROM bound. This is a *design*, not a proof: no
 `CommitmentAnonymity.lean` exists yet, and nothing here changes the
-sorry-free state of `PqStealth/`. The module is planned Lean future work
-(gated on a local `lake`/VCVio toolchain, which this host lacks); the doc
-exists so the module lands as a port of a settled design rather than a
+sorry-free state of `PqStealth/`. The module is planned Lean future work; the
+doc exists so the module lands as a port of a settled design rather than a
 from-scratch exploration, and so reviewers of
 [commitment-announcement-privacy.md](../../docs/research/commitment-announcement-privacy.md)
 can check the §3 sketch against a proof plan.
@@ -182,10 +181,9 @@ Planned theorem ladder (names provisional, statement shapes final):
    sanity check that the game measures the right thing.
 3. **`commitAdvantageRO_le_commitBadProb`** — identical-until-bad against
    VCVio's programming-oracle engine, via `ROMUpToBad`'s
-   `tvDist_run'_romImpl_policy_le_probEvent_bad`
-   (`ROMUpToBad.lean:24-26`): branch distance ≤ probability the adversary
-   queries the branch's address point. Direct reuse of
-   `blindingAdvantageRO_le_blindBadProb`'s proof shape.
+   `tvDist_run'_roImpl_cacheOr_le_probEvent_bad` (`ROMUpToBad.lean:298`): branch
+   distance ≤ probability the adversary queries the branch's address point.
+   Direct reuse of `blindingAdvantageRO_le_blindBadProb`'s proof shape.
 4. **`commitBadProb_le_queryBound`** — the union bound closing the gap under
    a joint tag/opener/composite query budget: `Pr[bad] ≤ qH · 2⁻²⁵⁶` per branch, then
    **`commitAdvantageRO_le_queryBound : commitAdvantageRO ≤ 2 · qH · 2⁻²⁵⁶`**.
