@@ -271,7 +271,7 @@ lift collapses to the identity: an adversary phase that never queries
 decapsulation is simulated away exactly. This is the anonymity form of VCVio's
 `IND_CPA_Game_eq_IND_CCA_Game_toIND_CCA`, at the level-0 `spec + ((Bool × C)
 →ₒ Option K)` oracle so the stock `simulateQ` / `SubSpec` lemmas apply. -/
-theorem simulateQ_toANO_CCA {ι : Type} {spec : OracleSpec ι} {K C : Type} (SK : Type)
+theorem simulateQ_toANO_CCA {ι : Type} {spec : OracleSpec ι} {K C : Type}
     (impl₂ : QueryImpl ((Bool × C) →ₒ Option K) (OracleComp spec))
     {α : Type} (oa : OracleComp spec α) :
     simulateQ ((HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) + impl₂)
@@ -295,7 +295,7 @@ theorem toANO_CCA_preChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : T
     (adv : ANO_Adversary spec PK C) (pk0 pk1 : PK) :
     simulateQ (anoPreChallengeImpl kem sk0 sk1)
       ((ANO_Adversary.toANO_CCA adv).preChallenge pk0 pk1) = adv.preChallenge pk0 pk1 :=
-  simulateQ_toANO_CCA SK _ _
+  simulateQ_toANO_CCA _ _
 
 /-- Post-challenge phase of the oracle-ignoring adversary is exactly the CPA
 phase, even though the real handler masks the challenge ciphertext — the
@@ -305,7 +305,7 @@ theorem toANO_CCA_postChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : 
     (sk0 sk1 : SK) (cStar : C) (adv : ANO_Adversary spec PK C) (st : adv.State) (c : C) :
     simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar)
       ((ANO_Adversary.toANO_CCA adv).postChallenge st c) = adv.postChallenge st c :=
-  simulateQ_toANO_CCA SK _ _
+  simulateQ_toANO_CCA _ _
 
 /-! ### The SPR reduction: ANO-CCA advantage ≤ sum of per-branch SPR terms
 
