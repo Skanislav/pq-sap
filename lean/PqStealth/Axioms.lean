@@ -386,9 +386,6 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.sprAdv_le_three_mlwe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe
 
-/-- info: 'PqStealth.mlkem768_sprAdv_le_three_mlwe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_three_mlwe
-
 /-- info: 'PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext
 

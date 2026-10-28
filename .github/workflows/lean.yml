@@ -78,3 +78,6 @@ jobs:
 
       - name: Check Lean byte sizes match reference vectors
         run: python3 scripts/check_sizes.py
+
+      - name: Check simulator-validity constants match the Lean docstrings
+        run: python3 scripts/check_simulator_distances.py
