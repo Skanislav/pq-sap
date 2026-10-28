@@ -70,7 +70,7 @@ KEM.sprAdv ≤ epsilonPrim + Adv_keyHop + Adv_ctHop + epsilonEnc + Adv_keyRestor
 
 per branch, where the two MLWE hops are exact game identities and the three remaining terms are named
 assumption records (`primitiveIdealizationBound`, `encodingRegularityBound`, `keyRestorationMLWE`).
-The generic theorem is `PqStealth.sprAdv_le_mlwe` and the ML-KEM-768 instance is `PqStealth.mlkem768_sprAdv_le_mlwe` (both `SPRTwoHop.lean`).
+The generic theorem is `PqStealth.sprAdv_le_mlwe`; the ML-KEM-768 instance is `PqStealth.mlkem768_sprAdv_le_three_mlwe_compressed` (`SPRTwoHop.lean`), which keeps the key-restoration hop explicit and uses the compressed-uniform simulator so the encoding residual is zero (`encodingRegularity_mlkem768CompressedUniformCiphertext`).
 
 ### 1.2a Widened signing mask acceptance
 
@@ -203,14 +203,33 @@ none is claimed to follow from the standard model alone.
 
 ---
 
-## 6. ANO-CCA strengthening (active attacks, literature)
+## 6. ANO-CCA strengthening (active attacks)
 
 The repository's normative unlinkability result is the passive ANO-CPA/SPR-to-MLWE decomposition
 above.  Maram and Xagawa, "Post-Quantum Anonymity of Kyber" (ePrint 2022/1696,
 `https://eprint.iacr.org/2022/1696`), prove an implicit-rejection ANO-CCA result for Kyber under
-its FO transform.  Any use of this result for FIPS 203 ML-KEM-768 requires mapping the Kyber variant
-and oracle model; until that mapping is formalized, the ANO-CCA claim is kept in this separate
-literature section and is not claimed as a Lean corollary.
+its FO transform.
+
+**The ANO-CCA game and the SPR bound are now Lean, not only literature.** Two results moved out of
+this section:
+
+- `KEM.ANO_CCA_Advantage_le_of_spr_full` (`KEMAnonymity.lean`, `section OracleGames`) — a *decap-querying*
+  adversary's ANO-CCA advantage is bounded by the two per-branch SPR terms against a key-independent
+  ciphertext simulator. The ANO-CCA game (two-key, `Bool`-keyed level-0 decapsulation oracle at
+  `spec + ((Bool × C) →ₒ Option K)`) is upstream VCVio ask #848; the earlier oracle-ignoring
+  restriction was an artifact of the CPA lift, not of the proof method.
+- `mlkem768_ANO_CCA_Advantage_le_sprTerms` (`SPRTwoHop.lean`) — the same bound at the concrete
+  FIPS-203 ML-KEM-768 instance, with the `probComp` runtime-coherence bundle discharged
+  (`probComp_heval_*`, `probComp_hnf`). No instance hypotheses, no `sorry`.
+
+What remains named rather than proved: the **SPR terms themselves** in the CCA context — the
+Maram–Xagawa Theorem-2 residual (ROM/PRF plus collision terms), and QROM access (VCVio is
+classical-ROM). The naive `ANO-CCA ≤ ANO-CPA + ε` lift is *false* under implicit rejection
+(a crafted ciphertext valid under `pk_b` but malformed under `pk_{1-b}` makes the decap oracle's
+re-encryption consistency check leak the key), so no such statement is claimed; see
+`lean/docs/fo-anonymity-lift.md`. Mapping the round-3 Kyber analysis to the final FIPS-203 ML-KEM
+specification is also unformalized, so the ERC-facing claim travels as the named
+`mlkem768ANOCCA_assumed` (`ANOAssumption.lean`, `CRYPTREC_ANOCCA_Bundle`, D-032).
 
 ---
 

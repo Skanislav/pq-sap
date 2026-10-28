@@ -145,8 +145,13 @@ unlinkAdvantage ≤ sharedSecretHiding … true
   a KEM property. This is the term a shared-secret-only model cannot state at
   all.
 * **`KEM.anonAdvantage`** — the ciphertext itself must hide the recipient. KEM
-  anonymity (ANO-CCA), which neither VCVio nor FIPS 203 supplies; see
-  `spr-two-hop.md`.
+  anonymity (ANO-CCA), which neither upstream VCVio nor FIPS 203 supplies; this
+  tree now defines the ANO-CCA game itself (`KEMAnonymity.lean`,
+  `section OracleGames`, upstream ask VCVio#848) and bounds a decap-querying
+  adversary by the per-branch SPR terms (`ANO_CCA_Advantage_le_of_spr_full`;
+  concrete: `mlkem768_ANO_CCA_Advantage_le_sprTerms` in `SPRTwoHop.lean`). The
+  SPR terms remain the named residual — see `spr-two-hop.md` and
+  `fo-anonymity-lift.md`.
 
 The proof is the triangle inequality over the intermediate games. The
 intermediate game on branch `b` is `randAuxBranch kem auxGen adv b`: the

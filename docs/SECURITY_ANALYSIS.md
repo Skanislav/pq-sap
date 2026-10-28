@@ -15,7 +15,7 @@ it is supporting research, not the security theorem for format `0x02`.
 | --- | --- | --- |
 | Honest sender/scanner agreement | Python commitment tests and independent TS vector replay; abstract KEM completeness results | Instantiate the concrete commitment/deployment flow; KEM correctness assumptions remain explicit |
 | Shared-secret confidentiality | `SharedSecretHiding.lean` identifies generic hiding terms with KEM IND-CPA advantages | This does not by itself establish anonymity of the recipient key or a quantum-accessible oracle reduction |
-| Recipient anonymity of ciphertexts | `KEMAnonymity.lean`, `AnonymityFromSPR.lean`, `MLKEM.lean`, `SPRTwoHop.lean` | Seeded-MLWE advantages and primitive/encoding assumptions remain; active FIPS-203 ANO-CCA mapping is separate work |
+| Recipient anonymity of ciphertexts | `KEMAnonymity.lean` (`ANO_CCA_Advantage_le_of_spr_full`: ANO-CCA ≤ per-branch SPR for a decap-querying adversary), `SPRTwoHop.lean` (`mlkem768_ANO_CCA_Advantage_le_sprTerms` at the concrete instance, coherence discharged), `AnonymityFromSPR.lean`, `MLKEM.lean` | The SPR terms themselves are named, not bounded: Maram–Xagawa Theorem-2 residual (ROM/PRF + collision) and QROM access. Mapping the round-3 Kyber result to final FIPS-203 ML-KEM is unformalized; the ERC-facing claim is the named `mlkem768ANOCCA_assumed` (D-032). The SPR term is only meaningful against a key-independent simulator, and the uniform-byte one is inadmissible (constant distance `0.9262656353`); every capstone uses the compressed-uniform simulator, whose encoding residual is exactly zero (D-034) |
 | Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages | Concrete joint derivation, recipient spend-key binding, deployment metadata, and CREATE2 composition are not discharged by Construction A's blinding proof |
 | Reliable detection and rejection | Negative vectors; generic conditional soundness results in `Soundness.lean` | A one-byte tag is a filter after decapsulation, not a payment authenticator or a universal false-positive guarantee |
 | Byte-level interoperability | Deterministic commitment vectors, encoding tests; abstract 1,217-byte roundtrip in `Invariants.lean` | Serialization facts are not cryptographic security or a proof of the Python/TS implementation |
@@ -38,9 +38,14 @@ can recover them. Neither must be sufficient to authorize spending: this is an
 obligation of the selected account model. Account code, verifier selection,
 message binding, replay controls, and upgrades need separate review.
 
-An active attacker can supply malformed announcements or ciphertexts and may
-observe scanner behavior. Generic passive security results do not establish an
-active ANO-CCA claim for final FIPS-203 ML-KEM. Timing, resource exhaustion,
+An active attacker can supply malformed announcements or ciphertexts; the
+scanner is total and never errors on them (`Scheme3Wire.mlkem768_scan_is_total_and_pure`,
+D-033), so a foreign ciphertext yields a non-match rather than a crash. Against
+an attacker who actively queries decapsulation, the ANO-CCA game is formalized
+and bounded by the per-branch SPR terms (`ANO_CCA_Advantage_le_of_spr_full`,
+`mlkem768_ANO_CCA_Advantage_le_sprTerms`); what is *not* established is the
+SPR bound itself in the CCA context, nor a QROM claim, nor a formal
+round-3-Kyber-to-FIPS-203 mapping. Timing, resource exhaustion,
 retry leakage, and scanner/network metadata are not covered by the current
 formal result. Quantum random-oracle access is also outside that result.
 

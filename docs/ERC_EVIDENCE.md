@@ -30,7 +30,9 @@ semantic reading map, **not** an isolated build target.
 | --- | --- | --- |
 | `Games`, `KEMAnonymity` | `StealthScheme`, `ofKEMFull`, `perfectlyComplete_ofKEMFull`, `unlinkAdvantage_ofKEMFull_le` | Generic scheme and auxiliary-data model; concrete commitment instantiation still needed |
 | `SharedSecretHiding` | `sharedSecretHiding_eq_indCpaAdvantage`, `unlinkAdvantage_ofKEMFull_le_indCpa` | Identifies the hiding terms, not the whole anonymity argument |
-| `AnonymityFromSPR`, `MLKEM`, `SPRTwoHop` | `KEM.anonAdvantage_le_sprAdv`, `mlkem768_sprAdv_le_mlwe` | Ciphertext anonymity decomposition with named assumptions and MLWE terms |
+| `AnonymityFromSPR`, `MLKEM`, `SPRTwoHop` | `KEM.anonAdvantage_le_sprAdv`, `mlkem768_sprAdv_le_three_mlwe_compressed` | Ciphertext anonymity decomposition with named assumptions and MLWE terms |
+| `KEMAnonymity` (ANO-CCA), `SPRTwoHop`, `ANOAssumption` | `KEM.ANO_CCA_Advantage_le_of_spr_full`, `mlkem768_ANO_CCA_Advantage_le_sprTerms`, `CRYPTREC_ANOCCA_Bundle` | ANO-CCA is bounded by the two per-branch SPR terms; the SPR terms themselves are named (Maram–Xagawa Theorem-2 residual, ePrint 2022/1696), not proved, and no QROM claim is made |
+| `Scheme3`, `Scheme3Wire` | `scheme3_unlinkAdvantage_le_of_sprTerms`, `scheme3EphemeralPubKey_roundtrips`, `mlkem768_scan_is_total_and_pure` | Scheme-3 fold-in and wire invariants; agreement is conditional on `PerfectlyCorrect` of the underlying KEM |
 | `MultiUnlink`, `MultiRecipient` | `unlinkAdvantageMulti_le_mul`, `unlinkAdvantageN_le_mul` | Generic losses for multiple announcements/recipients; requires an applicable single-challenge bound |
 | `Soundness` | `falsePositiveRate_ofKEMFull_le`, `soundWithin_ofKEMFull_oneByteTag` | Conditional bounds; does not prove arbitrary SHA-256 tag behavior unconditionally |
 | `Invariants` | `meta_address_zk_roundtrips_1217` | Abstract encode/decode roundtrip; does not prove commitment hiding, CREATE2 correctness, or runtime code |

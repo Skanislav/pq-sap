@@ -331,9 +331,15 @@ is not yet composed, and the widened HVZK bound remains the trivial `1`:
   distribution and gives the ML-DSA-65 acceptance probability `(1047791/1048576)^1280`.
 - **ROM bad-query bound** — `BlindingROM.lean` and `BlindingEntropy.lean` bound the
   address-hash bad-query probability by `qH * betaAddr` per branch.
-- **SPR → MLWE/ANO-CCA** — `SPRTwoHop.lean` gives `sprAdv_le_mlwe`: three named
-  seeded-MLWE advantages plus `epsilonPrim` and `epsilonEnc`; ANO-CCA remains a
-  separately labelled literature result (Maram–Xagawa ePrint 2022/1696).
+- **SPR → MLWE/ANO-CCA** — `SPRTwoHop.lean` gives `sprAdv_le_three_mlwe`: three
+  named seeded-MLWE advantages plus `epsilonPrim` and `epsilonKeyIdeal` (the
+  encoding residual is exactly zero against the compressed-uniform simulator —
+  D-034). The ANO-CCA lift is
+  no longer literature only: `KEMAnonymity.lean` defines the ANO-CCA game and
+  proves `ANO_CCA_Advantage_le_of_spr_full`, with the concrete
+  `mlkem768_ANO_CCA_Advantage_le_sprTerms` (`SPRTwoHop.lean`). What is still named
+  rather than proved is the SPR bound in the CCA context (the Maram–Xagawa
+  Theorem-2 residual, ePrint 2022/1696).
 - **Related-key spend** — `SpendSecurity.lean` and `ConstructionASecurity.lean`
   prove the related-key spend bound in the search-witness model: a sender who
   knows all `q` blinding offsets forges a witness for some derived key with

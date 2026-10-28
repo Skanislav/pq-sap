@@ -107,8 +107,10 @@ The bottom computational assumptions are not closed in Lean:
    placeholder at the pin and concerns K-PKE, not the KEM. The desired
    KEM-level lemma is recorded verbatim in `MLKEM.lean`.
 2. **SPR residuals.** `primitiveIdealization` (ROM/PRF derandomisation of
-   ML-KEM coins) and `simulatorGap` (encoding regularity) are named but not
-   bounded.
+   ML-KEM coins) and `keyIdealization` are named but not bounded. The encoding
+   half of `simulatorGap` is *closed*: the compressed-uniform simulator makes
+   `encodingRegularity` identically zero, and a uniform-byte simulator is
+   provably inadmissible (constant distance `0.9262656353`).
 3. **ANO-CCA lift** through the implicit-rejection Fujisaki–Okamoto
    transform.
 4. **Forking-lemma SoK extraction** for the ZK ownership proof.
@@ -124,12 +126,13 @@ axiom guard updated if new headline theorems are added.**
 ### Issue #22 (part) — view-tag hash in Lean
 
 Add the `LeanSha256` view-tag instantiation to the concrete ML-KEM-768
-announcement model, and wire `lean/scripts/check_sizes.py` into CI so a
-drifted byte size fails the build. Status: scripts landed; `LeanSha256`
-integration and CI wiring remain.
+announcement model. Status: `check_sizes.py` is wired into CI
+(`.github/workflows/lean.yml`), as is `check_simulator_distances.py`;
+`LeanSha256` integration remains.
 
-- Acceptance: `check_sizes.py` runs in `.github/workflows/lean.yml`; a size
-  mismatch is a CI failure; no `sorry`.
+- Acceptance: `LeanSha256` is instantiated at the scheme-3 view tag; no
+  `sorry`. The CI half is met — `check_sizes.py` and
+  `check_simulator_distances.py` both run in `.github/workflows/lean.yml`.
 
 ### Issue #16 — license headers
 
@@ -144,12 +147,19 @@ each `lean/PqStealth/*.lean` file without disturbing the existing module
 
 - `primitiveIdealization`: bound the ROM/PRF advantage of replacing
   ML-KEM's rejection-sampled coins with uniform ones in the SPR game.
-- `simulatorGap`: bound the statistical distance between the FIPS 203
-  ciphertext distribution and the uniform 1088-byte simulator used in the
-  ML-KEM-768 capstones.
+- `keyIdealization`: the key-generation half of the same ROM/PRF step.
 
 - Acceptance: both terms become explicit named advantages with reduction
   adversaries, or a clear paper-level bound is recorded in `lean/docs/`.
+
+**Retired (2026-10-28):** "bound the statistical distance between the FIPS 203
+ciphertext distribution and the uniform 1088-byte simulator". There is nothing
+left to bound — the distance is the constant `0.9262656353`, so the
+uniform-byte simulator cannot carry a negligible SPR bound at all. The
+capstones no longer use it: they use `mlkem768CompressedUniformCiphertext`,
+whose encoding residual is exactly zero
+(`encodingRegularity_mlkem768CompressedUniformCiphertext`).
+`lean/scripts/check_simulator_distances.py` recomputes every figure in CI.
 
 ### KEM IND-CPA → MLWE composition
 
