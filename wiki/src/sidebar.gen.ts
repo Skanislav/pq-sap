@@ -157,6 +157,14 @@ export const generatedSidebar = [
         "link": "/lean/dksap-asymmetry"
       },
       {
+        "text": "PQ stealth addresses and authenticated UTXO discovery",
+        "link": "/research/authenticated-utxo-discovery"
+      },
+      {
+        "text": "Cost report — measured L1/L2 gas and client-side scanning",
+        "link": "/research/cost-report"
+      },
+      {
         "text": "Hash-based key exchange (SHA-256 / BLAKE3 commitments) as an ML-KEM alternative: why the lattice is load-bearing",
         "link": "/research/hash-based-key-exchange"
       },
@@ -173,8 +181,16 @@ export const generatedSidebar = [
         "link": "/research/original-project-plan"
       },
       {
+        "text": "Pairwise mode: why fresh encapsulation per announcement stays",
+        "link": "/research/pairwise-mode"
+      },
+      {
         "text": "Poseidon2 + Merkle trees + zk-STARKs for a customized registry/discovery layer",
         "link": "/research/poseidon2-stark-discovery"
+      },
+      {
+        "text": "Widened-z distribution and signature-route distinguishability",
+        "link": "/research/widened-z-distribution"
       },
       {
         "text": "X-Wing as the discovery KEM: what a PQ/T hybrid buys us, and what it doesn't",

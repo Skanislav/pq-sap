@@ -211,8 +211,16 @@ contract GasExhaustionTest is Test {
     function test_erc1271_surfaces_garbage_return() public {
         Garbage7913Verifier bad = new Garbage7913Verifier();
         Stealth7913Account account = new Stealth7913Account(abi.encodePacked(address(bad), bytes32(uint256(1))));
-        // a completed call with a short return: not magic, so "invalid"
-        assertEq(account.isValidSignature(digest, payload), FAIL);
+        // review F5 (2026-10-01): a completed call with a short return is a
+        // malformed response — a verifier malfunction surfaced as
+        // VerifierCallFailed, not collapsed into "invalid"
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Pq7913Signer.VerifierCallFailed.selector,
+                hex"00000000000000000000000000000000" // Garbage7913Verifier's 16-byte return
+            )
+        );
+        account.isValidSignature(digest, payload);
     }
 
     function test_erc1271_valid_path_unchanged() public {

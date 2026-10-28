@@ -86,9 +86,13 @@ contract Stealth8141ZkAccount {
         if (gasleft() < MIN_PROOF_GAS) revert GasFloorExceeded(MIN_PROOF_GAS, gasleft());
         (bool ok, bytes memory ret) = address(verifier).staticcall(
             abi.encodeWithSelector(IProofVerifier.verify.selector, proof, publicInputs(digest)));
-        // a completed call with a malformed return is a malfunction, not a bad proof
-        if (!ok || ret.length != 32) revert ProofCallFailed(ret);
-        if (!abi.decode(ret, (bool))) revert NotAuthorized();
+        if (!ok) revert ProofCallFailed(ret);
+        // a completed call must answer exactly one canonical bool word. A
+        // shorter, longer, or non-canonical return (e.g. the integer 2) is a
+        // verifier malfunction, not a bad-proof verdict — and decoding it as a
+        // bool would revert empty, losing the classification (review F5).
+        if (ret.length != 32 || abi.decode(ret, (uint256)) > 1) revert ProofCallFailed(ret);
+        if (abi.decode(ret, (bool))) {} else { revert NotAuthorized(); }
         (bool callOk, bytes memory callRet) = to.call{value: value}(data);
         if (!callOk) revert CallFailed(callRet);
     }
@@ -118,6 +122,9 @@ contract Stealth8141ZkAccount {
     function _verify(bytes32 digest, bytes memory proof) internal view returns (bool) {
         (bool ok, bytes memory ret) = address(verifier).staticcall(
             abi.encodeWithSelector(IProofVerifier.verify.selector, proof, publicInputs(digest)));
-        return ok && ret.length == 32 && abi.decode(ret, (bool));
+        // same malformed-return policy as executeFrame (review F5): a
+        // non-canonical response is a malfunction, reported as false here
+        // because the tooling surface answers a bool
+        return ok && ret.length == 32 && abi.decode(ret, (uint256)) <= 1 && abi.decode(ret, (bool));
     }
 }

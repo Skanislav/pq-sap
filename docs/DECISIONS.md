@@ -1242,26 +1242,77 @@ hashing the ciphertext and both public keys into the transcript. Here the
 opener is `SHA-256(open_domain ‖ ss)` and the view tag is `SHA-256(ss)[0:1]`;
 neither includes `ct` or `ek`. Should they?
 
-**No — the binding is already inside `ss`.** FIPS 203 ML-KEM.Encaps derives
-`ss = KDF_256(K̄ ‖ H(ek) ‖ H(ct))`: both the encapsulation-key hash and the
-ciphertext hash are hashed into the shared secret by the KEM itself, and
-decapsulation re-encrypts before deriving (implicit rejection on mismatch).
-A substituted `(ek′, ct′)` reproducing a given `ss` therefore needs a
-SHAKE256 KDF collision (~2²⁵⁶), and a `(ct, ss)` replayed against another
-meta-address fails decaps before the opener is ever derived — the recipient
-binding the thread's `viewing_pk` inclusion provides in a classical combiner
-is provided here by the KEM's own transcript. External re-hashing would change
-every derived address, invalidate every vector set and the Lean size checks,
-and buy nothing the internal binding does not already give.
+**No — but the reason is weaker than a general transcript-binding formula.**
+FIPS 203 (Algorithms 17–18) does **not** hash the ciphertext into a successful
+shared secret: encapsulation derives `(K, r) ← G(m ‖ H(ek))` with a random `m`,
+sets `c ← K-PKE.Encrypt(ek, m, r)` and returns `(K, c)` — the successful `ss`
+contains `H(ek)` through `G`, but **not** `H(ct)`. What decapsulation *does*
+guarantee is the other direction: a length-valid but modified `ct′` fails the
+re-encryption check and yields the implicit-rejection secret `J(z ‖ c′)` (a
+pseudorandom function of the recipient secret and the received ciphertext),
+not `ss` and not an explicit error. A substituted ciphertext therefore does
+**not** "fail before the opener is derived" — it silently derives a different,
+attacker-unpredictable opener, so the recipient binding rests on the implicit
+rejection secret being computationally indistinguishable from a real one
+(IND-CCA of ML-KEM), **not** on `ct` appearing in a transcript hash.
 
-**Admissibility requirement (normative for profiles).** A KEM is admissible to
-a profile only if its shared-secret derivation internally binds the
-encapsulation-key hash and the ciphertext hash. ML-KEM (FIPS 203) and X-Wing
-qualify; a plain combiner without internal transcript binding must instead
-use new domain strings — a new profile revision, not an edit of existing ones,
-since renaming a domain moves funds. Stated in
-`docs/TECHNICAL_SPEC.md` §4 so ERC reviewers' "why isn't the ciphertext in
-the transcript" has a canonical answer.
+Consequences for the opener/tag design:
+
+- The opener and view tag hash only `ss`; whether that omits an external
+  transcript binding the way X-Wing's combiner does is a **construction-
+  specific question, not a settled one**. X-Wing (draft-10 §5.3/§6) omits the
+  ML-KEM ciphertext from its combiner *deliberately*, and its security rests
+  on a construction-specific argument (MAL-BIND-K/CT properties of the
+  combined key plus the X25519 leg), explicitly not on a general
+  "hash everything into the KDF" principle. We cite X-Wing as precedent for
+  *omission being permissible*, not as a proof that applies to this profile.
+- **Open obligation (recorded, not resolved):** no reduction is on file that
+  says omitting `H(ct)` from the opener/tag derivation in *this* construction
+  preserves recipient anonymity under ciphertext-substitution experiments
+  (e.g. an active sender re-encrypting to the same `ek` and presenting a
+  modified `ct`; the recipient's view is then `J(z ‖ c′)`-derived, which the
+  sender cannot compute, so the practical question is whether any
+  distinguishing advantage arises from the substitution itself). Until such
+  an argument exists, omitting external transcript hashing is an explicit,
+  reviewed assumption of the profile — not a derived property.
+- **Derivation bytes are unchanged by this correction.** The implemented
+  `ss` handling already matches FIPS 203 (the python/TS layers call the
+  library's Encaps/Decaps and hash their output); the error here was in the
+  *documentation's formula*, not in any derived address, vector, or Lean
+  size check. External re-hashing would change all of those, and this
+  decision does not authorize it; see the open obligation above for what a
+  future revision would have to prove.
+
+**Admissibility requirement (normative for profiles).** A KEM is admissible
+to a profile on stated *security properties*, not on a syntactic formula:
+
+1. **Confidentiality:** IND-CCA under the standard experiment for the KEM's
+   parameter set (ML-KEM-768 is FIPS 203's NIST security category 3 parameter
+   set). Implicit rejection must be part of
+   the KEM's specification — a decapsulated-but-invalid ciphertext yields a
+   pseudorandom secret, never an explicit failure observable to the sender.
+2. **Recipient binding under substitution:** decapsulation of any ciphertext
+   other than the one the honest encapsulator produced must derive a secret
+   the sender cannot predict. For ML-KEM this holds via implicit rejection
+   (`J(z ‖ c′)`) *for ciphertexts decapsulated under the honest `dk`*; it is
+   a KEM property, and this profile additionally accepts the open obligation
+   above rather than claiming a transcript-hash proof.
+3. **Binding properties (MAL-BIND-K-PK / MAL-BIND-K-CT, in the X-Wing
+   sense):** a malicious encapsulator cannot produce `(ek, ct)` pairs that
+   decapsulate to a shared secret of its choosing under two different
+   encapsulation keys, nor make one `ct` decapsulate inconsistently. X-Wing
+   names and relies on these; ML-KEM's re-encryption check provides the
+   ciphertext- binding; both are *construction-specific arguments*, and each
+   profile must cite where its own binding comes from.
+
+A KEM lacking these properties is not made admissible by re-hashing its
+outputs; a profile that wants external transcript binding designs it in from
+the start — a new profile revision, not an edit of existing ones, since
+changing a domain moves funds. Stated in `docs/TECHNICAL_SPEC.md` §4 so ERC
+reviewers' "why isn't the ciphertext in the transcript" has a canonical,
+honest answer: *because the profile's admissibility argument for its KEM
+does not need it, and the residual question is recorded as open, not
+asserted as solved*.
 
 **View tag.** The thread's naive-view-tag attack (tag as a prefix of the
 address scalar) does not apply: the tag and the address inputs are different
@@ -1413,3 +1464,45 @@ measured on the shipped forge/solc stack and will drift with the toolchain;
 the assert bounds in `GasExhaustion.t.sol` are deliberately loose (C13
 < 2 M, i.e. 10× the measured figure) so the tests document rather than
 brittle-pin. Nothing is deployed.
+
+## D-032 — ERC-8441 stays outside this repository; the repo is the EPF cohort artifact and decision log for our own scheme — **LOCKED (2026-10-28)**
+
+External work converged on the same design space: a stealth-address proposal
+for post-quantum recipients with an ML-KEM-768 (and hybrid) discovery layer,
+numbered ERC-8441. It is similar to, and in places ahead of, what this project
+specifies. It is **not** merged into, cited as normative by, or vendored into
+this repository, and it is not a dependency of any implementation here.
+
+**Decision.** This repository stays the record of *our* EPF cohort work: the
+scheme we specify, the vectors it generates, the proofs we checked, the
+decisions we made and the reasons for them. ERC-8441 is treated as external
+prior art at most — a comparison a human can make by reading it — never as a
+second scheme compiled, mirrored, or re-exported from here.
+
+Concretely:
+
+1. No ERC-8441 modules, pages, or decision records land on `main`. The
+   `feat/erc-8441-scheme3-lean` branch carries that work (hybrid-KEM
+   constructor, scheme-3 wire model, ANO-CCA capstones) and stays out; its
+   `docs/DECISIONS.md` numbers D-032–D-034 are therefore **not** part of this
+   log, and a future merge would have to renumber them against this entry.
+2. Review scratch — notes, PR comment drafts, anonymity supplements under
+   `docs-review-ws/` — is untracked and now gitignored. It is working material
+   for reviewing somebody else's proposal, not an artifact of ours.
+3. The generated proof browser must never publish a module the repository does
+   not contain. `lean/scripts/gen_browser.py` previously only ever added
+   pages, so pages generated on a branch survived its removal and
+   `wiki/scripts/sync.mjs` (which mirrors `lean/docs-proofs/*.md` wholesale)
+   would publish them. It now prunes pages with no matching
+   `lean/PqStealth/<Module>.lean`, which is what removed the leftover
+   scheme-3/ANO-CCA pages from a local tree.
+
+**Why record it at all.** Because "we did not do this" is itself a decision
+with a reason, and this repository is the place the reasoning survives
+alongside the work that was done. Anyone reading the log should not have to
+reconstruct from an absent branch whether the omission was an oversight or a
+choice.
+
+**What it does not change.** Scope under D-024/D-025 is unaffected: the
+key-exchange ERC remains the deliverable, spending stays supporting research.
+No vector, contract, proof, or measurement in this repo depends on ERC-8441.

@@ -38,6 +38,12 @@ the current key-exchange review boundaries. Start with the
 [ERC evidence map](docs/ERC_EVIDENCE.md); spending specialists can follow the
 [separate research guide](docs/SPENDING_RESEARCH.md).
 
+This repository is the artifact trail of our EPF cohort work: the scheme we
+specified, the vectors it generates, the checks we ran, and the
+[decision log](docs/DECISIONS.md) recording why. Similar external proposals —
+including ERC-8441 — are prior art, not code or text mirrored here
+([D-032](docs/DECISIONS.md)).
+
 ## Layout
 
 | Path | What |
@@ -49,6 +55,7 @@ the current key-exchange review boundaries. Start with the
 | [`js-client/`](js-client/) | TypeScript scanning client that reproduces the vectors byte for byte |
 | [`ui/`](ui/) | Demo web UI (Vite + React): receive, scan, and spend (EOA + ERC-4337 routes) |
 | [`docs/ERC_EVIDENCE.md`](docs/ERC_EVIDENCE.md) | Required claim evidence, relevant proofs, and open commitment-profile composition |
+| [`docs/research/cost-report.md`](docs/research/cost-report.md) | Measured L1/L2 announcement and spend gas, registration, and scanning costs |
 | [`docs/SPENDING_RESEARCH.md`](docs/SPENDING_RESEARCH.md) | Optional account, signature, and ZK research |
 | [`lean/`](lean/) | Generic KEM results, Construction A research, and maintainer tooling |
 | [`wiki/`](wiki/) | Mirrored documentation site source |
