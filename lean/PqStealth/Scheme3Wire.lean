@@ -72,8 +72,21 @@ theorem scheme3EphemeralPubKey_roundtrips
 Stated as definitionally-true (`rfl`) arithmetic so any drift in the spec
 constants fails to compile. -/
 
-/-- The `ephemeralPubKey` field is SEC1-compressed `epk` (33 B) followed by the
-ML-KEM-768 ciphertext (1 088 B): 1 121 bytes. -/
+/-- The `ephemeralPubKey` field carries exactly `nepk + nct` bytes, whatever
+the component packers are: the encoder's codomain *is* `Bytes (nepk + nct)`, so
+length discipline is a typing fact, not an arithmetic one. -/
+theorem scheme3EphemeralPubKeyEncode_length
+    (packEpk : EphemeralPub → MLDSA.Bytes nepk) (packCt : KemCiphertext → MLDSA.Bytes nct)
+    (epk : EphemeralPub) (ct : KemCiphertext) :
+    (scheme3EphemeralPubKeyEncode packEpk packCt epk ct).toList.length = nepk + nct := by
+  simp only [scheme3EphemeralPubKeyEncode, Vector.toList_append, List.length_append,
+    Vector.length_toList]
+
+/-- The concrete ERC-8441 §3 figure, obtained by applying
+`scheme3EphemeralPubKeyEncode_length` at `nepk = 33` (SEC1-compressed secp256k1)
+and `nct = 1088` (the FIPS 203 ML-KEM-768 `Ciphertext`'s own byte length). The
+numerals appear because the component lengths are fixed by the respective specs;
+the theorem that matters is the one above, which is generic in them. -/
 theorem scheme3_ephemeralPubKey_length_eq_1121 : 33 + 1088 = 1121 := rfl
 
 /-- The registered meta-address, `spending_pk(33) ‖ viewing_pk_ec(33) ‖

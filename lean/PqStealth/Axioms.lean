@@ -185,6 +185,9 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.scheme3EphemeralPubKey_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3EphemeralPubKey_roundtrips
 
+/-- info: 'PqStealth.scheme3EphemeralPubKeyEncode_length' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3EphemeralPubKeyEncode_length
+
 /-- info: 'PqStealth.mlkem768_decaps_total' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_decaps_total
 
