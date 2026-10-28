@@ -9,10 +9,14 @@ carries no information about the hidden bit -- and, chaining into
 `unlinkAdvantage_ofKEMFull_le`, the full decomposition of stealth unlinkability
 into five named advantages with no unnamed slack.
 
-Assumed: the SPR terms are decomposed in `SPRTwoHop` into two MLWE hops (both
-identities proved) plus two named residual terms (primitive idealization,
-simulator gap); lifting to ANO-CCA must track ML-KEM's implicit-rejection FO
-transform. Neither VCVio nor FIPS 203 supplies `anonymity → MLWE`.
+Assumed: the SPR terms are decomposed in `SPRTwoHop` into three MLWE hops
+(keyHopAdv, ctHopAdv, keyRestorationAdv) plus two named residual terms
+(primitive idealization, key-generation idealization); the encoding term
+vanishes by the compressed-uniform simulator. `ClosedUnlinkability` chains the
+per-branch bound into the full unlinkability decomposition. Lifting to ANO-CCA
+must track ML-KEM's implicit-rejection FO transform — the naive
+`ANO-CCA ≤ ANO-CPA + ε` is false by the Maram–Xagawa counterexample; the honest
+extended-anonymity shape and VCVio milestone are in `docs/fo-anonymity-lift.md`.
 See `docs/spr-two-hop.md`.
 -/
 

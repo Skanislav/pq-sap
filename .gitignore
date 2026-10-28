@@ -32,3 +32,6 @@ node_modules/
 dist/
 .ruff_cache/
 js-client/contracts/cache/
+
+# agent tooling state (LSP server config, per-worktree)
+.omp/

@@ -2,6 +2,10 @@ import PqStealth.Blinding
 import PqStealth.Invariants
 import PqStealth.Games
 import PqStealth.KEMAnonymity
+import PqStealth.HybridKEM
+import PqStealth.Scheme3
+import PqStealth.ANOAssumption
+import PqStealth.Scheme3Wire
 import PqStealth.MultiUnlink
 import PqStealth.MultiRecipient
 import PqStealth.ConstructionA
@@ -10,6 +14,7 @@ import PqStealth.SharedSecretHiding
 import PqStealth.AnonymityFromSPR
 import PqStealth.MLKEM
 import PqStealth.SPRTwoHop
+import PqStealth.ClosedUnlinkability
 import PqStealth.Ownership
 import PqStealth.DKSAP
 import PqStealth.DKSAPOracle
@@ -107,6 +112,11 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le
 
+/-! ## Parallel hybrid KEM (`HybridKEM`) -/
+
+/-- info: 'PqStealth.KEM.parallel_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.parallel_perfectlyCorrect
+
 /-! ## Shared-secret hiding as a real-or-random bias (`SharedSecretHiding`) -/
 
 /-- info: 'PqStealth.sharedSecretHiding_eq_rorBias' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -116,6 +126,79 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.KEM.anonAdvantage_le_sprAdv' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.anonAdvantage_le_sprAdv
+
+/-- info: 'PqStealth.KEM.simulateQ_toANO_CCA' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.simulateQ_toANO_CCA
+
+/-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr
+
+/-- info: 'PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.KEM.ANO_CCA_Advantage_le_of_spr_full
+
+/-- info: 'PqStealth.neverFail_of_unifSpec' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.neverFail_of_unifSpec
+
+/-- info: 'PqStealth.probComp_hnf' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_hnf
+
+/-- info: 'PqStealth.probComp_heval_pure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_pure
+
+/-- info: 'PqStealth.probComp_heval_bind' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_bind
+
+/-- info: 'PqStealth.probComp_heval_liftProbComp' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.probComp_heval_liftProbComp
+
+/-- info: 'PqStealth.mlkem768_ANO_CCA_Advantage_le_sprTerms' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_ANO_CCA_Advantage_le_sprTerms
+
+/-! ## ERC-8441 ANO-CCA assumption layer (`ANOAssumption`) -/
+
+/-- info: 'PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.CRYPTREC_ANOCCA_Bundle.toAssumed
+
+/-- info: 'PqStealth.scheme3ParallelHybrid768' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3ParallelHybrid768
+
+/-- info: 'PqStealth.hybrid768AnonAdvantage' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.hybrid768AnonAdvantage
+
+
+/-! ## ERC-8441 scheme-3 abstract model (`Scheme3`) -/
+
+/-- info: 'PqStealth.scheme3_perfectlyComplete' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_perfectlyComplete
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le_of_anonAdvantage_le
+
+/-- info: 'PqStealth.scheme3_unlinkAdvantage_le_of_sprTerms' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3_unlinkAdvantage_le_of_sprTerms
+
+/-! ## Scheme-3 wire-format and fail-closed-scanning invariants (`Scheme3Wire`) -/
+
+/-- info: 'PqStealth.scheme3EphemeralPubKey_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3EphemeralPubKey_roundtrips
+
+/-- info: 'PqStealth.scheme3EphemeralPubKeyEncode_length' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3EphemeralPubKeyEncode_length
+
+/-- info: 'PqStealth.mlkem768_decaps_total' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_decaps_total
+
+/-- info: 'PqStealth.mlkem768_scan_is_total_and_pure' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_scan_is_total_and_pure
+
+/-- info: 'PqStealth.scheme3HybridKEM_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3HybridKEM_perfectlyCorrect
+
+/-- info: 'PqStealth.scheme3HybridKEMOfComponents_perfectlyCorrect' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.scheme3HybridKEMOfComponents_perfectlyCorrect
 
 /-- info: 'PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.unlinkAdvantage_ofKEMFull_le_full_decomposition
@@ -302,6 +385,23 @@ newly classical proof visible. `whitespace := lax` is required because
 
 /-- info: 'PqStealth.mlkem768_sprAdv_le_two_hop_decomposition' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_two_hop_decomposition
+
+/-- info: 'PqStealth.sprAdv_le_three_mlwe' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe
+
+/-- info: 'PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.encodingRegularity_mlkem768CompressedUniformCiphertext
+
+/-- info: 'PqStealth.mlkem768_sprAdv_le_three_mlwe_compressed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_sprAdv_le_three_mlwe_compressed
+
+/-- info: 'PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.sprAdv_le_three_mlwe_hypotheses_inhabited
+
+/-! ## Closed ML-KEM-768 unlinkability (`ClosedUnlinkability`) -/
+
+/-- info: 'PqStealth.mlkem768_unlinkAdvantage_le_three_mlwe_compressed' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.mlkem768_unlinkAdvantage_le_three_mlwe_compressed
 
 /-! ## Spend forgery as matrix-SIS (`Ownership`) -/
 
