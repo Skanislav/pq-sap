@@ -140,6 +140,10 @@ export const generatedSidebar = [
         "link": "/lean/lean-study-notes"
       },
       {
+        "text": "Commitment anonymity module design",
+        "link": "/lean/commitment-anonymity-design"
+      },
+      {
         "text": "Engineering lessons",
         "link": "/lean/etheorem-lessons"
       },
@@ -159,6 +163,10 @@ export const generatedSidebar = [
       {
         "text": "PQ stealth addresses and authenticated UTXO discovery",
         "link": "/research/authenticated-utxo-discovery"
+      },
+      {
+        "text": "The commitment format in the announcement-privacy model",
+        "link": "/research/commitment-announcement-privacy"
       },
       {
         "text": "Cost report — measured L1/L2 gas and client-side scanning",

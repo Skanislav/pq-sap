@@ -16,7 +16,7 @@ it is supporting research, not the security theorem for format `0x02`.
 | Honest sender/scanner agreement | Python commitment tests and independent TS vector replay; abstract KEM completeness results | Instantiate the concrete commitment/deployment flow; KEM correctness assumptions remain explicit |
 | Shared-secret confidentiality | `SharedSecretHiding.lean` identifies generic hiding terms with KEM IND-CPA advantages | This does not by itself establish anonymity of the recipient key or a quantum-accessible oracle reduction |
 | Recipient anonymity of ciphertexts | `KEMAnonymity.lean`, `AnonymityFromSPR.lean`, `MLKEM.lean`, `SPRTwoHop.lean` | Seeded-MLWE advantages and primitive/encoding assumptions remain; active FIPS-203 ANO-CCA mapping is separate work |
-| Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages | Concrete joint derivation, recipient spend-key binding, deployment metadata, and CREATE2 composition are not discharged by Construction A's blinding proof |
+| Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages; [instantiation note](research/commitment-announcement-privacy.md) manually maps the commitment `auxGen` to the generic four-term chain, IND-CPA identification, and multi-payment/n-recipient result shapes. Its ROM sketch estimates `auxKeyIndependence` as `2·qH·2⁻²⁵⁶` = `2⁻¹⁷⁵` at `qH = 2⁸⁰`, with `qH` a joint tag/opener/address-oracle budget — no MLWE hop, no lattice point-mass | The concrete `commitKem` / `commitAuxGen` wrapper and the ROM bound are not Lean theorems; the estimate assumes both recipients share the profile and deployment binding, and a classical-ROM model for the public tag. No reduction of the ML-KEM IND-CPA/anonymity terms to MLWE is claimed for this format |
 | Reliable detection and rejection | Negative vectors; generic conditional soundness results in `Soundness.lean` | A one-byte tag is a filter after decapsulation, not a payment authenticator or a universal false-positive guarantee |
 | Byte-level interoperability | Deterministic commitment vectors, encoding tests; abstract 1,217-byte roundtrip in `Invariants.lean` | Serialization facts are not cryptographic security or a proof of the Python/TS implementation |
 | Explicit profile selection | Typed profiles and fail-closed `select_profile` in Python/TS (D-027) | A profile name and its binding are trusted configuration; nothing authenticates a substituted factory, verifier, or registrar |
@@ -123,6 +123,14 @@ See [spending research](SPENDING_RESEARCH.md) for implementation evidence and
    human-written ERC text; specify every byte-level input.
 2. Map the commitment flow into a full-announcement privacy experiment and
    justify its auxiliary-data independence under explicit hash assumptions.
+   The instantiation is now drafted —
+   [commitment announcement-privacy note](research/commitment-announcement-privacy.md)
+   — and the open residue is a checked concrete `commitKem` / `commitAuxGen`
+   wrapper plus a `CommitmentAnonymity.lean` module discharging the
+   `auxKeyIndependence` ROM bound (sketch `2·qH·2⁻²⁵⁶` there). The deployed
+   tag's classical-ROM uniformity and the profile/common-binding condition
+   must also be stated as assumptions/properties in the human-written ERC
+   text.
 3. State the classical/quantum and passive/active models precisely, including
    what comes from ML-KEM literature versus a checked theorem here.
 4. Publish partial-checker coverage honestly and retain full KEM vector replay.
