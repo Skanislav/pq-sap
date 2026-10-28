@@ -157,6 +157,10 @@ export const generatedSidebar = [
         "link": "/lean/dksap-asymmetry"
       },
       {
+        "text": "PQ stealth addresses and authenticated UTXO discovery",
+        "link": "/research/authenticated-utxo-discovery"
+      },
+      {
         "text": "Hash-based key exchange (SHA-256 / BLAKE3 commitments) as an ML-KEM alternative: why the lattice is load-bearing",
         "link": "/research/hash-based-key-exchange"
       },
@@ -181,6 +185,10 @@ export const generatedSidebar = [
         "link": "/research/poseidon2-stark-discovery"
       },
       {
+        "text": "Widened-z distribution and signature-route distinguishability",
+        "link": "/research/widened-z-distribution"
+      },
+      {
         "text": "X-Wing as the discovery KEM: what a PQ/T hybrid buys us, and what it doesn't",
         "link": "/research/xwing-hybrid-kem"
       }
@@ -192,6 +200,10 @@ export const generatedSidebar = [
       {
         "text": "Lean proof browser",
         "link": "/lean/proofs"
+      },
+      {
+        "text": "ANOAssumption",
+        "link": "/lean/proofs/anoassumption"
       },
       {
         "text": "AnonymityFromSPR",
@@ -208,6 +220,10 @@ export const generatedSidebar = [
       {
         "text": "BlindingROM",
         "link": "/lean/proofs/blindingrom"
+      },
+      {
+        "text": "ClosedUnlinkability",
+        "link": "/lean/proofs/closedunlinkability"
       },
       {
         "text": "ConstructionA",
@@ -236,6 +252,10 @@ export const generatedSidebar = [
       {
         "text": "Games",
         "link": "/lean/proofs/games"
+      },
+      {
+        "text": "HybridKEM",
+        "link": "/lean/proofs/hybridkem"
       },
       {
         "text": "Invariants",
@@ -268,6 +288,14 @@ export const generatedSidebar = [
       {
         "text": "ROMUpToBad",
         "link": "/lean/proofs/romuptobad"
+      },
+      {
+        "text": "Scheme3",
+        "link": "/lean/proofs/scheme3"
+      },
+      {
+        "text": "Scheme3Wire",
+        "link": "/lean/proofs/scheme3wire"
       },
       {
         "text": "SharedSecretHiding",

@@ -1291,8 +1291,8 @@ Consequences for the opener/tag design:
 to a profile on stated *security properties*, not on a syntactic formula:
 
 1. **Confidentiality:** IND-CCA under the standard experiment for the KEM's
-   parameter set (for ML-KEM-768: FIPS 203, ~2¹⁹²-bit category-1 security
-   from the underlying MLWE assumption). Implicit rejection must be part of
+   parameter set (ML-KEM-768 is FIPS 203's NIST security category 3 parameter
+   set). Implicit rejection must be part of
    the KEM's specification — a decapsulated-but-invalid ciphertext yields a
    pseudorandom secret, never an explicit failure observable to the sender.
 2. **Recipient binding under substitution:** decapsulation of any ciphertext
@@ -1468,3 +1468,209 @@ measured on the shipped forge/solc stack and will drift with the toolchain;
 the assert bounds in `GasExhaustion.t.sol` are deliberately loose (C13
 \< 2 M, i.e. 10× the measured figure) so the tests document rather than
 brittle-pin. Nothing is deployed.
+
+## D-032 — ML-KEM-768 ANO-CCA is a named, stated assumption matching ERC-8441's Security Considerations; the hybrid-anonymity reduction is the explicit open arrow — **FINDING / Lean (2026-10-17)**
+
+ERC-8441's Security Considerations already stake scheme 3's announcement
+privacy on a stated assumption — "assumes that ML-KEM-768 is ANO-CCA (anonymous
+under chosen-ciphertext attack) as well as IND-CCA. FIPS 203 does not claim
+anonymity" — and cites CRYPTREC (PQShield, CRYPTREC-EX-3502-2025 §4) for the
+QROM conclusion under three side conditions. The question this session settled
+is whether the Lean development should try to *prove* that anonymity (the
+FO/ROM lift, Maram–Xagawa shape) or *match the ERC's own contract* by stating
+it as an assumption.
+
+**Decision: state it as a named assumption, and make the open reduction
+explicit rather than prove Maram–Xagawa.** Two reasons. First, the ERC assumes
+the conclusion; proving it is open research the proposal does not depend on.
+Second, the naive FO anonymity lift is *false* — under implicit rejection the
+decapsulation oracle's re-encryption consistency check leaks which key a crafted
+ciphertext is valid under (Maram–Xagawa's counterexample), so `ANO-CCA ≤
+ANO-CPA + ε` cannot be had; the honest route needs the extended-anonymity
+hypothesis plus a named bad event, which is precisely milestone 1 of
+`lean/docs/fo-anonymity-lift.md`.
+
+What landed in `lean/PqStealth/ANOAssumption.lean` (no `sorry`; the assumption
+travels as a hypothesis the axiom audit displays):
+
+- `mlkem768ANOCCA_assumed epsilonANO : Prop` — every ANO-CCA adversary against
+  the concrete `mlkem768KEM` (the two-key, Bool-keyed decap oracle of
+  `KEMAnonymity.OracleGames`, at `unifSpec`/`ProbCompRuntime.probComp`) has
+  advantage ≤ `epsilonANO`. Mirrors the ERC wording.
+- `CRYPTREC_ANOCCA_Bundle` — the named side conditions (strong
+  collision-freeness, K-PKE strong disjoint-simulatability, correctness) plus
+  the conclusion; the three conditions are abstract named arrows (`True`
+  placeholders by design) so a future VCVio-security-lemmas discharge is a
+  one-line substitution, not a consumer change.
+- `scheme3ParallelHybrid768` — the ERC-8441 parallel hybrid at the concrete
+  ML-KEM-768 leg; `hybrid768AnonAdvantage` — the advantage the assumption must
+  bound.
+- `hybrid768_anonAdvantage_le_assumed` — the hybrid-anonymity reduction stated
+  as an *assumed implication*: `mlkem768ANOCCA_assumed` ⇒ hybrid anonymity ≤
+  `epsilonANO + epsilonBad`. Its obligations are the AND-collapse of Bao–Pan
+  (PKC 2026, eprint 2026/396, Remark 1 + Lemma 4 — the ephemeral classical leg
+  is recipient-independent) **plus** the CCA decap-simulation bad event; the
+  latter is the open ROM-programming hop, so the implication is taken as a
+  hypothesis, not a proof.
+
+And the capstone fold-in `Scheme3.scheme3_unlinkAdvantage_le_of_anonAdvantage_le`
+(proved, `sorry`-free): the four-term unlinkability bound with the hybrid
+anonymity term replaced by any supplied bound — the abstract slot the ERC
+assumption plugs into. Axiom guards freeze all of the above at
+`[propext, Classical.choice, Quot.sound]` (no `sorryAx`); verification:
+`lake build` green (2886 jobs), axiom audit in-build clean.
+
+**Update (`e9b11ee`, `ebaba13` — the full-CCA lift, same branch).** The
+statement above is not the whole story, and the entry's own "naive lift is
+false" line needs its companion. `KEMAnonymity.lean` now proves
+`KEM.ANO_CCA_Advantage_le_of_spr_full`: an adversary that *does* query
+decapsulation has ANO-CCA advantage at most the two per-branch SPR terms
+against a key-independent ciphertext simulator. That is the extended-anonymity
+route D-032 described, not the false `ANO-CPA + ε` step — the bad event is
+discharged inside the game decomposition, and the simulator is the
+compressed-uniform one (`mlkem768CompressedUniformCiphertext`) so the FIPS-203
+compression residual is not re-assumed. The runtime-coherence bundle the
+reduction had carried as four hypotheses is discharged once at `probComp`
+(`probComp_heval_pure`/`_bind`/`_liftProbComp`, `probComp_hnf`,
+`neverFail_of_unifSpec`), which gives the hypothesis-free concrete
+`mlkem768_ANO_CCA_Advantage_le_sprTerms` (`SPRTwoHop.lean`) and the scheme-3
+fold-in `Scheme3.scheme3_unlinkAdvantage_le_of_sprTerms`. So the ERC-facing
+assumption `mlkem768ANOCCA_assumed` stays a *named* term, but the proved chain
+reaching it is now complete end to end; the residual is exactly the SPR terms
+in the CCA context (Maram–Xagawa Theorem 2), not the ANO-CCA game itself.
+
+**Deliberately not done:** the three CRYPTREC conditions are named, not proved
+(their concrete FIPS-203 forms belong with VCVio's ML-KEM security lemmas); the
+hybrid reduction is assumed-through-`hybrid768_anonAdvantage_le_assumed`, not
+proved (the CCA decap-simulation hop is the genuine research piece, tracked in
+`lean/docs/fo-anonymity-lift.md`); both Python checkers were run on the
+branch — `check_sizes.py` reports 6 rows, 0 mismatches, and
+`check_citations.py` needed two stale `improvements.md` rows
+(`KEMAnonymity.lean:226-230`, `:123-126`) refreshed to `733-737` / `629-632`,
+which is line drift from this branch's own additions, not a spec change. The
+`ui/package-lock.json` lockfile churn is pre-existing workspace state,
+untouched by this work.
+
+## D-033 — Scheme-3 wire-format and fail-closed-scanning invariants machine-checked unconditionally; agreement/completeness ride the existing correctness theorems — **Lean (2026-10-17)**
+
+Following D-032 (the anonymity *assumption*), this entry records the
+*unconditional* invariants — facts true by construction, no cryptographic
+assumption, no probability — that pin scheme 3's interop contract and its
+fail-closed scan behaviour. Recon first: two of the four candidate invariants
+were already proved and needed no new work.
+
+**Already proved (not re-done):** sender/scanner shared-secret agreement is
+`KEM.parallel_correctOnSupport` / `scheme3HybridKEM_correctOnSupport` — both
+KEM legs decapsulate to the component secrets the sender encapsulated, so the
+combiner sees identical inputs on both sides; "same `ss` ⇒ same stealth
+address" and "`stealth_sk` controls the address" are the detection-completeness
+theorems `perfectlyComplete_ofKEMFull` / `scheme3_perfectlyComplete`, each
+*conditional* on `PerfectlyCorrect` of the underlying KEM (for ML-KEM that
+correctness lemma is an upstream VCVio placeholder — named, not smuggled).
+
+**Newly proved (`lean/PqStealth/Scheme3Wire.lean`, all `sorry`-free, axiom
+audit `[propext, Classical.choice, Quot.sound]`, no `sorryAx`):**
+
+- `scheme3EphemeralPubKey_roundtrips` — the ERC-8441 §3 `ephemeralPubKey =
+  epk ‖ ct` field decodes back to its two components byte-for-byte (built on
+  `Invariants.splitBytes_append`). The interop invariant a port must not break.
+- `scheme3EphemeralPubKeyEncode_length` — the field is exactly `nepk + nct`
+  bytes, *generic in the component packers* (the encoder's codomain is
+  `Bytes (nepk + nct)`). This is the load-bearing length fact; the two numeral
+  theorems `scheme3_ephemeralPubKey_length_eq_1121` (33 + 1 088) and
+  `scheme3_metaAddress_length_eq_1250` (33 + 33 + 1 184) are `rfl` arithmetic over
+  the ERC-8441 constants and do **not** by themselves tie those numerals to the
+  encoder — which is why the generic statement is the one to cite. The decoder is
+  total on fixed-length input: a wrong-length field does not have the type, so
+  length rejection is *structural*, never a runtime crash.
+- `mlkem768_decaps_total` — ML-KEM decapsulation is total: implicit rejection
+  returns a pseudorandom secret, never an error (FIPS 203; ERC-8441 §2.7), by
+  `rfl` on `MLKEM.asKEMScheme.decaps`.
+- `mlkem768_scan_is_total_and_pure` — `ofKEMFull`'s scan of *any* announcement
+  against *any* tracking key is a pure, total check with no failure path; the
+  match verdict is decided by the auxiliary comparison alone. This is the
+  machine-check of ERC-8441 §2.7's "a scanner MUST NOT treat a successful
+  decapsulation as a match": a foreign ciphertext yields `false`, not an
+  exception — the DoS-resilience property.
+
+Verification: `lake build` green (2886 jobs), axiom audit in-build clean.
+Wired into `PqStealth.lean` and guarded in `Axioms.lean`. `check_sizes.py`
+reports 6 rows, 0 mismatches — this entry changes no byte size — and
+`check_citations.py` is clean after the D-032 refresh noted above. The
+`ui/package-lock.json` churn is pre-existing and untouched.
+
+## D-034 — A uniform 1,088-byte ciphertext simulator is inadmissible for ML-KEM-768: the encoding residual is a constant, so every capstone now uses the compressed-uniform simulator — **FINDING / Lean (2026-10-28)**
+
+The SPR route needs a *key-independent* ciphertext simulator, and the textbook
+pick — uniform over the FIPS 203 ciphertext layout — was used by the ML-KEM-768
+decompositions since D-013. It is not merely loose: it is **invalid**, and the
+number is computable.
+
+**The arithmetic.** `Compress₁₀ : ZMod 3329 → ZMod 1024`, and
+`3329 = 3·1024 + 257`. So 257 output values have four preimages and 767 have
+three, and a uniform coefficient lands on a four-preimage output with
+probability `1028/3329 ≈ 0.3088` rather than `257/1024 ≈ 0.250977`. Exact
+total-variation distances, recomputed by `lean/scripts/check_simulator_distances.py`:
+
+| object | distance from uniform |
+|---|---|
+| one `u` coefficient (`du = 10`) | `197119/3408896 ≈ 0.0578248794` |
+| 768 `u` coefficients | `0.9262656353` |
+| 256 `v` coefficients (`dv = 4`) | `0.0073880701` |
+| the whole 1 088-byte ciphertext | `0.9262656353` |
+
+A residual of `0.93` is a constant, so `SPR ≤ MLWE + ε_encoding` with a
+negligible `ε_encoding` is **false** against that simulator. The earlier
+statements were true but vacuous: they could only be instantiated at
+`ε_encoding ≥ Θ(1)`.
+
+**What changed in Lean.**
+
+- `mlkem768CompressedUniformCiphertext` (now defined in `MLKEM.lean`, as
+  `randCt`) is the simulator on every ML-KEM-768 capstone. It draws uniform
+  `(u, v)` in `R_q^k × R_q` and applies FIPS 203's own `compressDU`/`compressDV`
+  then byte encoding — the last idealized game's own distribution — so
+  `encodingRegularity_mlkem768CompressedUniformCiphertext` proves the residual
+  is exactly `0`.
+- `mlkem768_unlinkAdvantage_le_full_decomposition` and
+  `mlkem768_sprAdv_le_two_hop_decomposition` are retargeted to it.
+- `mlkem768_sprAdv_le_mlwe` and `mlkem768_sprAdv_le_three_mlwe` (the uniform-byte
+  specializations) are **deleted**, with their axiom guards. They had no
+  consumers.
+- `pkOf`/`ctOf`/`uniformKeygen`/`randCt` and the three ring `SampleableType`
+  instances moved from `SPRTwoHop.lean` down to `MLKEM.lean`, so each thing has
+  one definition; `SPRTwoHop` keeps only what needs `LearningWithErrors`.
+- `mlkem768UniformCiphertext` survives, documented as inadmissible, so the
+  reason is stated where the number is.
+
+**Why machine-checking the distance was dropped.** The fibre histogram is
+`decide`-provable but costs minutes per goal at `maxRecDepth 10^6`, and
+`native_decide` would inject `Lean.ofReduceBool` into the axiom audit — a
+weakening of the `[propext, Classical.choice, Quot.sound]` policy for one
+arithmetic fact. The figures are instead recomputed by
+`lean/scripts/check_simulator_distances.py` (stdlib only, 21 checks: the fibre
+histograms, both halves' exact product distances, the joint distance, the
+`epk` count, the coefficient counts, and a presence check that the numbers
+quoted in `MLKEM.lean` and `lean/docs/spr-two-hop.md` still match), wired into
+`.github/workflows/lean.yml`. Doc drift is now a CI failure.
+
+**The same trap in scheme 3's `epk`, 256× worse.** A 33-byte SEC1-compressed
+secp256k1 point is one of `2^264` strings; exactly `p − 1` of them decode (two
+parity tags per on-curve x-coordinate, and `x³ + 7 = 0` is unsolvable mod `p`, so
+no x contributes both). A uniform-33-byte `epk` simulator is therefore at
+`1 − (p−1)/2^264 = 255/256 = 0.99609375`: it fails to parse 255 times in 256.
+The ECDH leg of the scheme-3 hybrid must be simulated with a real curve point —
+free, since an honestly generated `epk` is recipient-independent (Bao–Pan
+PKC 2026 Remark 1 + Lemma 4, the `AND`-collapse cited in D-032). Recorded before
+for X-Wing (`docs/research/xwing-hybrid-kem.md`); this entry ties it to scheme 3.
+
+**Boundary, unchanged.** This is a proof-engineering result, not a protocol
+result. ERC-8441's own text assumes ML-KEM-768 is ANO-CCA against *real*
+ciphertexts; the simulator is internal to the reduction, so the ERC's assumption
+and every byte of scheme 3 are unaffected. What the finding buys is that the
+reduction no longer carries a vacuous term — and that the naive simulator can be
+ruled out on paper with a two-line argument.
+
+Verification: `lake build` green (2886 jobs), axiom audit clean, no `sorryAx`;
+`check_citations.py` 35 citations / 0 problems; `check_sizes.py` 6 rows /
+0 mismatches; `check_simulator_distances.py` 21 checks / 0 failures.
