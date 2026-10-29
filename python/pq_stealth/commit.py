@@ -17,12 +17,15 @@ a revealed signature (`SphincsC13CommitSigner7913`), a zero-knowledge proof
 (EIP-8288). Construction A's blinded ML-DSA key is not needed, which is what
 drops the full-precision `t` (4,416 B) from the meta-address (D-012, D-024).
 
-Domains are those of the deployed C13 commit signer and ZK circuit so the
-live contracts accept this derivation unchanged; they are parameters.
+The hash domains are NOT part of this module's API: every derivation below
+takes a `CommitDomains` argument, because the 32-byte `spend_key` is opaque and
+nothing in the meta-address says which scheme interprets it (see
+`profiles.py`). `SPHINCS_C13_DOMAINS` is the deployed C13 commit signer / ZK
+circuit's set, exported here because it is the historical fixture; callers
+select their profile's domains explicitly.
 """
 
 import hashlib
-import os
 from dataclasses import dataclass
 
 from kyber_py.ml_kem import ML_KEM_512, ML_KEM_768, ML_KEM_1024
@@ -159,10 +162,12 @@ def gen_commit_meta_address(
 ) -> tuple[CommitMetaPublic, bytes]:
     """Recipient side: pair a spend-key commitment with a fresh (or seeded)
     ML-KEM viewing keypair. Returns (public, kem_dk)."""
-    if kem_d is not None or kem_z is not None:
-        ek, dk = kem.kem._keygen_internal(
-            kem_d or os.urandom(32), kem_z or os.urandom(32)
-        )
+    if (kem_d is None) != (kem_z is None):
+        raise ValueError("kem_d and kem_z must be given together")
+    if kem_d is not None:
+        if len(kem_d) != 32 or len(kem_z) != 32:
+            raise ValueError("kem_d and kem_z must be 32 bytes each")
+        ek, dk = kem.kem._keygen_internal(kem_d, kem_z)
     else:
         ek, dk = kem.kem.keygen()
     return CommitMetaPublic(spend_key, ek, kem), dk
@@ -171,13 +176,20 @@ def gen_commit_meta_address(
 # --------------------------------------------------------------------------
 # Derivation
 # --------------------------------------------------------------------------
-def derive_opener(ss: bytes, domains: CommitDomains = SPHINCS_C13_DOMAINS) -> bytes:
-    return hashlib.sha256(domains.open_domain + ss).digest()
+def _check_domains(domains: CommitDomains) -> CommitDomains:
+    """Fail closed on a missing or malformed domain set: the 32-byte spend key is
+    opaque, so a wrong set silently derives a wrong destination."""
+    if not isinstance(domains, CommitDomains):
+        raise TypeError("commit domains are required (see CommitDomains)")
+    return domains
 
 
-def derive_commitment(
-    spend_key: bytes, opener: bytes, domains: CommitDomains = SPHINCS_C13_DOMAINS
-) -> bytes:
+def derive_opener(ss: bytes, domains: CommitDomains) -> bytes:
+    return hashlib.sha256(_check_domains(domains).open_domain + ss).digest()
+
+
+def derive_commitment(spend_key: bytes, opener: bytes, domains: CommitDomains) -> bytes:
+    _check_domains(domains)
     return keccak256(domains.commit_domain + spend_key + opener)
 
 
@@ -203,8 +215,8 @@ def account_address(commitment: bytes, dep: Deployment) -> bytes:
 def send_commit(
     meta: CommitMetaPublic,
     dep: Deployment,
+    domains: CommitDomains,
     encaps_m: bytes | None = None,
-    domains: CommitDomains = SPHINCS_C13_DOMAINS,
 ) -> tuple[CommitAnnouncement, bytes]:
     """Encapsulate, derive the per-payment commitment, return the announcement
     and the commitment (the sender needs it only to deploy the account)."""
@@ -224,7 +236,7 @@ def check_commit_announcement(
     kem_dk: bytes,
     ann: CommitAnnouncement,
     dep: Deployment,
-    domains: CommitDomains = SPHINCS_C13_DOMAINS,
+    domains: CommitDomains,
 ) -> CommitPayment | None:
     """Viewing-key scan: view tag fast path, then re-derive the account."""
     try:
@@ -245,7 +257,7 @@ def scan_commit(
     kem_dk: bytes,
     announcements: list[CommitAnnouncement],
     dep: Deployment,
-    domains: CommitDomains = SPHINCS_C13_DOMAINS,
+    domains: CommitDomains,
 ) -> list[CommitPayment]:
     hits = []
     for ann in announcements:

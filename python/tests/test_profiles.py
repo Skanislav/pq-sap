@@ -168,8 +168,8 @@ def test_send_scan_roundtrip_and_domain_separation(recipient, binding, payment):
     assert ann.stealth_address == account_address(commitment, DEP)
     assert ann.view_tag == hashlib.sha256(ss).digest()[:1]
     # the same meta-address under the C13 or preimage domains is another account
-    assert check_commit_announcement(meta, dk, ann, DEP) is None
-    ann_c13, _ = send_commit(meta, DEP, encaps_m=b"\x47" * 32)
+    assert check_commit_announcement(meta, dk, ann, DEP, SPHINCS_C13_DOMAINS) is None
+    ann_c13, _ = send_commit(meta, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
     assert ann_c13.stealth_address != ann.stealth_address
     assert check_with_profile(meta, dk, ann_c13, binding) is None
     # a different deployment binding is a different destination

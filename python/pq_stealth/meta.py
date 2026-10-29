@@ -32,7 +32,9 @@ def gen_meta_address(params: ParamSet = DEFAULT,
                      kem_d: bytes | None = None,
                      kem_z: bytes | None = None) -> tuple[MetaPublic, MetaSecret]:
     """Generate a recipient meta-address. Pass zeta/kem_d/kem_z (32 bytes
-    each) for deterministic generation (test vectors); omit for random.
+    each) for deterministic generation (test vectors); omit for random. The KEM
+    seeds must be given together — a half-seeded keypair raises rather than
+    silently drawing the other half.
 
     The spending key mirrors FIPS 204 Algorithm 6 key expansion but keeps
     t at full precision instead of rounding to t1 — the sender's
@@ -47,7 +49,11 @@ def gen_meta_address(params: ParamSet = DEFAULT,
     s1, s2 = dsa._expand_vector_from_seed(rho_prime)
     t = (A_hat @ s1.to_ntt()).from_ntt() + s2
 
-    if kem_d is not None or kem_z is not None:
+    if (kem_d is None) != (kem_z is None):
+        raise ValueError("kem_d and kem_z must be given together")
+    if kem_d is not None:
+        if len(kem_d) != 32 or len(kem_z) != 32:
+            raise ValueError("kem_d and kem_z must be 32 bytes each")
         kem_ek, kem_dk = params.kem._keygen_internal(kem_d, kem_z)
     else:
         kem_ek, kem_dk = params.kem.keygen()

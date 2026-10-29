@@ -2,9 +2,16 @@
 stealth address scheme: ML-KEM key exchange + additive ML-DSA key blinding
 (construction A), with a fresh error term per stealth key.
 
-Receiving, detection, and proof of possession only — no send-value flow;
-value sent to these addresses is unspendable on-chain until protocol-level
-post-quantum signature support exists.
+Two exports sit at different layers. The **key-exchange** surface
+(`commit.py`, `profiles.py`: format `0x02` meta-address, announcement, scan) is
+the ERC's deliverable and claims nothing about spending. The **Construction A**
+surface (`signing.py`, `blinding.py`) *does* produce spend authorization — a
+blinded ML-DSA signature for the widened key, and a proof of possession — but a
+revealed signature exposes the recipient's `rho` and links that recipient's
+addresses (D-027), and on-chain acceptance depends on an account/verifier
+deployment that this package does not provide. Nothing here is a claim that a
+payment to one of these addresses is spendable, or that spending is
+unlinkable.
 """
 
 from .blinding import derive_blinding, derive_stealth_pk

@@ -23,7 +23,7 @@ import { ml_dsa44 } from '@noble/post-quantum/ml-dsa.js';
 import { concatHex, hexToBytes, keccak256, type Hex } from 'viem';
 
 import {
-  checkCommitAnnouncement, deriveCommitment, deriveOpener, encodeCommitMetaAddress, sendCommit,
+  checkCommitAnnouncement, deriveCommitment, encodeCommitMetaAddress, sendCommit,
   COMMIT_META_ADDRESS_VERSION, ML_KEM_768_EK_BYTES, PREIMAGE_DOMAINS, PREIMAGE_KEY_DOMAIN, SPHINCS_C13_DOMAINS,
   type CommitAnnouncementData, type CommitDomains, type CommitMetaAddress, type CommitPayment, type Deployment,
 } from './commit-scheme.ts';
@@ -204,7 +204,7 @@ export function sendWithProfile(
   meta: CommitMetaAddress, binding: ProfileBinding, encaps?: { cipherText: Uint8Array; sharedSecret: Uint8Array },
 ): { announcement: CommitAnnouncementData; commitment: Hex; sharedSecret: Uint8Array } {
   checkMeta(meta, binding.profile);
-  return sendCommit(meta, binding.deployment, encaps, binding.profile.domains);
+  return sendCommit(meta, binding.deployment, binding.profile.domains, encaps);
 }
 
 /** Viewing key + public spend key + selected profile; accepts only after re-deriving the destination. */
@@ -268,11 +268,6 @@ export function verifyAuthorization(
   const spendKey = spendKeyFromMlDsaPk(parts.pk, profile);
   if (deriveCommitment(spendKey, parts.opener, profile.domains).toLowerCase() !== commitment.toLowerCase()) return false;
   try { return dsa.verify(parts.sig, digest, parts.pk); } catch { return false; }
-}
-
-/** Opener under the selected profile's domain (sender- and scanner-known; not a credential). */
-export function openerForPayment(ss: Uint8Array, profile: AccountProfile): Hex {
-  return deriveOpener(ss, profile.domains);
 }
 
 /** ERC-7913 signer bytes for a committed ML-DSA-44 account: `verifier || commitment`. */

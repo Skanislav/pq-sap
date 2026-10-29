@@ -2,6 +2,9 @@
  * Commitment meta-address (format 0x02) — the key-exchange-only scheme.
  * Mirror of `python/pq_stealth/commit.py`; see D-024.
  *
+ * The hash domain set is explicit at every call site (the 32-byte spend key is
+ * opaque; only the selected account profile says which domains interpret it).
+ *
  *   meta-address = 0x02 || spendKey(32) || ML-KEM-768 ek(1184)      (1,217 B)
  *   opener       = SHA-256(openDomain || ss)
  *   commitment   = keccak256(commitDomain || spendKey || opener)
@@ -77,6 +80,18 @@ export interface CommitDomains {
   open: string;
   commit: string;
 }
+
+/**
+ * The domain set is a required argument everywhere and is checked here rather
+ * than trusted: Node runs these modules with types stripped, so a forgotten
+ * argument would otherwise be silently reinterpreted as the next parameter
+ * (`sendCommit(meta, dep, encaps)` would treat `encaps` as `domains`) and derive
+ * a wrong destination instead of failing.
+ */
+function assertDomains(domains: CommitDomains): void {
+  if (typeof domains?.open !== 'string' || typeof domains?.commit !== 'string')
+    throw new TypeError('commit domains are required (see CommitDomains); got ' + typeof domains);
+}
 /** The deployed SPHINCS- C13 commit signer / C13 ZK circuit (D-018, D-023). */
 export const SPHINCS_C13_DOMAINS: CommitDomains = { open: 'pq-stealth/sphincs-c13/open/v0', commit: 'pq-stealth/sphincs-c13/commit/v0' };
 /** Preimage-ownership spend (D-025, noir/preimage-ownership): spend_key = keccak(KEY || sk). */
@@ -87,7 +102,8 @@ function utf8(s: string): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-export function deriveOpener(ss: Uint8Array, domains: CommitDomains = SPHINCS_C13_DOMAINS): Hex {
+export function deriveOpener(ss: Uint8Array, domains: CommitDomains): Hex {
+  assertDomains(domains);
   if (domains === SPHINCS_C13_DOMAINS) return sphincsC13Opener(ss);
   const dom = utf8(domains.open);
   const buf = new Uint8Array(dom.length + ss.length);
@@ -96,7 +112,8 @@ export function deriveOpener(ss: Uint8Array, domains: CommitDomains = SPHINCS_C1
   return toHex(sha256(buf));
 }
 
-export function deriveCommitment(spendKey: Hex, opener: Hex, domains: CommitDomains = SPHINCS_C13_DOMAINS): Hex {
+export function deriveCommitment(spendKey: Hex, opener: Hex, domains: CommitDomains): Hex {
+  assertDomains(domains);
   if (domains === SPHINCS_C13_DOMAINS) return sphincsC13Commitment(spendKey, opener);
   return keccak256(concatHex([toHex(utf8(domains.commit)), spendKey, opener]));
 }
@@ -125,9 +142,10 @@ export function accountAddress(commitment: Hex, dep: Deployment): Address {
 
 /** Sender: encapsulate (or reuse given randomness via `encapsulate`), derive the account. */
 export function sendCommit(
-  meta: CommitMetaAddress, dep: Deployment, encaps?: { cipherText: Uint8Array; sharedSecret: Uint8Array },
-  domains: CommitDomains = SPHINCS_C13_DOMAINS,
+  meta: CommitMetaAddress, dep: Deployment, domains: CommitDomains,
+  encaps?: { cipherText: Uint8Array; sharedSecret: Uint8Array },
 ): { announcement: CommitAnnouncementData; commitment: Hex; sharedSecret: Uint8Array } {
+  assertDomains(domains);
   const { cipherText, sharedSecret } = encaps ?? ml_kem768.encapsulate(meta.kemEk);
   const commitment = deriveCommitment(meta.spendKey, deriveOpener(sharedSecret, domains), domains);
   return {
@@ -146,8 +164,9 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
 /** Viewing-key scan of one announcement: view tag fast path, then re-derive the account. */
 export function checkCommitAnnouncement(
   meta: CommitMetaAddress, kemDk: Uint8Array, ann: CommitAnnouncementData, dep: Deployment,
-  domains: CommitDomains = SPHINCS_C13_DOMAINS,
+  domains: CommitDomains,
 ): CommitPayment | null {
+  assertDomains(domains);
   let ss: Uint8Array;
   try {
     ss = ml_kem768.decapsulate(ann.ephemeralPubKey, kemDk);
@@ -163,8 +182,9 @@ export function checkCommitAnnouncement(
 
 export function scanCommit(
   meta: CommitMetaAddress, kemDk: Uint8Array, announcements: CommitAnnouncementData[], dep: Deployment,
-  domains: CommitDomains = SPHINCS_C13_DOMAINS,
+  domains: CommitDomains,
 ): Array<CommitPayment & { announcement: CommitAnnouncementData }> {
+  assertDomains(domains);
   const hits: Array<CommitPayment & { announcement: CommitAnnouncementData }> = [];
   for (const ann of announcements) {
     const p = checkCommitAnnouncement(meta, kemDk, ann, dep, domains);
