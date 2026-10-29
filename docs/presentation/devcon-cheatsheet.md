@@ -1,12 +1,11 @@
 # Devcon sharing cheatsheet — week by week
 
-Companion to `SUMMARY.md`. Maps each EPF write-up to one shareable beat, the
-artifact to put on screen, and the claim that must not be overstated.
-Every figure below is cross-checked against a repo artifact, not against the
-blog text.
+Companion to the Devcon talk preparation. Maps each EPF write-up to one
+shareable beat, the artifact to put on screen, and the claim that must not be
+overstated. Every figure below is cross-checked against a repo artifact, not
+against the blog text.
 
-Presentation window per the `make_figs.py` timeline: 2026-11-16
-("Devcon(nect) presentation").
+Target window: Devcon(nect), November 2026.
 
 ## Cheatsheet
 
@@ -106,7 +105,7 @@ Avoid:
   that no primary source, parameter set, or reproducible benchmark was
   evaluated: it is not evidence.
 - "256× bandwidth win" as *measured*. The 8304 PoC measured ≈12×; 256× is a
-  projection (`python/benchmarks/README.md`, `docs/presentation/SUMMARY.md`).
+  projection (`python/benchmarks/README.md`).
 - Attributing the 77× figure to the proof-verified route — the 4.2 M figure is
   a separate route.
 
@@ -122,7 +121,7 @@ Avoid:
 8. Formal gap: anonymity ≠ IND-CCA; ANO-CCA is assumed (W16)
 9. ERC-8441 landed; review + VCVio #848 (W16)
 10. Ask: reviewer package + human-written ERC text, then community review
-    (`SUMMARY.md`)
+    (`docs/ERC_EVIDENCE.md`, `plan.md`)
 
 ## Fix before the talk
 

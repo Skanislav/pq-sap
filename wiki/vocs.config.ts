@@ -22,7 +22,6 @@ export default defineConfig({
     {
       text: 'Elsewhere',
       items: [
-        { text: 'Presentation (Marp deck)', link: `${repo}/blob/main/docs/presentation/SUMMARY.md` },
         { text: 'Test vectors (v0)', link: `${repo}/tree/main/python/vectors/v0` },
         { text: 'ERC-5564', link: 'https://eips.ethereum.org/EIPS/eip-5564' },
         { text: 'ERC-6538', link: 'https://eips.ethereum.org/EIPS/eip-6538' },

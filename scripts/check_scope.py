@@ -11,8 +11,8 @@ that work tree:
     scheme3-… / scheme-3-… identifiers, and any *path* named 8441 / scheme-3
 
 Deliberately NOT matched in file content: the bare string "8441". Prose that
-records the separation (D-032 itself, README, AGENTS.md, the presentation notes)
-must stay legal, and four hex digits occur inside vector constants by chance.
+records the separation (D-032 itself, README, AGENTS.md) must stay legal, and
+four hex digits occur inside vector constants by chance.
 Textual mentions are a review question; what this guards is *code and paths*.
 
 `ALLOWED_PATHS` lists the files where a textual mention is the point; a hit
@@ -53,7 +53,6 @@ ALLOWED_PATHS = (
     "README.md",
     "scripts/check_scope.py",
     ".gitignore",
-    "docs/presentation/devcon-cheatsheet.md",
 )
 
 SKIP_SUFFIXES = ("-lock.json", "pnpm-lock.yaml", "package-lock.json")
