@@ -223,12 +223,12 @@ def scheme (kem : KEM KEMpk KEMsk C K) :
 
 [`ConstructionA.lean:165-169 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L165-L169)
 
-## `unlinkAdvantage_scheme_le`
+## `unlinkAdvantage_metaKem_le`
 
 `axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
 ```lean
-theorem unlinkAdvantage_scheme_le (kem : KEM KEMpk KEMsk C K)
+theorem unlinkAdvantage_metaKem_le (kem : KEM KEMpk KEMsk C K)
     (adv : StealthScheme.UnlinkAdv (MetaPub KEMpk Rho R k) (C × (Tag × Addr))) :
     (scheme P Smp kem).unlinkAdvantage adv ≤
       sharedSecretHiding (metaKem P Smp kem) (auxGen P) adv true
@@ -239,7 +239,7 @@ theorem unlinkAdvantage_scheme_le (kem : KEM KEMpk KEMsk C K)
 
 ```
 
-[`ConstructionA.lean:173-181 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L173-L181)
+[`ConstructionA.lean:179-187 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L179-L187)
 
 ### 3. The KEM whose public key is a meta-address
 
@@ -259,48 +259,90 @@ def blindingProblem : LearningWithErrors.Problem Rho (Fin l → R) (Fin k → R)
 
 ```
 
-[`ConstructionA.lean:198-204 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L198-L204)
+[`ConstructionA.lean:204-210 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L204-L210)
+
+## `realJoint`
+
+The real joint draw the blinding argument is about: one shared secret, its
+view tag and its blinding pair. `ExpandIsIdeal` says this is the ideal draw
+below; naming both computations keeps the idealization statements free of nested
+`do`-blocks and lets downstream lemmas cite the object instead of re-spelling it.
+
+```lean
+def realJoint (P : Prims R Rho Bytes T1 Tag Addr K k l) :
+    ProbComp (Tag × (Fin l → R) × (Fin k → R)) := do
+  let kk ← ($ᵗ K)
+  let tg := P.viewTag kk
+  let s' := (P.expandBlind kk).1
+  let e' := (P.expandBlind kk).2
+  pure (tg, s', e')
+
+```
+
+[`ConstructionA.lean:219-226 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L219-L226)
+
+## `idealJoint`
+
+```lean
+def idealJoint (Smp : Samplers R Rho k l) (sampleTag : ProbComp Tag) :
+    ProbComp (Tag × (Fin l → R) × (Fin k → R)) := do
+  let tg ← sampleTag
+  let s' ← Smp.sampleS
+  let e' ← Smp.sampleE
+  pure (tg, s', e')
+
+```
+
+[`ConstructionA.lean:229-235 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L229-L235)
 
 ## `BlindExpandIdealizationBound`
-
-Quantitative bound on `ExpandIsIdeal`: the total-variation distance between
-the real joint `(viewTag, s', e')` draw and the ideal independent draw is at
-most `epsilonBlindExpand`.  This is the same `epsilonBlindExpand` used in the
-unlinkability capstone and in the related-spend capstone.
 
 ```lean
 def BlindExpandIdealizationBound (epsilonBlindExpand : ℝ≥0∞) : Prop :=
   ∀ (D : Tag × (Fin l → R) × (Fin k → R) → ProbComp Bool),
-    ProbComp.boolDistAdvantage
-      (do let kk ← ($ᵗ K)
-          let tg := P.viewTag kk
-          let s' := (P.expandBlind kk).1
-          let e' := (P.expandBlind kk).2
-          D (tg, s', e'))
-      (do let tg ← sampleTag
-          let s' ← Smp.sampleS
-          let e' ← Smp.sampleE
-          D (tg, s', e')) ≤ epsilonBlindExpand.toReal
+    ProbComp.boolDistAdvantage (realJoint P >>= D)
+      (idealJoint Smp sampleTag >>= D) ≤ epsilonBlindExpand.toReal
 
 ```
 
-[`ConstructionA.lean:213-225 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L213-L225)
+[`ConstructionA.lean:240-244 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L240-L244)
 
 ## `ExpandIsIdeal`
 
 ```lean
 def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
-    Pr[= x | (do let kk ← ($ᵗ K)
-                 pure (P.viewTag kk, (P.expandBlind kk).1, (P.expandBlind kk).2))] =
-      Pr[= x | (do let tg ← sampleTag
-                   let s ← Smp.sampleS
-                   let e ← Smp.sampleE
-                   pure (tg, s, e))]
+    Pr[= x | realJoint P] = Pr[= x | idealJoint Smp sampleTag]
 
 ```
 
-[`ConstructionA.lean:229-237 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L229-L237)
+[`ConstructionA.lean:248-251 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L248-L251)
+
+## `blindExpandIdealizationBound_zero_of_expandIsIdeal`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem blindExpandIdealizationBound_zero_of_expandIsIdeal
+    (h : ExpandIsIdeal P Smp sampleTag) :
+    BlindExpandIdealizationBound P Smp sampleTag 0 := by
+```
+
+:::details[proof]
+
+```lean
+  intro D
+  have hpr : Pr[= true | (realJoint P >>= D)] =
+      Pr[= true | (idealJoint Smp sampleTag >>= D)] :=
+    probOutput_congr rfl (by rw [evalDist_bind, evalDist_bind, evalDist_ext h])
+  simp only [ProbComp.boolDistAdvantage, hpr, sub_self, abs_zero,
+    ENNReal.toReal_zero]
+  exact le_rfl
+```
+
+:::
+
+[`ConstructionA.lean:257-267 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L257-L267)
 
 ## `mlweAdvOfUnlinkAdv`
 
@@ -324,7 +366,7 @@ def mlweAdvOfUnlinkAdv (kem : KEM KEMpk KEMsk C K)
 
 ```
 
-[`ConstructionA.lean:241-257 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L241-L257)
+[`ConstructionA.lean:271-287 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L271-L287)
 
 ## `idealAux_indep_of_t`
 
@@ -354,4 +396,4 @@ theorem idealAux_indep_of_t (cont : Tag × Addr → ProbComp Bool) (tg : Tag)
 
 :::
 
-[`ConstructionA.lean:268-278 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L268-L278)
+[`ConstructionA.lean:298-308 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L298-L308)

@@ -143,7 +143,7 @@ def SoundWithin (ε : ℝ) : Prop := S.falsePositiveRate ≤ ε
 
 ```
 
-[`Games.lean:109-110 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L109-L110)
+[`Games.lean:119-120 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L119-L120)
 
 ### The false-positive experiment
 
@@ -159,7 +159,7 @@ abbrev UnlinkAdv (MetaPub Announcement : Type) :=
 
 ```
 
-[`Games.lean:116-118 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L116-L118)
+[`Games.lean:126-128 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L126-L128)
 
 ## `unlinkSetup`
 
@@ -171,7 +171,7 @@ def unlinkSetup : ProbComp (MetaPub × MetaPub) := do
 
 ```
 
-[`Games.lean:121-125 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L121-L125)
+[`Games.lean:131-135 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L131-L135)
 
 ## `unlinkBranch`
 
@@ -185,7 +185,7 @@ def unlinkBranch (b : Bool) (a : MetaPub × MetaPub) : ProbComp Bool := do
 
 ```
 
-[`Games.lean:130-133 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L130-L133)
+[`Games.lean:140-143 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L140-L143)
 
 ## `UnlinkExp`
 
@@ -198,7 +198,7 @@ def UnlinkExp : ProbComp Bool := do
 
 ```
 
-[`Games.lean:137-142 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L137-L142)
+[`Games.lean:147-152 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L147-L152)
 
 ## `unlinkAdvantage`
 
@@ -207,7 +207,7 @@ noncomputable def unlinkAdvantage : ℝ := (S.UnlinkExp adv).boolBiasAdvantage
 
 ```
 
-[`Games.lean:144-145 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L144-L145)
+[`Games.lean:154-155 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L154-L155)
 
 ## `unlinkAdvantage_eq_branchDistAdvantage`
 
@@ -222,4 +222,4 @@ theorem unlinkAdvantage_eq_branchDistAdvantage :
 
 ```
 
-[`Games.lean:149-154 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L149-L154)
+[`Games.lean:159-164 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Games.lean#L159-L164)

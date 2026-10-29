@@ -9,7 +9,8 @@ and the signer bound doubles (`beta' = tau·(2·eta) = 2·beta`); the ownership
 relation TOGETHER WITH the coefficient bound IS possession of an ML-DSA signing
 key, and the blinded secret is such a key; the stealth public key roundtrips,
 and so do both meta-address wire formats as CONCRETE byte strings at their
-spec lengths (5,633 B and 1,217 B) (`docs/DECISIONS.md`, Lean items 1-3).
+spec lengths — `0x01` at 5,633 B and the commitment form `0x02` at 1,217 B
+(`docs/DECISIONS.md` D-024, Lean items 1-3).
 
 Assumed: the two inner packers (`pack23` of full-precision `t`, the ML-KEM
 encapsulation key) are parameters with roundtrip hypotheses — VCVio has no
@@ -46,7 +47,7 @@ theorem cInfNorm_add_le (f g : Rq) :
 
 :::
 
-[`Invariants.lean:34-47 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L34-L47)
+[`Invariants.lean:35-48 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L35-L48)
 
 ## `blinded_norm_bound`
 
@@ -60,7 +61,7 @@ theorem blinded_norm_bound {f g : Rq} {eta : ℕ}
 
 ```
 
-[`Invariants.lean:50-54 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L50-L54)
+[`Invariants.lean:51-55 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L51-L55)
 
 ## `beta_blinded_eq_two_beta`
 
@@ -79,7 +80,7 @@ theorem beta_blinded_eq_two_beta (params : Params) :
 
 :::
 
-[`Invariants.lean:57-60 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L57-L60)
+[`Invariants.lean:58-61 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L58-L61)
 
 ### 1. Widened-bound signing invariant
 
@@ -96,7 +97,7 @@ def IsOwnershipWitness {R : Type*} [CommRing R] {k l : ℕ}
 
 ```
 
-[`Invariants.lean:68-72 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L68-L72)
+[`Invariants.lean:69-73 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L69-L73)
 
 ## `IsShortPair`
 
@@ -106,7 +107,7 @@ def IsShortPair {k l : ℕ} (eta : ℕ) (s : Fin l → Rq) (e : Fin k → Rq) : 
 
 ```
 
-[`Invariants.lean:75-77 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L75-L77)
+[`Invariants.lean:76-78 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L76-L78)
 
 ## `IsSigningKey`
 
@@ -118,7 +119,7 @@ def IsSigningKey {k l : ℕ}
 
 ```
 
-[`Invariants.lean:81-85 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L81-L85)
+[`Invariants.lean:82-86 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L82-L86)
 
 ## `ownership_iff_signing`
 
@@ -135,7 +136,7 @@ theorem ownership_iff_signing {k l : ℕ}
 
 ```
 
-[`Invariants.lean:89-96 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L89-L96)
+[`Invariants.lean:90-97 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L90-L97)
 
 ## `blinded_is_ownership_witness`
 
@@ -149,7 +150,7 @@ theorem blinded_is_ownership_witness {R : Type*} [CommRing R] {k l : ℕ}
 
 ```
 
-[`Invariants.lean:100-104 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L100-L104)
+[`Invariants.lean:101-105 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L101-L105)
 
 ## `blinded_is_signing_key`
 
@@ -169,7 +170,7 @@ theorem blinded_is_signing_key {k l : ℕ}
 
 ```
 
-[`Invariants.lean:108-118 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L108-L118)
+[`Invariants.lean:109-119 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L109-L119)
 
 ### 2. Ownership relation \<-> signing-key possession
 
@@ -189,7 +190,7 @@ theorem stealth_pk_roundtrips {p : Params} {prims : Primitives p}
 
 ```
 
-[`Invariants.lean:125-130 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L125-L130)
+[`Invariants.lean:126-131 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L126-L131)
 
 ## `splitBytes`
 
@@ -201,7 +202,7 @@ def splitBytes {m n : ℕ} (v : Bytes (m + n)) : Bytes m × Bytes n :=
 
 ```
 
-[`Invariants.lean:134-136 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L134-L136)
+[`Invariants.lean:135-137 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L135-L137)
 
 ## `splitBytes_append`
 
@@ -228,7 +229,7 @@ theorem splitBytes_append {m n : ℕ} (a : Bytes m) (b : Bytes n) :
 
 :::
 
-[`Invariants.lean:139-152 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L139-L152)
+[`Invariants.lean:140-153 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L140-L153)
 
 ## `qBits`
 
@@ -240,7 +241,7 @@ def qBits : ℕ := 23
 
 ```
 
-[`Invariants.lean:157-158 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L157-L158)
+[`Invariants.lean:158-159 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L158-L159)
 
 ## `packedTBytes`
 
@@ -249,7 +250,7 @@ def packedTBytes (p : Params) : ℕ := p.k * ringDegree * qBits / 8
 
 ```
 
-[`Invariants.lean:161-162 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L161-L162)
+[`Invariants.lean:162-163 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L162-L163)
 
 ## `packedTBytes_mldsa65`
 
@@ -258,7 +259,7 @@ theorem packedTBytes_mldsa65 : packedTBytes mldsa65 = 4416 := rfl
 
 ```
 
-[`Invariants.lean:164-165 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L164-L165)
+[`Invariants.lean:165-166 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L165-L166)
 
 ## `metaAddressEncode`
 
@@ -271,7 +272,7 @@ def metaAddressEncode {T Ek : Type*} {nt nek : ℕ}
 
 ```
 
-[`Invariants.lean:168-173 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L168-L173)
+[`Invariants.lean:169-174 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L169-L174)
 
 ## `metaAddressDecode`
 
@@ -286,7 +287,7 @@ def metaAddressDecode {T Ek : Type*} {nt nek : ℕ}
 
 ```
 
-[`Invariants.lean:176-183 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L176-L183)
+[`Invariants.lean:177-184 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L177-L184)
 
 ## `meta_address_roundtrips`
 
@@ -312,7 +313,7 @@ theorem meta_address_roundtrips {T Ek : Type*} {nt nek : ℕ}
 
 :::
 
-[`Invariants.lean:186-196 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L186-L196)
+[`Invariants.lean:187-197 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L187-L197)
 
 ## `metaAddress_size_mldsa65_mlkem768`
 
@@ -325,7 +326,7 @@ theorem metaAddress_size_mldsa65_mlkem768 :
 
 ```
 
-[`Invariants.lean:199-202 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L199-L202)
+[`Invariants.lean:200-203 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L200-L203)
 
 ## `meta_address_roundtrips_5633`
 
@@ -345,26 +346,26 @@ theorem meta_address_roundtrips_5633 {T Ek : Type*}
 
 ```
 
-[`Invariants.lean:205-215 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L205-L215)
+[`Invariants.lean:206-216 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L206-L216)
 
-## `metaAddressZkEncode`
+## `metaAddressCommitEncode`
 
-The ZK-spend meta-address, `version(1) ‖ commitment(32) ‖ ek`: with a ZK
-ownership proof the full-precision `t` is replaced by a 32-byte commitment.
+The commitment meta-address, `version(1) ‖ spend_key(32) ‖ ek`: the full-precision
+`t` of format `0x01` is replaced by a 32-byte commitment to the spending key.
 
 ```lean
-def metaAddressZkEncode {Ek : Type*} {nek : ℕ} (packEk : Ek → Bytes nek)
+def metaAddressCommitEncode {Ek : Type*} {nek : ℕ} (packEk : Ek → Bytes nek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) : Bytes (1 + (32 + nek)) :=
   #v[version] ++ (commitment ++ packEk ek)
 
 ```
 
-[`Invariants.lean:220-223 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L220-L223)
+[`Invariants.lean:226-229 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L226-L229)
 
-## `metaAddressZkDecode`
+## `metaAddressCommitDecode`
 
 ```lean
-def metaAddressZkDecode {Ek : Type*} {nek : ℕ} (unpackEk : Bytes nek → Ek)
+def metaAddressCommitDecode {Ek : Type*} {nek : ℕ} (unpackEk : Bytes nek → Ek)
     (m : Bytes (1 + (32 + nek))) : UInt8 × Bytes 32 × Ek :=
   let s := splitBytes m
   let r := splitBytes s.2
@@ -372,58 +373,58 @@ def metaAddressZkDecode {Ek : Type*} {nek : ℕ} (unpackEk : Bytes nek → Ek)
 
 ```
 
-[`Invariants.lean:225-230 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L225-L230)
+[`Invariants.lean:231-236 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L231-L236)
 
-## `meta_address_zk_roundtrips`
+## `meta_address_commit_roundtrips`
 
 `axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
 ```lean
-theorem meta_address_zk_roundtrips {Ek : Type*} {nek : ℕ}
+theorem meta_address_commit_roundtrips {Ek : Type*} {nek : ℕ}
     (packEk : Ek → Bytes nek) (unpackEk : Bytes nek → Ek)
     (hEk : ∀ ek, unpackEk (packEk ek) = ek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) :
-    metaAddressZkDecode unpackEk (metaAddressZkEncode packEk version commitment ek)
+    metaAddressCommitDecode unpackEk (metaAddressCommitEncode packEk version commitment ek)
       = (version, commitment, ek) := by
 ```
 
 :::details[proof]
 
 ```lean
-  simp only [metaAddressZkEncode, metaAddressZkDecode, splitBytes_append, hEk]
+  simp only [metaAddressCommitEncode, metaAddressCommitDecode, splitBytes_append, hEk]
   rfl
 ```
 
 :::
 
-[`Invariants.lean:232-240 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L232-L240)
+[`Invariants.lean:238-246 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L238-L246)
 
-## `metaAddressZk_size_mlkem768`
+## `metaAddressCommit_size_mlkem768`
 
 `axioms: none` · sorry-free ✓
 
 ```lean
-theorem metaAddressZk_size_mlkem768 :
+theorem metaAddressCommit_size_mlkem768 :
     1 + (32 + MLKEM.Params.publicKeyBytes MLKEM.mlkem768) = 1217 := rfl
 
 ```
 
-[`Invariants.lean:243-245 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L243-L245)
+[`Invariants.lean:249-251 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L249-L251)
 
-## `meta_address_zk_roundtrips_1217`
+## `meta_address_commit_roundtrips_1217`
 
 `axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
 ```lean
-theorem meta_address_zk_roundtrips_1217 {Ek : Type*}
+theorem meta_address_commit_roundtrips_1217 {Ek : Type*}
     (packEk : Ek → Bytes 1184) (unpackEk : Bytes 1184 → Ek)
     (hEk : ∀ ek, unpackEk (packEk ek) = ek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) :
-    metaAddressZkDecode unpackEk
-        (metaAddressZkEncode packEk version commitment ek : Bytes 1217)
+    metaAddressCommitDecode unpackEk
+        (metaAddressCommitEncode packEk version commitment ek : Bytes 1217)
       = (version, commitment, ek) :=
-  meta_address_zk_roundtrips packEk unpackEk hEk version commitment ek
+  meta_address_commit_roundtrips packEk unpackEk hEk version commitment ek
 
 ```
 
-[`Invariants.lean:247-255 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L247-L255)
+[`Invariants.lean:253-261 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/Invariants.lean#L253-L261)

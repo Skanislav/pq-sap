@@ -225,7 +225,7 @@ The module's contents, in order:
    extra components. The spending keypair is drawn from three separate samplers
    rather than one opaque joint one, because the MLWE reduction has to resample
    `(s₁, s₂)` for a `rho` handed to it by the challenger, which a joint sampler
-   cannot support. `unlinkAdvantage_scheme_le` is `unlinkAdvantage_ofKEMFull_le`
+   cannot support. `unlinkAdvantage_metaKem_le` is `unlinkAdvantage_ofKEMFull_le`
    at `metaKem` and `auxGen`; the content is that those two are the spec's
    objects.
 3. `auxKeyIndependence_eq_zero_of_pk_independent` (and its corollary
@@ -276,7 +276,7 @@ with different seeds are genuinely different distributions for a general
   which `rho` produced it. The scheme is fine — `keccak` is not the identity —
   but the missing ingredient is `hashAddr ∘ pack` as a random oracle, not more
   proof effort. That extension is `BlindingROM.lean`, below;
-  `unlinkAdvantage_scheme_le` should be read with it in mind. (The
+  `unlinkAdvantage_metaKem_le` should be read with it in mind. (The
   non-vanishing is an argument, NOT machine-checked; a counterexample scheme
   exhibiting it belongs with the negative controls.)
 * **The reduction's game 0 is faithful only under `ExpandIsIdeal`.** In the
