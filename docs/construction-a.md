@@ -83,7 +83,7 @@ keccak256(commit_domain || spend_key || opener)`, stealth address =
 commitment (a *deployment binding*, not part of the meta-address). This is
 the key-exchange-only form: no ML-DSA public-key material, no per-address key
 derivation, nothing about the spend scheme at receive time. Vectors:
-`vectors/v0/commit_vectors.json`; Lean: `meta_address_zk_roundtrips_1217`.
+`vectors/v0/commit_vectors.json`; Lean: `meta_address_commit_roundtrips_1217`.
 Two spend-scheme domain sets exist: `pq-stealth/sphincs-c13/*` (the C13 key
 is the `spend_key`; D-018/D-023) and `pq-stealth/preimage/*` (`spend_key =
 keccak256("pq-stealth/preimage/key/v0" ‖ sk)`, spending proves knowledge of

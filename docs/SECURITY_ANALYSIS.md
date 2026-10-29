@@ -15,7 +15,7 @@ it is supporting research, not the security theorem for format `0x02`.
 | --- | --- | --- |
 | Honest sender/scanner agreement | Python commitment tests and independent TS vector replay; abstract KEM completeness results | Instantiate the concrete commitment/deployment flow; KEM correctness assumptions remain explicit |
 | Shared-secret confidentiality | `SharedSecretHiding.lean` identifies generic hiding terms with KEM IND-CPA advantages | This does not by itself establish anonymity of the recipient key or a quantum-accessible oracle reduction |
-| Recipient anonymity of ciphertexts | `KEMAnonymity.lean`, `AnonymityFromSPR.lean`, `MLKEM.lean`, `SPRTwoHop.lean` | Seeded-MLWE advantages and primitive/encoding assumptions remain; active FIPS-203 ANO-CCA mapping is separate work |
+| Recipient anonymity of ciphertexts | A *proved reduction modulo named assumptions*: `KEMAnonymity.lean` (the game and `ofKEM`), `AnonymityFromSPR.lean` (`anonymity ≤ SPR(b=0) + SPR(b=1)`), `SPRTwoHop.lean` (each SPR term as two named MLWE hops plus residual terms), `MLKEM.lean` (those capstones instantiated at ML-KEM-768). The bound is checked; what grounds it is not. Their own headers record that `anonymity → MLWE` for ML-KEM is **not proved**, here or upstream | The MLWE/primitive advantages are named hypotheses, not bounds, and the ANO-CCA lift through ML-KEM's implicit-rejection FO transform is separate work (Maram–Xagawa is the reference, not a checked import). No checked theorem in this repo says an ML-KEM ciphertext hides its recipient key |
 | Privacy of tag plus commitment-derived address | Generic `ofKEMFull` announcement model; executable derivation in both languages; [instantiation note](research/commitment-announcement-privacy.md) manually maps the commitment `auxGen` to the generic four-term chain, IND-CPA identification, and multi-payment/n-recipient result shapes. Its ROM sketch estimates `auxKeyIndependence` as `2·qH·2⁻²⁵⁶` = `2⁻¹⁷⁵` at `qH = 2⁸⁰`, with `qH` a joint tag/opener/address-oracle budget — no MLWE hop, no lattice point-mass | The concrete `commitKem` / `commitAuxGen` wrapper and the ROM bound are not Lean theorems; the estimate assumes both recipients share the profile and deployment binding, and a classical-ROM model for the public tag. No reduction of the ML-KEM IND-CPA/anonymity terms to MLWE is claimed for this format |
 | Reliable detection and rejection | Negative vectors; generic conditional soundness results in `Soundness.lean` | A one-byte tag is a filter after decapsulation, not a payment authenticator or a universal false-positive guarantee |
 | Byte-level interoperability | Deterministic commitment vectors, encoding tests; abstract 1,217-byte roundtrip in `Invariants.lean` | Serialization facts are not cryptographic security or a proof of the Python/TS implementation |
@@ -84,7 +84,8 @@ spending route. They are not removed by narrowing the ERC's scope.
   `z`-gate response, but band avoidance is only probabilistic evidence: a
   stock response has the probability above. In that model the test has
   per-response advantage ≈ 0.38 (0.46 level-2), reaching 0.978 across eight
-  independent responses. It does not establish a full published-signature
+  independent responses (0.992 for the level-2 profile,
+  [widened-z table](research/widened-z-distribution.md)). It does not establish a full published-signature
   classifier or recipient/key linkability result: Fiat–Shamir, `r₀`, and
   hint conditioning are outside the model. An observer therefore cannot use
   this calculation alone to label an observed signature as a blinded-key

@@ -1,5 +1,17 @@
 # Post-Quantum Stealth Addresses as an ERC-5564 Scheme Extension
 
+<!--
+CANONICAL SOURCE (D-033, 2026-10-29): this tracked copy is the canonical text of
+the cohort proposal. The copy under
+eth-protocol-fellows/cohort-seven/projects/pq-sap.md lags it — measured
+2026-10-29 at 86 diff lines / 47 changed lines — and still carries the
+"Curvy run and the L2 pricing are still to do" status, the "prooving"/"existiing"
+typos, and the construction-A pseudocode without the measured 67,580-gas
+announcement or the Hegotá/EIP-8141 roadmap reference. Refresh the cohort PR from
+THIS file; do not edit the cohort copy directly, since the next refresh would
+overwrite it.
+-->
+
 The project will specify, implement, benchmark, and test a post-quantum stealth address scheme as a new [ERC-5564](https://eips.ethereum.org/EIPS/eip-5564) scheme ID, with client-agnostic test vectors, a reference library, and a written security analysis.
 
 ## Motivation

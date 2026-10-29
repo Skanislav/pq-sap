@@ -40,9 +40,12 @@ the current key-exchange review boundaries. Start with the
 
 This repository is the artifact trail of our EPF cohort work: the scheme we
 specified, the vectors it generates, the checks we ran, and the
-[decision log](docs/DECISIONS.md) recording why. Similar external proposals —
-including ERC-8441 — are prior art, not code or text mirrored here
-([D-032](docs/DECISIONS.md)).
+[decision log](docs/DECISIONS.md) recording why. Related external proposals are
+not mirrored here as code or text ([D-032](docs/DECISIONS.md)). ERC-8441 is
+**not prior art**: it appeared publicly around 2026-10-01, after this project's
+implementation, vectors, and proofs existed (first commits 2026-08-06/07), so it
+is a concurrent design — compared in review, not something we built on or
+lagged behind.
 
 ## Layout
 

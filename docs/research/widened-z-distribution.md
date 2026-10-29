@@ -186,7 +186,7 @@ announcements to two fixed recipients,
 `Adv_unlink_q ≤ q · ε_single` (`unlinkAdvantageMulti_le_mul`,
 `MultiUnlink.lean:241`), with the single-announcement decomposition into KEM
 IND-CPA, blinding, and SPR-to-MLWE terms at
-`unlinkAdvantage_scheme_le` (`ConstructionA.lean:173`; announcement model
+`unlinkAdvantage_metaKem_le` (`ConstructionA.lean`; announcement model
 `ofKEMFull`, `KEMAnonymity.lean:145`; ROM query bound
 `blindBadProb_le_queryBound`, `BlindingEntropy.lean:94`). Everything below is
 a *spend-time* disclosure and does not touch that bound — but the security

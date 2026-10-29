@@ -51,7 +51,10 @@ The Construction A unlinkability experiment is `StealthScheme.unlinkAdvantage` i
 Adv_unlink ≤ sharedSecretHiding_true + auxKeyIndependence + KEM.anonAdvantage + sharedSecretHiding_false
 ```
 
-stated as `ConstructionA.unlinkAdvantage_scheme_le` (`ConstructionASecurity.lean`). The full closed bound is `PqStealth.ConstructionA.unlinkAdvantage_full_bound`.
+stated as `ConstructionA.unlinkAdvantage_metaKem_le` (`ConstructionA.lean`) — it is
+the generic `ofKEMFull` bound instantiated at `metaKem`/`auxGen`, not an independent
+scheme theorem. The bound with each term replaced by its named hypothesis is
+`PqStealth.ConstructionA.unlinkAdvantage_full_bound` (`ConstructionASecurity.lean`).
 
 ### 1.1 Shared-secret hiding = IND-CPA
 

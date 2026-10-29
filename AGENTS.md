@@ -88,7 +88,7 @@ Key module callouts:
 | `wiki/` | Vocs site mirroring `docs/` + `lean/docs/`; everything under `wiki/src/pages/` is generated |
 | `noir/` | Noir ZK ownership-proof PoC |
 | `pq-sap/`, `ETHDILITHIUM/` | Third-party clones, gitignored at root — do not treat as project code to modify |
-| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441); not a subproject and never tracked (D-032) |
+| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441, which is **not prior art** — it appeared ~2026-10-01, after this project's implementation and proofs); not a subproject and never tracked (D-032) |
 
 ## Development Commands
 
@@ -97,10 +97,12 @@ Run these from the subproject directory unless noted.
 ```sh
 # python/  (Python ≥3.10, pip)
 pip install -e ".[dev]"          # add ",audit" for liboqs cross-check, ",bench" for coincurve
-pytest -q                       # full suite (~18 tests)
+pytest -q                       # full suite (49 collected; 48 run, +4 opt-in skips)
 ruff check .
 python vectors/generate_vectors.py            # MUST be byte-identical to committed vectors/v0/vectors.json
 python vectors/generate_classical_vectors.py  # same for vectors/classical/v0/vectors.json
+python vectors/generate_commit_vectors.py     # same for vectors/v0/commit_vectors.json
+python vectors/generate_native_key_vectors.py  # same for vectors/v0/native_key.json
 python vectors/generate_mldsa44_commit_vectors.py  # same for vectors/v0/mldsa44_commit_vectors.json
 
 # js-client/  (Node ≥26, npm)
@@ -110,9 +112,10 @@ npm test                        # replays ../python/vectors/v0 — byte-for-byte
 npm run build-contracts         # forge build --root contracts (needs Foundry)
 npm run test-contracts          # forge test: StealthKeyExchange vs python/vectors/v0
 npm run e2e                     # anvil-backed e2e (auto-boots anvil via test/util/anvil.ts)
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-mldsa44
-npm run test:commit | test:mldsa44   # commitment-format / ML-DSA-44 profile vector replay
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-key-exchange
+npm run e2e-key-exchange | e2e-7913 | e2e-7913-classical | e2e-7913-sphincs
+npm run e2e-pointer-sig | e2e-mldsa44
+npm run test:commit | test:mldsa44 | test:native-key | test:frames
+                                # commitment / ML-DSA-44 profile / native-key / frame-tx vector replay
 npm run e2e:fork                # offline Sepolia fork replay; e2e:fork:record to re-record
 
 # ui/  (Node ≥22.12, npm; needs ../js-client npm-installed)
