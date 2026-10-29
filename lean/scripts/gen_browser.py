@@ -33,12 +33,18 @@ IDENT_RE = r"[A-Za-z_][\w.'\u1D09\u2083\u2084\u2085\u2086]*"
 DECL_KEYWORDS = (
     "theorem|lemma|def|abbrev|structure|class|instance|inductive|opaque|axiom|example"
 )
+# `^` (with re.M) is load-bearing: only column-0 lines can declare, while a
+# docstring body is indented prose that may start with a keyword word. A
+# doc-comment line beginning "theorem …" previously produced a page section named
+# after the next word; the `^` anchor is why that cannot recur once the prose is
+# properly wrapped (see `ConstructionA.unlinkAdvantage_metaKem_le`'s docstring).
 DECL_PAT = re.compile(
     rf"^(?:@[\[\]\w\s,\.\(\)]+\s+)?"
     rf"(?:private\s+|protected\s+|noncomputable\s+|nonrec\s+|unsafe\s+)*"
     rf"({DECL_KEYWORDS})\s+({IDENT_RE})\b",
     re.M,
 )
+
 BOUNDARY_PAT = re.compile(
     rf"^(?:{DECL_KEYWORDS})\b|"
     r"^(?:/--|/-!|namespace|section|variable|open|end|set_option|attribute|"

@@ -105,7 +105,17 @@ to distinguishing advantages in `Soundness`. -/
 noncomputable def falsePositiveRate : ℝ := (Pr[= true | S.FalsePositiveExp]).toReal
 
 /-- Detection soundness within `ε`: a non-recipient false-positives with
-probability at most `ε`. The counterpart of `PerfectlyComplete`. -/
+probability at most `ε`. The counterpart of `PerfectlyComplete`.
+
+`ε` is an arbitrary real, deliberately: every theorem in `Soundness.lean` proves
+this for a *concrete*, closed-form `ε` (`1/256 + decapsRoR` for a one-byte tag
+through `soundWithin_ofKEMFull_byteTag`), and the definition is unbounded so that
+a *bad* scheme can also be shown to fail it (`Controls.lean` instantiates the
+all-ones scan, whose rate is `1`). There is no asymptotic shape here — no
+negligible-function calculus, no security parameter — because none of the
+statements need one; a bound of the form `ε = ε(n)` would be a different
+definition, not a strengthening of this one. Read a `SoundWithin ε` theorem
+together with the concrete `ε` the paper-level description quotes. -/
 def SoundWithin (ε : ℝ) : Prop := S.falsePositiveRate ≤ ε
 
 /-! ## Unlinkability (recipient anonymity) -/

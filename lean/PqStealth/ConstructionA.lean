@@ -167,10 +167,16 @@ def scheme (kem : KEM KEMpk KEMsk C K) :
       (MetaPriv KEMsk R k l × MetaPub KEMpk Rho R k) (C × (Tag × Addr)) :=
   StealthScheme.ofKEMFull (metaKem P Smp kem) (auxGen P)
 
-/-- **The algebraic core feeding the game layer, in one statement.**
-`unlinkAdvantage_ofKEMFull_le` at `metaKem` and `auxGen` — the content is that
-those two are the spec's objects, so `auxKeyIndependence` is the blinding term. -/
-theorem unlinkAdvantage_scheme_le (kem : KEM KEMpk KEMsk C K)
+/-- **Construction A's unlinkability *is* `unlinkAdvantage_ofKEMFull_le`.**
+This declaration is that generic bound instantiated at `metaKem` and `auxGen`;
+its only content beyond `KEMAnonymity.lean` is that `metaKem`/`auxGen` are the
+spec's objects (`scheme` is their `ofKEMFull`), so `auxKeyIndependence` is
+exactly the blinding term of §4. It is *not* a scheme-level security theorem: no
+term here is bounded, and the KEM-anonymity term is the same game for any
+`ofKEMFull` scheme. The closed bound is
+`ConstructionASecurity.unlinkAdvantage_full_bound`, which takes each term's
+bound as a hypothesis. -/
+theorem unlinkAdvantage_metaKem_le (kem : KEM KEMpk KEMsk C K)
     (adv : StealthScheme.UnlinkAdv (MetaPub KEMpk Rho R k) (C × (Tag × Addr))) :
     (scheme P Smp kem).unlinkAdvantage adv ≤
       sharedSecretHiding (metaKem P Smp kem) (auxGen P) adv true
@@ -206,34 +212,58 @@ section Reduction
 
 variable [SampleableType K]
 
+/-- The real joint draw the blinding argument is about: one shared secret, its
+view tag and its blinding pair. `ExpandIsIdeal` says this is the ideal draw
+below; naming both computations keeps the idealization statements free of nested
+`do`-blocks and lets downstream lemmas cite the object instead of re-spelling it. -/
+def realJoint (P : Prims R Rho Bytes T1 Tag Addr K k l) :
+    ProbComp (Tag × (Fin l → R) × (Fin k → R)) := do
+  let kk ← ($ᵗ K)
+  let tg := P.viewTag kk
+  let s' := (P.expandBlind kk).1
+  let e' := (P.expandBlind kk).2
+  pure (tg, s', e')
+
+/-- The ideal joint draw: three independent samples. False for the concrete
+primitives, true in the random-oracle model for the shared secret. -/
+def idealJoint (Smp : Samplers R Rho k l) (sampleTag : ProbComp Tag) :
+    ProbComp (Tag × (Fin l → R) × (Fin k → R)) := do
+  let tg ← sampleTag
+  let s' ← Smp.sampleS
+  let e' ← Smp.sampleE
+  pure (tg, s', e')
+
 /-- Quantitative bound on `ExpandIsIdeal`: the total-variation distance between
-the real joint `(viewTag, s', e')` draw and the ideal independent draw is at
-most `epsilonBlindExpand`.  This is the same `epsilonBlindExpand` used in the
+the real joint draw and the ideal independent draw is at most
+`epsilonBlindExpand`. This is the same `epsilonBlindExpand` used in the
 unlinkability capstone and in the related-spend capstone. -/
 def BlindExpandIdealizationBound (epsilonBlindExpand : ℝ≥0∞) : Prop :=
   ∀ (D : Tag × (Fin l → R) × (Fin k → R) → ProbComp Bool),
-    ProbComp.boolDistAdvantage
-      (do let kk ← ($ᵗ K)
-          let tg := P.viewTag kk
-          let s' := (P.expandBlind kk).1
-          let e' := (P.expandBlind kk).2
-          D (tg, s', e'))
-      (do let tg ← sampleTag
-          let s' ← Smp.sampleS
-          let e' ← Smp.sampleE
-          D (tg, s', e')) ≤ epsilonBlindExpand.toReal
+    ProbComp.boolDistAdvantage (realJoint P >>= D)
+      (idealJoint Smp sampleTag >>= D) ≤ epsilonBlindExpand.toReal
 
 /-- The random-oracle abstraction the reduction needs, named rather than assumed
 silently: for a uniform shared secret, view tag and blinding pair are jointly
 three independent samples. False for the concrete primitives, true in the ROM. -/
 def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
-    Pr[= x | (do let kk ← ($ᵗ K)
-                 pure (P.viewTag kk, (P.expandBlind kk).1, (P.expandBlind kk).2))] =
-      Pr[= x | (do let tg ← sampleTag
-                   let s ← Smp.sampleS
-                   let e ← Smp.sampleE
-                   pure (tg, s, e))]
+    Pr[= x | realJoint P] = Pr[= x | idealJoint Smp sampleTag]
+
+/-- `ExpandIsIdeal` is the boundary case of the quantitative bound: if the two
+joint draws ARE the same distribution, their distinguishing advantage is `0`.
+This ties the two definitions together, so `ExpandIsIdeal` is not decorative —
+it is the assumption whose consequence the capstone measures with
+`epsilonBlindExpand`, and the one the reduction's faithfulness argument names. -/
+theorem blindExpandIdealizationBound_zero_of_expandIsIdeal
+    (h : ExpandIsIdeal P Smp sampleTag) :
+    BlindExpandIdealizationBound P Smp sampleTag 0 := by
+  intro D
+  have hpr : Pr[= true | (realJoint P >>= D)] =
+      Pr[= true | (idealJoint Smp sampleTag >>= D)] :=
+    probOutput_congr rfl (by rw [evalDist_bind, evalDist_bind, evalDist_ext h])
+  simp only [ProbComp.boolDistAdvantage, hpr, sub_self, abs_zero,
+    ENNReal.toReal_zero]
+  exact le_rfl
 
 /-- **The blinding hop as a reduction, type-checked.** An adversary against the
 `b = 1` branch of `auxKeyIndependence` becomes a `blindingProblem` distinguisher:

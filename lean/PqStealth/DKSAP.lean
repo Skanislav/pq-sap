@@ -14,6 +14,15 @@ probability slack; and, on the other side, DKSAP's unlinkability is bounded by
 two hashed-Diffie-Hellman terms and nothing else, the idealized middle game
 contributing exactly zero.
 
+Scope of the break, precisely: `dksap_key_recovery` recovers the scalar that
+`recover` computes, and the statement is `(recover …) • g = (m • g) + (h (r •
+(v • g))) • g` -- the recovered scalar controls the announced ADDRESS, i.e. the
+public key. It does NOT say the adversary can produce a signature or otherwise
+SPEND from it; that needs the discrete-log-to-signing step of the concrete
+signature scheme, which this module does not model. Call it "key/address
+recovery modulo the address-hashing step", and do not read it as a signing-key
+extraction theorem.
+
 Assumed: the discrete-log oracle's answers are hypotheses (no quantum
 computation is formalized), and hashed-DH is stated, not proved -- exactly as
 MLWE is on the lattice side. See `docs/dksap-asymmetry.md`.

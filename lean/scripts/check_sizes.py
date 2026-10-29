@@ -74,14 +74,14 @@ def main() -> int:
          hexlen(pq_case["announcement"]["ephemeral_pub_key"]), "v0 cases[0].announcement.ephemeral_pub_key"),
         ("ML-KEM-768 ciphertext, classical hybrid (FIPS 203 literal)", 1088,
          hexlen(cl_case["announcement"]["ephemeral_pub_key"]), "classical cases[0].announcement.ephemeral_pub_key"),
-        ("ZK meta address (Lean D-012 layout) vs classical hybrid",
-         lean_rfl_constant("Invariants.lean", "metaAddressZk_size_mlkem768"),
+        ("commitment meta address (Lean) vs classical hybrid",
+         lean_rfl_constant("Invariants.lean", "metaAddressCommit_size_mlkem768"),
          cl["sizes"]["meta_address"], "classical sizes.meta_address"),
     ]
-    # Lean's ZK layout is version(1) ‖ commitment(32) ‖ ek(1184) = 1217; the
+    # Lean's commitment layout is version(1) ‖ spend_key(32) ‖ ek(1184) = 1217; the
     # classical hybrid vectors carry a 33-byte compressed secp256k1 point instead
     # of a 32-byte commitment, hence 1218. Different layouts, not drift.
-    EXPECTED_MISMATCH = {"ZK meta address (Lean D-012 layout) vs classical hybrid": (1217, 1218)}
+    EXPECTED_MISMATCH = {"commitment meta address (Lean) vs classical hybrid": (1217, 1218)}
 
     bad = 0
     for label, lean_v, vec_v, src in rows:

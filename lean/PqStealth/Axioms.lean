@@ -79,17 +79,17 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.meta_address_roundtrips_5633' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_roundtrips_5633
 
-/-- info: 'PqStealth.meta_address_zk_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_zk_roundtrips
+/-- info: 'PqStealth.meta_address_commit_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_commit_roundtrips
 
-/-- info: 'PqStealth.meta_address_zk_roundtrips_1217' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_zk_roundtrips_1217
+/-- info: 'PqStealth.meta_address_commit_roundtrips_1217' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_commit_roundtrips_1217
 
 /-- info: 'PqStealth.metaAddress_size_mldsa65_mlkem768' depends on axioms: [propext] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.metaAddress_size_mldsa65_mlkem768
 
-/-- info: 'PqStealth.metaAddressZk_size_mlkem768' does not depend on any axioms -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.metaAddressZk_size_mlkem768
+/-- info: 'PqStealth.metaAddressCommit_size_mlkem768' does not depend on any axioms -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.metaAddressCommit_size_mlkem768
 
 /-! ## Unlinkability game (`Games`) -/
 
@@ -234,8 +234,10 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.ConstructionA.announced_key_isOwnershipWitness' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.announced_key_isOwnershipWitness
 
-/-- info: 'PqStealth.ConstructionA.unlinkAdvantage_scheme_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantage_scheme_le
+/-- info: 'PqStealth.ConstructionA.unlinkAdvantage_metaKem_le' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.unlinkAdvantage_metaKem_le
+/-- info: 'PqStealth.ConstructionA.blindExpandIdealizationBound_zero_of_expandIsIdeal' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.blindExpandIdealizationBound_zero_of_expandIsIdeal
 
 /-- info: 'PqStealth.ConstructionA.idealAux_indep_of_t' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.ConstructionA.idealAux_indep_of_t
