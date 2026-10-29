@@ -173,12 +173,20 @@ export const generatedSidebar = [
         "link": "/research/cost-report"
       },
       {
+        "text": "Composing the scheme-2 spec into ethereum/ERCs, and where Lean evidence can live",
+        "link": "/research/erc-lean-composition"
+      },
+      {
         "text": "Hash-based key exchange (SHA-256 / BLAKE3 commitments) as an ML-KEM alternative: why the lattice is load-bearing",
         "link": "/research/hash-based-key-exchange"
       },
       {
         "text": "After Poseidon: BLAKE2/3, Binius-era proving, and the hash policy for PQ stealth discovery",
         "link": "/research/hash-migration-blake2-binius"
+      },
+      {
+        "text": "Key-blinding prior art — bibliography",
+        "link": "/research/key-blinding-bibliography"
       },
       {
         "text": "Keyed nonces as nullifiers (EIP-8250/8266)",

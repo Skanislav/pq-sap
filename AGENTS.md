@@ -88,7 +88,7 @@ Key module callouts:
 | `wiki/` | Vocs site mirroring `docs/` + `lean/docs/`; everything under `wiki/src/pages/` is generated |
 | `noir/` | Noir ZK ownership-proof PoC |
 | `pq-sap/`, `ETHDILITHIUM/` | Third-party clones, gitignored at root — do not treat as project code to modify |
-| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441, which is **not prior art** — it appeared ~2026-10-01, after this project's implementation and proofs); not a subproject and never tracked (D-032) |
+| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441, which is **not prior art** — its first public draft was committed 2026-08-30 and its ERC merged 2026-10-29, both after this project's implementation and proofs); not a subproject and never tracked (D-032) |
 
 ## Development Commands
 

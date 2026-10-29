@@ -1491,10 +1491,14 @@ brittle-pin. Nothing is deployed.
 ## D-032 — ERC-8441 stays outside this repository; the repo is the EPF cohort artifact and decision log for our own scheme — **LOCKED (2026-10-28)**
 
 External work converged on the same design space: a stealth-address proposal
-for post-quantum recipients with an ML-KEM-768 (and hybrid) discovery layer,
-numbered ERC-8441, published around 2026-10-01 — concurrent with this work, not
-earlier than it (see "Not prior art" below). It is similar to, and in places
-ahead of, what this project specifies. It is **not** merged into, cited as normative by, or vendored into
+for post-quantum recipients with an ML-KEM-768 (and hybrid) discovery layer. Its
+first public text was the author's draft repository, opened **2026-08-27**; its
+PQ-anonymity design was posted on ethresear.ch on **2026-09-28** (topic 26094 by
+`namnc` — this repository replied the same day), and its ERC text was opened as
+`ethereum/ERCs#2059` on 2026-10-09 and merged as **ERC-8441** on 2026-10-29 —
+concurrent with this work, not earlier than it (see "Not prior art" below). It
+is similar to, and in places ahead of, what this project specifies. It is
+**not** merged into, cited as normative by, or vendored into
 this repository, and it is not a dependency of any implementation here.
 
 **Decision.** This repository stays the record of *our* EPF cohort work: the
@@ -1503,13 +1507,46 @@ decisions we made and the reasons for them. ERC-8441 is at most material for a
 human comparison — never a second scheme compiled, mirrored, or re-exported from
 here.
 
-**Not prior art (user, 2026-10-29).** ERC-8441 appeared publicly only around
-2026-10-01, i.e. *after* this repository's implementation, vectors, contracts
-and proofs already existed (first commits 2026-08-06/07; D-013's game layer
-2026-07-31). It is therefore a **concurrent** design that converged on the same
-space, not an earlier disclosure we built on or failed to precede. Nothing in
-this repo is derived from it, and no claim of priority either way should be read
-into this record.
+**Not prior art (user, 2026-10-29; sources verified 2026-10-29).** The claim
+holds, but three public artifacts precede the post that a reader is most likely
+to cite, and the earlier "around 2026-10-01" figure matched none of them:
+
+1. **Public draft repo — 2026-08-27.** `namnc/pq-stealth-scheme3-public` was
+   created `2026-08-27T12:33:38Z`; its first commit (`e6dcba0`,
+   `spec/ERC-VVVV-schemeid3.md`) is `2026-08-30T03:22:05Z`. This is the earliest
+   *public* text of the proposal.
+2. **Design disclosure — 2026-09-28.** "PQ anonymity for Stealth Address
+   Protocol", ethresear.ch topic
+   [26094](https://ethresear.ch/t/pq-anonymity-for-stealth-address-protocol/26094),
+   created `2026-09-28T01:05:52Z` by `namnc`; the sibling spending post (topic
+   26095) is `2026-09-28T01:09:06Z`. This repository replied in that thread the
+   same day (`2026-09-28T08:54:43Z`), and D-029 (2026-09-29) argues against the
+   thread's combiner — the engagement is on our own record, not reconstructed.
+3. **Normative text — 2026-10-09 → 2026-10-29.** Opened as
+   `ethereum/ERCs#2059` on 2026-10-09, Magicians thread
+   ([29923](https://ethereum-magicians.org/t/29923)) the same day, merged as
+   ERC-8441 on 2026-10-29 (commit `4878022`). The frontmatter's `created:
+   2026-08-28` is the authors' self-reported drafting start (consistent with
+   artifact 1), **not** a disclosure date; quote artifact 1 instead.
+
+Every artifact postdates our implementation, vectors, contracts and proofs:
+first commits 2026-08-06/07, JS client 2026-08-14, Lean core 2026-08-17, and the
+target scheme ID `2` chosen 2026-08-26 06:18Z (`c9fc5b9`) — i.e. **~30 h before
+the author's public repo existed**. D-013's game layer is 2026-07-31 and
+D-024's format-`0x02` commitment 2026-09-04. It is therefore a **concurrent**
+design that converged on the same space, not an earlier disclosure we built on
+or failed to precede. Nothing in this repo is derived from it, and no claim of
+priority either way should be read into this record.
+
+**Scope of the claim.** "Not prior art" is about *this repository's* derivation
+history, not a legal priority position. The honest statement is narrow and
+checkable: our scheme-ID-`2` selection (`c9fc5b9`, 2026-08-26 06:18Z) predates
+the author's public repo by ~30 h; the format-`0x02` commitment (D-024) is
+2026-09-04; and the `ml-dsa-44-commit/v0` profile (`f8b0f77`, 2026-09-27
+23:28Z) predates the 09-28 ethresear.ch post (01:05Z) by 1 h 37 min — with the
+post's own first reply from this repository at 08:54Z the same morning. Date a
+specific artifact rather than the project. Quote the dates above; never "around
+October 1".
 
 Concretely:
 

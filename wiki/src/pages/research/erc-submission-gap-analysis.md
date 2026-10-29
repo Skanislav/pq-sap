@@ -28,6 +28,7 @@ and numbering when preparing the package.
 | Security overview | Construction A analysis plus D-018/D-023/D-025 route limitations | Present a route-by-route claims table; account proofs need their own review |
 | Prospective spending | EIP-8141 experiments; EIP-8288 assessment | Keep protocol-dependent experiments separate from key-exchange conformance |
 | ERC text and discussion | Human-written text under D-024 | Resolve normative formats, metadata, discussion link, and asset references with the author |
+| Upstream packaging and Lean placement | [Composition note](/research/erc-lean-composition): measured eipw/lint gates, ERC-8441 as the model, the three admissible Lean routes | Decide evidence route, CC0 scope, and the Magicians thread with the author |
 
 ### Checker acceptance criteria
 

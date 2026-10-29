@@ -42,10 +42,10 @@ This repository is the artifact trail of our EPF cohort work: the scheme we
 specified, the vectors it generates, the checks we ran, and the
 [decision log](docs/DECISIONS.md) recording why. Related external proposals are
 not mirrored here as code or text ([D-032](docs/DECISIONS.md)). ERC-8441 is
-**not prior art**: it appeared publicly around 2026-10-01, after this project's
-implementation, vectors, and proofs existed (first commits 2026-08-06/07), so it
-is a concurrent design — compared in review, not something we built on or
-lagged behind.
+**not prior art**: its first public draft was committed 2026-08-30 and its ERC
+merged 2026-10-29, both after this project's implementation, vectors, and
+proofs existed (first commits 2026-08-06/07), so it is a concurrent design —
+compared in review, not something we built on or lagged behind.
 
 ## Layout
 
@@ -79,12 +79,47 @@ The conformance vectors and checker are intended to enter the
 [`ethereum/ERCs`](https://github.com/ethereum/ERCs) asset tree under CC0 when
 the PR is opened.
 
-## Tooling note
+## AI assistance
 
-Parts of the documentation and some exploratory code were drafted with
-assistance from Claude (Anthropic). The project discloses this at the
-repository level; humans are listed as authors of all project-facing
-specifications, and no AI tool is listed as a co-author.
+Parts of this repository were drafted with AI assistance. The disclosure is
+precise rather than gestural, because a reader deciding how much to trust a
+lemma or a vector deserves to know what produced it:
+
+- **Humans are the authors** of every project-facing specification, the ERC
+  text (D-024), and every security decision in
+  [the decision log](docs/DECISIONS.md). No AI tool is listed as a co-author,
+  and no AI tool signs off on a claim.
+- **The models used were Anthropic's Claude.** Git trailers record the exact
+  identifiers, so the list below is mechanical, not recalled: Claude Fable 5
+  (35 commits), Claude Fable 5.1 (18), Claude Opus 4.8 (15), and Claude Opus 5
+  with 1M context (2).
+- **Scale.** 70 commits carry a
+  `Co-Authored-By: Claude` trailer, spanning 2026-08-06 to 2026-09-10; three
+  commits are authored as `Claude <noreply@anthropic.com>`. No commit after
+  2026-09-10 carries an AI trailer.
+- **Where it was used:** documentation drafting, test scaffolding, exploratory
+  code, wiki/sync plumbing, and audit passes over the tree. The conformance
+  vectors are *generated* from the Python reference — determinism, not trust in
+  a model, is what makes them checkable — and every implementation claim is
+  backed by a run recorded in this repository.
+
+Read the code and the vectors, not the prose: the vectors are the contract, the
+Lean proofs are audited for axioms and `sorry` on every build, and the tests
+replay byte-for-byte across Python, TypeScript, and Solidity. Where that
+machinery does not cover a claim, the claim is marked as an assumption or an
+open obligation rather than asserted — see
+[`docs/ERC_EVIDENCE.md`](docs/ERC_EVIDENCE.md).
+
+To audit the assist rate yourself:
+
+```sh
+git log --format='%b' | grep -c 'Co-Authored-By: Claude'           # 70 co-authored commits
+git log --format='%b' | grep -oE 'Co-Authored-By: Claude [^<]+' | sort | uniq -c
+#   35 Co-Authored-By: Claude Fable 5
+#   18 Co-Authored-By: Claude Fable 5.1
+#   15 Co-Authored-By: Claude Opus 4.8
+#    2 Co-Authored-By: Claude Opus 5 (1M context)
+```
 
 ## License
 
