@@ -314,9 +314,10 @@ def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
     Pr[= x | realJoint P] = Pr[= x | idealJoint Smp sampleTag]
 
+omit [CommRing R] [SampleableType R] in
 ```
 
-[`ConstructionA.lean:248-251 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L248-L251)
+[`ConstructionA.lean:248-252 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L248-L252)
 
 ## `blindExpandIdealizationBound_zero_of_expandIsIdeal`
 
@@ -342,7 +343,7 @@ theorem blindExpandIdealizationBound_zero_of_expandIsIdeal
 
 :::
 
-[`ConstructionA.lean:257-267 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L257-L267)
+[`ConstructionA.lean:258-268 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L258-L268)
 
 ## `mlweAdvOfUnlinkAdv`
 
@@ -366,7 +367,7 @@ def mlweAdvOfUnlinkAdv (kem : KEM KEMpk KEMsk C K)
 
 ```
 
-[`ConstructionA.lean:271-287 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L271-L287)
+[`ConstructionA.lean:272-288 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L272-L288)
 
 ## `idealAux_indep_of_t`
 
@@ -396,4 +397,4 @@ theorem idealAux_indep_of_t (cont : Tag × Addr → ProbComp Bool) (tg : Tag)
 
 :::
 
-[`ConstructionA.lean:298-308 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L298-L308)
+[`ConstructionA.lean:299-309 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionA.lean#L299-L309)
