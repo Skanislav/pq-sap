@@ -249,6 +249,7 @@ def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
     Pr[= x | realJoint P] = Pr[= x | idealJoint Smp sampleTag]
 
+omit [CommRing R] [SampleableType R] in
 /-- `ExpandIsIdeal` is the boundary case of the quantitative bound: if the two
 joint draws ARE the same distribution, their distinguishing advantage is `0`.
 This ties the two definitions together, so `ExpandIsIdeal` is not decorative —
