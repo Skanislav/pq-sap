@@ -62,7 +62,7 @@ integration. Its estimated charges are not submission conformance requirements.
 
 *2026-08-07. Model: [ethereum/ERCs PR #1932](https://github.com/ethereum/ERCs/pull/1932) (ERC-8373, "Post-Quantum Anchored Key-Binding"), a current PQ-topic submission with all 9 CI checks green. Sources: PR metadata and file list via `gh`, raw `erc-8373.md` from the PR branch, ethereum/ERCs repo root listing, README, `erc-template.md`, the rendered EIP-5564 page, and `gh pr checks 1932`.*
 
-**Settled decisions (this session):** deliverable for now is this report only; the future in-assets checker takes the vectors-with-intermediates + stdlib-Python approach; the scheme ID we declare is **`2`** (monotonic, per ERC-5564's own recommendation), replacing the `0x5567` placeholder.
+**Settled decisions (this session):** deliverable for now is this report only; the future in-assets checker takes the vectors-with-intermediates + stdlib-Python approach; the scheme ID we declare is **`2`** (monotonic, per ERC-5564's own recommendation).
 
 ---
 
@@ -112,7 +112,7 @@ The draft is structurally sound (correct section order, RFC 2119 boilerplate, re
 4. **`eip: TBD`** — pick the next unused number at PR time (check the ERCS/ dir and open PRs the same day).
 5. **Test Cases section** — currently "published with the reference implementation"; must instead reference `../assets/erc-<n>/` files. External-repo pointers belong in the magicians thread, not the spec.
 6. **Reference Implementation section** — same: describe what exists, link only assets. The Python/TS/Lean repo gets named in prose at most, linked from the discussion thread.
-7. **Scheme ID** — replace the `0x5567` placeholder with the declared mapping **`schemeId = 2` → this ERC**. ERC-5564 has no registry mechanism; it requires exactly that "a mapping from the schemeId to its specification MUST be declared in the ERC" and recommends monotonically incrementing IDs (SECP256K1 = 1 is the only assigned ID). The reference implementation and vectors must be regenerated with `2` once adopted (vectors currently bake the placeholder only insofar as docs mention it — the vectors JSON itself carries no scheme ID field; verify at package time).
+7. **Scheme ID** — declare the mapping **`schemeId = 2` → this ERC**. ERC-5564 has no registry mechanism; it requires exactly that "a mapping from the schemeId to its specification MUST be declared in the ERC" and recommends monotonically incrementing IDs (SECP256K1 = 1 is the only assigned ID). The reference implementation and vectors must be regenerated with `2` once adopted (vectors currently bake the placeholder only insofar as docs mention it — the vectors JSON itself carries no scheme ID field; verify at package time).
 
 ## 4. Gap table: what we have vs. what the package needs
 

@@ -1,17 +1,18 @@
 {
   "announce_pq": {
     "calldata_bytes": 1316,
-    "calldata_zero": 202,
-    "calldata_nonzero": 1114,
-    "calldata_tokens": 4658,
+    "calldata_zero": 203,
+    "calldata_nonzero": 1113,
+    "calldata_tokens": 4655,
     "event_data_bytes": 1248,
     "execution_gas": 12814,
-    "standard_total": 52446,
-    "floor_total": 67580,
-    "modeled_gas": 67580,
+    "standard_total": 52434,
+    "floor_total": 67550,
+    "modeled_gas": 67550,
     "binding_regime": "FLOOR (EIP-7623)",
+    "modeled_scheme_id": 2,
     "measured_gas": 67580,
-    "error_pct": 0.0
+    "error_pct": -0.04
   },
   "announce_dksap": {
     "calldata_bytes": 292,
@@ -24,8 +25,9 @@
     "floor_total": 25810,
     "modeled_gas": 27342,
     "binding_regime": "standard",
-    "measured_gas": 67580,
-    "error_pct": -59.54
+    "modeled_scheme_id": 1,
+    "measured_gas": null,
+    "error_pct": null
   },
   "l2": {
     "assumptions": {

@@ -5,6 +5,13 @@ transfer. They support the project's feasibility story but are separate from
 the key-exchange ERC's core receive/scan evidence. Start with
 [ERC evidence](ERC_EVIDENCE.md) for that scope.
 
+The cohort's spend stretch goal — ERC-4337 carrying a post-quantum key exchange
+and a zero-knowledge ownership proof, measured for speed, gas and end-to-end
+behaviour — is closed in the
+[**stretch-goal report**](research/stretch-goal-report.md). Read that first if
+you want the answer rather than the component experiments: it states what is
+measured, what each spend route reveals, and what is explicitly not claimed.
+
 | Track | Implementation and records | Security and deployment boundary |
 | --- | --- | --- |
 | Construction A | [Derivation/signing reference](construction-a.md), [security analysis](construction-a-security.md), Python blinded signer | Format `0x01`; stock signature-format compatibility does not complete related-key signature security; a revealed stealth key exposes the recipient's `rho` (D-027) |

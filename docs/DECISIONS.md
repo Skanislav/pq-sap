@@ -4,7 +4,8 @@ Reading guide (2026-09-14): D-024/D-025 define the current key-exchange focus.
 Earlier entries preserve dated research decisions and measurements. The
 [current technical reference](TECHNICAL_SPEC.md) and [ERC evidence](ERC_EVIDENCE.md)
 separate those from spending/tooling work. Detailed former technical sections
-are retained in [Construction A](construction-a.md).
+are retained in [Construction A](construction-a.md). The cohort's end-of-work
+revision of the proposal, and the closure of its spend stretch goal, are D-034.
 
 Locked decisions and empirical findings for the post-quantum ERC-5564 stealth
 address project. Each entry is dated and states the rationale so the reasoning
@@ -699,7 +700,18 @@ expose type `0x06`.
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured
-67,580-gas Sepolia-fork announcement and reproducing it **to the gas (0.00%)**.
+67,580-gas Sepolia-fork announcement and reproducing it to **0.04%** (see the
+provenance correction below).
+
+*(Provenance correction, 2026-10-29.)* The 67,580 measurement stands, at scheme
+ID `2`. Re-run on today's committed vectors the model gives **67,550** (−0.04%):
+the residual is the zero/nonzero byte split of the encoded arguments, so the
+model is anchored to 0.04%, not exact. The same re-run showed `announce_dksap`
+had been reporting the PQ row's measurement as its own (`measured_gas` 67,580,
+`error_pct` −59.54) because the field was set unconditionally; DKSAP is
+**modelled only** and now records `null`. The finding in this entry — the floor
+binds, PQ is 2.5× DKSAP on L1 — is unaffected. See
+[stretch-goal report](research/stretch-goal-report.md) §6.
 
 - **The announce tx pays the EIP-7623 calldata floor.** Its exact
   `announce(uint256,address,bytes,bytes)` calldata is 1,316 B → 4,658 tokens;
@@ -742,7 +754,7 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
 
 - Security analysis of construction A (widened-`z` leakage; unlinkability;
   the Dilithium-like signature-of-knowledge in D-008). Fellow A's core work.
-- Spec freeze + ERC draft + declared scheme ID `2` (placeholder `0x5567` retired).
+- Spec freeze + ERC draft + declared scheme ID `2`.
 - Cost report: **L2 pricing + ~5.6 kB meta-address story DONE (D-011)**;
   DKSAP is the single EC baseline (Curvy dropped, D-011).
 - NTT-domain + negacyclic + centered-range version of the ownership circuit.
@@ -1610,3 +1622,87 @@ comment so the split cannot silently re-form.
 did not have (`git push --dry-run` to `Skanislav/pq-sap` failed authentication);
 until the upstream PR is updated, the safe wording in outside communication is "our
 repository's proposal text", with the commit hash, not "the cohort proposal".
+
+*(Superseded, 2026-10-30 — see D-035.)* The refresh never happened: the cohort PR
+**was** merged on 2026-10-30 as `c392779`, carrying the pre-retrospective text, so
+the divergence this entry describes is now permanent upstream and cannot be
+resolved by refreshing it. The in-repo copy has moved out of `projects/` and the
+two-copy arrangement is retired. The measurement above stands.
+
+## D-034 — The cohort proposal is revised into a retrospective; the spend stretch goal is closed and the successor-work rule is recorded — **LOCKED (2026-10-29)**
+
+End of cohort. Two editorial decisions and one factual one.
+
+**The tracked proposal becomes a retrospective.** [`PROJECT_RETROSPECTIVE.md`](PROJECT_RETROSPECTIVE.md)
+keeps the proposal's structure (motivation, research question, deliverables, roadmap,
+challenges, success criteria, resources) but each section now separates **"As
+proposed"** from **"Outcome"**. This is deliberate: the value of a cohort artifact
+at the end is the delta between what was planned and what exists, and rewriting
+the text into a pure post-hoc description would delete the evidence that the
+plan was ever different. The success criteria are scored rather than restated —
+four of five met, the first (a frozen ERC draft with normative text) explicitly
+partial, with the reason named. (Path updated 2026-10-30; the file left
+`projects/` under D-035.)
+
+**The spend stretch goal closes as delivered, not as required.** The
+[stretch-goal report](research/stretch-goal-report.md) assembles the requested
+measurements — speed, gas, end-to-end implementation, ZK ownership proof — and
+keeps them outside the ERC's conformance surface. The verdict it records is that
+post-quantum spending is possible today at 0.19 M (direct C13) to 3.54 M (ZK
+proof) gas per spend versus 13.68 M for an on-chain ML-DSA verify, but that the
+ZK route is a *privacy* purchase rather than a cost saving, and the genuinely
+cheap routes (EIP-8164 native keys at 50 k, EIP-8288 aggregation at a proposed
+3 k/30 k per dependency) are protocol changes a scheme ID cannot deliver. No
+claim in the ERC package depends on any of it.
+
+**If a similar proposal arises, contribute to the existing effort.** Recorded
+because it is a judgement about where effort is worth spending, not a
+description of this repository: the remaining risk in PQ stealth addresses is
+the concrete commitment/address privacy composition, the normative text and its
+review, and protocol-native spending — not the absence of an implementation.
+New work should adopt this repository's vectors, deployment binding and per-route
+gas table and target the open security composition, rather than produce a
+seventh independent design.
+
+**Two provenance defects fixed while assembling the report.** Both are in
+living documents; the dated entries keep their text and gain a correction note
+(D-011).
+
+- `onchain_cost.py` reported `measured_gas` on *every* row it modelled, so
+  `announce_dksap` carried the PQ row's 67,580 with a `-59.54%` "error". DKSAP
+  was never measured on chain. `measured_gas`/`error_pct` are now `None` unless a
+  measurement is passed in explicitly.
+- The model reproduces the measurement to 0.04%, not to the gas: 67,550 on the
+  committed vectors against 67,580 measured, the residual being the
+  zero/nonzero-byte split of the encoded arguments. Every "0.00% error" claim is
+  now ≤0.04%.
+- The native scan slope in circulation had two values; 22.6 µs
+  (1,809 ms / 80,000) is the one that reproduces from the committed row, and the
+  cost report and benchmarks README now quote it and say so.
+## D-035 — The cohort proposal leaves `projects/`; the retrospective is the single copy, filed with the docs — **LOCKED (2026-10-30)**
+
+Question. The cohort PR merged on 2026-10-30 as `c392779` carrying the
+pre-retrospective text, so D-033's "refresh the upstream copy from ours" is dead:
+the public cohort artifact states the 5,633-byte Construction A meta-address as
+the default and lists ERC-6538 in scope, which no longer matches what this
+repository implements. A file that (a) restates a design decision the project
+overturned, (b) duplicates content already in `docs/`, and (c) exists only to be
+copied upstream is a liability in the artifact trail.
+
+**Decision.** `projects/pq-sap.md` → [`docs/PROJECT_RETROSPECTIVE.md`](PROJECT_RETROSPECTIVE.md).
+`projects/` is emptied and removed. The document is kept — it is the only record
+of the planned-versus-delivered delta (D-034) — but it is filed with the
+decision log and the specs, where a reader looking for "why does this repository
+look like this" is already standing, rather than under a directory whose entire
+purpose was to hold a copy of someone else's artifact. Its 18 former
+`../docs/…` links became same-directory links, and the header no longer claims
+canonical-source status it cannot enforce.
+
+**Not done, deliberately.** No history rewrite: `git log --diff-filter=D --
+projects/pq-sap.md` still recovers the old path, and the merged cohort commit is
+permanent. Deleting the text from this repository would also delete the only
+copy of the retrospective, since the cohort repo has the plan and not the work.
+
+**What this does not change.** No vector, contract, proof, measurement, or claim
+in the ERC package referenced `projects/pq-sap.md`; `README.md` is the only
+inbound link and it is updated in the same change.

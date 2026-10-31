@@ -205,6 +205,10 @@ export const generatedSidebar = [
         "link": "/research/poseidon2-stark-discovery"
       },
       {
+        "text": "Stretch goal closed — ERC-4337 spending with post-quantum key exchange and a zero-knowledge ownership proof",
+        "link": "/research/stretch-goal-report"
+      },
+      {
         "text": "Widened-z distribution and signature-route distinguishability",
         "link": "/research/widened-z-distribution"
       },

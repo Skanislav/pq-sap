@@ -11,7 +11,7 @@
 
 This proposal registers a post-quantum stealth-address scheme under ERC-5564. Detection uses ML-KEM-768 (FIPS 203); the ephemeral public key in the announcement is the KEM ciphertext, and the shared secret drives a one-byte view tag and the address derivation. The spending key is an additively blinded ML-DSA-65 (FIPS 204) key whose signatures verify under any stock ML-DSA verifier. The scheme works against the already-deployed ERC-5564 announcer and ERC-6538 registry.
 
-**Target scheme ID:** `2` (next unassigned after `1` = SECP256K1). Earlier prototypes used the placeholder `0x5567`; the draft and reference implementation now use `2`.
+**Target scheme ID:** `2` (next unassigned after `1` = SECP256K1), used throughout the draft and the reference implementation.
 
 ## What is being frozen
 

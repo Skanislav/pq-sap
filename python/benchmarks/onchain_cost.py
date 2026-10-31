@@ -40,7 +40,17 @@ G_LOGTOPIC = 375
 G_LOGDATA = 8                 # per byte of non-indexed event data
 G_MEMORY = 3                  # per word, plus quadratic term
 
-MEASURED_ANNOUNCE_GAS = 67_580  # js-client/test/e2e-sepolia-fork.test.ts
+# Measured on the Sepolia fork (js-client/test/e2e-sepolia-fork.test.ts,
+# 2026-08-14) with scheme ID 2. The model reconstructs the calldata from the
+# vectors and lands 30 gas lower (67,550): the residual is the zero/nonzero-byte
+# split of the encoded arguments, so the model is anchored to within 0.04%, not
+# exact. Both the modelled run and the measurement bind on the EIP-7623 floor.
+MEASURED_ANNOUNCE_GAS = 67_580
+
+# A modelled row has no on-chain measurement of its own. `model_announce`
+# reports the measurement it is anchored to, which is only meaningful for the
+# PQ row; other baselines must report `None` rather than borrow it.
+ANCHORED = "anchored"
 
 
 def byte_stats(data: bytes) -> tuple[int, int]:
@@ -77,7 +87,7 @@ def abi_encode_announce(scheme_id: int, stealth_addr: bytes,
 # 1. Reproduce the measured announcement
 # --------------------------------------------------------------------------
 def model_announce(ephemeral: bytes, stealth_addr: bytes, metadata: bytes,
-                   scheme_id: int) -> dict:
+                   scheme_id: int, measured_gas: int | None = None) -> dict:
     calldata = abi_encode_announce(scheme_id, stealth_addr, ephemeral, metadata)
     z, nz = byte_stats(calldata)
     tokens = calldata_tokens(z, nz)
@@ -98,6 +108,7 @@ def model_announce(ephemeral: bytes, stealth_addr: bytes, metadata: bytes,
     modeled = max(standard, floor)
     regime = "FLOOR (EIP-7623)" if floor >= standard else "standard"
 
+    measured = measured_gas is not None
     return {
         "calldata_bytes": len(calldata),
         "calldata_zero": z, "calldata_nonzero": nz,
@@ -108,9 +119,13 @@ def model_announce(ephemeral: bytes, stealth_addr: bytes, metadata: bytes,
         "floor_total": floor,
         "modeled_gas": modeled,
         "binding_regime": regime,
-        "measured_gas": MEASURED_ANNOUNCE_GAS,
-        "error_pct": round(100 * (modeled - MEASURED_ANNOUNCE_GAS)
-                           / MEASURED_ANNOUNCE_GAS, 2),
+        "modeled_scheme_id": scheme_id,
+        # DKSAP and other baselines have no on-chain measurement of their own;
+        # leaving the anchor value here made `announce_dksap` report the PQ
+        # measurement with a -59.54% "error".
+        "measured_gas": measured_gas if measured else None,
+        "error_pct": round(100 * (modeled - measured_gas) / measured_gas, 2)
+        if measured else None,
     }
 
 
@@ -225,7 +240,8 @@ def main() -> None:
     metadata = hx(ann["view_tag"])
     scheme_id = 2
 
-    pq = model_announce(ephemeral, stealth_addr, metadata, scheme_id)
+    pq = model_announce(ephemeral, stealth_addr, metadata, scheme_id,
+                        measured_gas=MEASURED_ANNOUNCE_GAS)
     ec = model_dksap_announce()
     l2 = model_l2(pq["calldata_bytes"], ec["calldata_bytes"],
                   eth_usd=3200.0, l1_basefee_gwei=8.0, blob_basefee_gwei=1.0)
@@ -245,11 +261,13 @@ def main() -> None:
     print(f"  standard total:  {pq['standard_total']:>7} gas")
     print(f"  floor total:     {pq['floor_total']:>7} gas   "
           f"<- binding: {pq['binding_regime']}")
-    print(f"  MODELED:         {pq['modeled_gas']:>7} gas")
+    print(f"  MODELED:         {pq['modeled_gas']:>7} gas   "
+          f"(scheme ID {pq['modeled_scheme_id']})")
     print(f"  MEASURED:        {pq['measured_gas']:>7} gas   "
-          f"(error {pq['error_pct']:+.2f}%)")
+          f"(scheme ID 2, error {pq['error_pct']:+.2f}%)")
     print(f"\n  DKSAP announce (33 B point): "
-          f"modeled {ec['modeled_gas']} gas ({ec['binding_regime']})")
+          f"modeled {ec['modeled_gas']} gas ({ec['binding_regime']}), "
+          f"not measured")
     print(f"  => PQ announcement costs "
           f"{pq['modeled_gas']/ec['modeled_gas']:.1f}x the EC baseline on L1")
 

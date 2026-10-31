@@ -23,15 +23,15 @@ set, verifier revision, toolchain, and measurement boundary.
 
 | Cost (category) | Value | Exact provenance |
 | --- | --- | --- |
-| Announcement, L1 (recurring, per payment) | **67,580 gas** (EIP-7623 floor, binding) | measured, Sepolia fork e2e, forge/anvil, 2026-08-10; model reproduces 0.00% error |
+| Announcement, L1 (recurring, per payment) | **67,580 gas** (EIP-7623 floor, binding) | measured, Sepolia fork e2e, forge/anvil, 2026-08-14, scheme ID `2`; the model on the committed vectors gives 67,550 (−0.04%, calldata byte split) |
 | vs EC-DKSAP baseline (same boundary) | **2.5×** (27,342 gas, standard regime) | `onchain_cost.py` (modeled standard-regime baseline) |
 | Key-exchange wrapper overhead (recurring marginal) | **2,065 gas** (~3% of the floor) | `test_announce_overhead_gas` (D-028), forge, CI toolchain |
 | Announcement, L2 blob regime (recurring) | **~$0.0042** marginal L1 data | `onchain_cost.py` L2 model, anchors dated 2026-07-28 |
 | Meta-address registration (one-time setup) | 3.79 M gas naive / **~1.13 M via SSTORE2** (5,633 B, `0x01`) | modeled, D-011; `0x02` is 1,217 B → ~264k SSTORE2 |
 | Account deployment (one-time setup) | **620,750 gas** (ERC-7913 pointer route) | e2e-7913, anvil, 2026-08-10 |
-| Signature verification (recurring, per spend — see §5 for the profile split) | 4.93 M (ZKNOX_ethdilithium, keccak-PRNG variant) – 8.18 M (ZKNOX_dilithium, SHAKE) – ~15 M (ERC-7913 route at df999ed) | ETHDILITHIUM KAT gas report at rev df999ed; e2e-7913 |
+| Signature verification (recurring, per spend — see §5 for the profile split) | 4.93 M (ZKNOX_ethdilithium, keccak-PRNG variant) – **13.68 M** (ERC-7913 route at df999ed, with key-setup NTT; 14.91 M without) | ETHDILITHIUM KAT gas report at rev df999ed; e2e-7913. The 8.18 M figure in older text is an earlier upstream revision and does not reproduce |
 | Whole-spend transaction (recurring) | ~8.4 M (`handleOps`, blinded-key sig) | Sepolia fork, outer-tx measured |
-| Scanning (client-side) | **44.3 µs/announcement** steady-state (Python client); 23.8 µs native | `scan_bench.py` / `registry_curve.py`; 0x3327 Rust harness |
+| Scanning (client-side) | **44.3 µs/announcement** steady-state (Python client); **22.6 µs** native | `scan_bench.py` / `registry_curve.py`; 0x3327 Rust harness (1,809 ms / 80,000) |
 
 The one-line story: **the scheme is data-heavy, not compute-heavy.** Detection
 (scanning) is competitive with — and natively *faster* than — the EC scheme
@@ -42,18 +42,22 @@ directly on L1 and which EIP-4844 blobs dissolve on L2.
 ## 2. Announcement cost, L1
 
 The canonical `ERC5564Announcer.announce(uint256,address,bytes,bytes)` call
-with our announcement (1,088 B ML-KEM-768 ciphertext, 1-byte view tag,
-ABI-encoded to 1,316 B calldata: 1,114 nonzero / 202 zero bytes) costs
-**67,580 gas measured** on the Sepolia fork, and the data-cost model
-reconstructs the exact calldata and reproduces it to the gas (0.00% error):
+with our scheme ID `2` announcement (1,088 B ML-KEM-768 ciphertext, 1-byte view
+tag) costs **67,580 gas measured** on the Sepolia fork (2026-08-14): 1,316 B
+calldata, 1,114 nonzero / 202 zero bytes, 4,658 calldata tokens. The data-cost
+model reconstructs that calldata shape and gives **67,550** on today's committed
+vectors (1,113 nonzero / 203 zero bytes, 4,655 tokens) — a −0.04% residual from
+the zero/nonzero split of the encoded arguments, not a difference in regime:
 
 - standard cost would be 52,446 (21,000 base + calldata + LOG4 execution);
 - the **EIP-7623 calldata floor** `21,000 + 10 × 4,658 tokens = 67,580` is
   binding — post-Pectra a PQ announcement is priced as *bytes*, not compute
   (D-011's core finding).
 
-The EC baseline (DKSAP, 33 B compressed point) models at **27,342 gas** in the
-*standard* regime — its calldata is zero-dominated, so the floor never engages.
+The EC baseline (DKSAP, 33 B compressed point) **models** at **27,342 gas** in
+the *standard* regime — its calldata is zero-dominated, so the floor never
+engages. It has no on-chain measurement of its own (`onchain_results.json`
+records `measured_gas: null`); the 67,580 measurement belongs to the PQ row.
 PQ is thus **2.5× on L1** (the fixed 21,000 base compresses the raw 33× data
 ratio). At the D-011 anchors (L1 base 8 gwei, ETH $3,200 — dated 2026-07-28)
 that is ~$1.73 per PQ announcement vs ~$0.70 for DKSAP; the figure scales
@@ -177,10 +181,14 @@ pre-filter, full derivation only on tag match (~1/256):
   the ~N/256 false-positive derivations. The decaps+view-tag loop alone is
   ~19 µs/announcement (liboqs ML-KEM-768 decaps 17.2 µs native), i.e.
   **the pure lattice loop is faster than the EC baseline**.
-- **Native: 23.8 µs** (the 0x3327/pq-sap Rust harness we reproduced)
-  vs 27.9 µs DKSAP — against the scheme ERC-5564 actually deploys, native
+- **Native: 22.6 µs** (the 0x3327/pq-sap Rust harness we reproduced; 1,809 ms
+  for 80,000 announcements, `python/benchmarks/README.md`)
+  vs 27.5–27.9 µs DKSAP — against the scheme ERC-5564 actually deploys, native
   lattice scanning is *moderately faster*, not the paper's 3×-vs-Curvy
   headline (D-011's honesty note: DKSAP is the only EC baseline we carry).
+  An earlier native run is quoted as 23.8 µs in older text; 22.6 is the
+  figure arithmetic gives on the committed 80k row, and both land on the same
+  conclusion.
 - **Today's registries are tiny**: the mainnet canonical announcer's entire
   history (202 announcements) scans in ~9 ms; at 1M announcements the
   projection is ~44 s single-core, embarrassingly parallel.
@@ -246,3 +254,7 @@ npm run e2e:fork         # announce 67,580 on the canonical announcer, handleOps
 Raw JSON outputs are committed alongside the harnesses in
 `python/benchmarks/*.json`; the on-chain measurements are recorded in the
 fork-replay fixtures (`js-client/test/`) so they reproduce offline.
+
+Per-route spend costs and the two end-to-end runs are assembled, with what each
+route reveals stated next to what it costs, in the
+[stretch-goal report](stretch-goal-report.md).

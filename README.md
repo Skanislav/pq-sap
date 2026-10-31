@@ -36,7 +36,10 @@ additional account and network requirements. See the
 aggregation route and the [security analysis](docs/SECURITY_ANALYSIS.md) for
 the current key-exchange review boundaries. Start with the
 [ERC evidence map](docs/ERC_EVIDENCE.md); spending specialists can follow the
-[separate research guide](docs/SPENDING_RESEARCH.md).
+[separate research guide](docs/SPENDING_RESEARCH.md), whose measurements are
+assembled in the [spend stretch-goal report](docs/research/stretch-goal-report.md).
+The cohort's end-of-work revision of the proposal is
+[`docs/PROJECT_RETROSPECTIVE.md`](docs/PROJECT_RETROSPECTIVE.md) (D-035).
 
 This repository is the artifact trail of our EPF cohort work: the scheme we
 specified, the vectors it generates, the checks we ran, and the
