@@ -49,7 +49,9 @@ advantage as `Measure.boolBias` of `runtime.evalDist`, a decapsulation
 oracle union `spec + ((Bool × C) →ₒ Option K)` answered through `QueryImpl.add`
 with `spec.passthrough`, the challenge ciphertext excluded per
 branch (`bc.2 = cStar → none`), and a CPA-to-CCA embedding whose phases
-…[truncated]public section
+are lifted through `simulateQ`, mirroring the IND game pair of
+`KeyEncapMech.lean`. -/
+public section
 
 namespace KEMScheme
 
@@ -77,18 +79,18 @@ structure ANO_Adversary (kem : KEMScheme (OracleComp spec) K PK SK C) where
 
 /-- Fixed-branch ANO-CPA experiment: no oracle beyond the ambient `spec`;
 the challenge ciphertext encapsulates under `pk0` (`b = false`) or `pk1`
-(`b = true`). -/
-noncomputable def ANO_CPA_Experiment (runtime : ProbCompRuntime (OracleComp spec))
-    (adversary : kem.ANO_Adversary) (b : Bool) : OracleComp spec C := do
+(`b = true`); the value is the adversary's verdict bit. -/
+noncomputable def ANO_CPA_Experiment (adversary : kem.ANO_Adversary) (b : Bool) :
+    OracleComp spec Bool := do
   let (pk0, _) ← kem.keygen
   let (pk1, _) ← kem.keygen
   let st ← adversary.preChallenge pk0 pk1
   let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
   adversary.postChallenge st cStar
-  return cStar
 
 /-- The single-bit ANO-CPA game: a uniform hidden bit picks the key, and the
-adversary guesses it from the challenge ciphertext alone. -/
+adversary guesses it from the challenge ciphertext alone; the game returns
+whether the guess matched. -/
 noncomputable def ANO_CPA_Game (runtime : ProbCompRuntime (OracleComp spec))
     (adversary : kem.ANO_Adversary) : OracleComp spec Bool := do
   let (pk0, _) ← kem.keygen
@@ -96,7 +98,8 @@ noncomputable def ANO_CPA_Game (runtime : ProbCompRuntime (OracleComp spec))
   let st ← adversary.preChallenge pk0 pk1
   let b ← runtime.liftProbComp ($ᵗ Bool)
   let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
-  adversary.postChallenge st cStar
+  let b' ← adversary.postChallenge st cStar
+  return (b == b')
 
 /-- ANO-CPA anonymity advantage: the Boolean bias of the single game. -/
 noncomputable def ANO_CPA_Advantage (runtime : ProbCompRuntime (OracleComp spec))
@@ -259,9 +262,6 @@ end KEMScheme
 
 ## Verification status (honest)
 
-- Fixed after round 1 (Kimi-K3, fv profile): ANO_CPA_Game closes (b == b');
-  ANO_CPA_Experiment returns the verdict bit with no runtime arg. This package
-  carries the FIXED file.
 - NOT typechecked: no host here can fit the v4.36 toolchain + Mathlib
   (29 GB disk at 96%; toolchain alone ~1.9 GB + GB-scale cache). Target is
   VCVio CI (`lake build`, `--axioms` sweep) at PR time.

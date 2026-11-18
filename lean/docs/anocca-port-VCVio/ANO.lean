@@ -25,7 +25,9 @@ advantage as `Measure.boolBias` of `runtime.evalDist`, a decapsulation
 oracle union `spec + ((Bool × C) →ₒ Option K)` answered through `QueryImpl.add`
 with `spec.passthrough`, the challenge ciphertext excluded per
 branch (`bc.2 = cStar → none`), and a CPA-to-CCA embedding whose phases
-…[truncated]public section
+are lifted through `simulateQ`, mirroring the IND game pair of
+`KeyEncapMech.lean`. -/
+public section
 
 namespace KEMScheme
 
@@ -153,7 +155,7 @@ def ANO_Adversary.toANO_CCA (adversary : kem.ANO_Adversary) : kem.ANO_CCA_Advers
 /-- Composing the game handler `QueryImpl.add spec.passthrough impl` with the
 oracle-ignoring lift's identity handler is the identity semantics, so no
 oracle answer ever enters the lifted adversary's phases. -/
-theorem simulateQ_toANO_CCA {K : Type} {α : Type} (oa : OracleComp spec α) :
+theorem simulateQ_toANO_CCA {α : Type} (oa : OracleComp spec α) :
     simulateQ (QueryImpl.add spec.passthrough (fun (_ : Bool × C) =>
         (none : Option K) : QueryImpl ((Bool × C) →ₒ Option K) (OracleComp spec)))
       (simulateQ (HasQuery.toQueryImpl (spec := spec)
@@ -186,10 +188,10 @@ theorem toANO_CCA_postChallenge (st : adversary.State) (c : C) :
   simp only [ANO_Adversary.toANO_CCA]
   rw [simulateQ_toANO_CCA]
 
-/-- The CPA-phase ANO-CPA game is exactly the ANO-CCA game instantiated with
+/-- The one-phase ANO-CPA game is exactly the ANO-CCA game instantiated with
 the trivial CPA-to-CCA embedding `toANO_CCA` that never uses the decryption
 oracle, mirroring `IND_CPA_Game_eq_IND_CCA_Game_toIND_CCA`. -/
-theorem ANO_CPA_Game_eq_ANO_CCA_Game_toANO_CCA {K : Type} [DecidableEq C]
+theorem ANO_CPA_Game_eq_ANO_CCA_Game_toANO_CCA [DecidableEq C]
     (runtime : ProbCompRuntime (OracleComp spec)) (adversary : kem.ANO_Adversary) :
     kem.ANO_CPA_Game runtime adversary = kem.ANO_CCA_Game runtime adversary.toANO_CCA := by
   have h : ∀ (impl₂ : QueryImpl ((Bool × C) →ₒ Option K) (OracleComp spec))
