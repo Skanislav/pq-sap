@@ -303,8 +303,9 @@ end KEMScheme
 - Static convention check vs `AGENTS.md`/`CONTRIBUTING.md` on main: passed
   (module system, no retired names, no `++ₒ`, named reductions,
   `autoImplicit = false`, banners, headers).
-- The *statement shapes* mirror the proven SPMF-era theorems at the pin;
-  the port itself is a translation, not a proof.
+- The definitions and phase lemmas follow the CI-proven SPMF-era theorems at
+  the pin (with the two shape changes documented in `README.md`); the port
+  itself is a translation, not a proof.
 
 ## Known limitations to flag in review
 

@@ -40,8 +40,9 @@ It is the port of the CI-proven SPMF-era layer on pq-sap branch
   --dry-run` → 0 sites to finish by hand; style conventions by direct inspection
   against `AGENTS.md` + `CONTRIBUTING.md`.
 - Review gate (user rule): Kimi + GLM must review before any upstream filing.
-- NOT placed in a public repo yet; `ANO.patch` is the file as a new-file diff
-  for pasting into a PR review round.
+- NOT placed in a public repo yet; `ANO.patch` is a valid unified diff
+  (`git apply --check`-verified) carrying the file as a new file at
+  `VCVio/CryptoFoundations/KeyEncapMech/ANO.lean`,
 
 ## Provenance note
 
