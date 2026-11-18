@@ -53,7 +53,7 @@ ERC-8441 needs two things from the Lean side:
 | # | Gap | Blocks | Owner | Where | Status |
 |---|---|---|---|---|---|
 | G1 | ML-KEM-768 IND-CCA (FO bound + K-PKE δ-correctness + IND-CPA→MLWE with fixed instances) | Unconditional ERC security claims, schemeId 3 unlinkability | upstream | #785 steps 1–5 | step 0 merged (#1107); rest open |
-| G2 | KEM anonymity (ANO-CPA/ANO-CCA) definitions in `KeyEncapMech.lean` | The ERC's explicit ANO-CCA assumption; our `KEM.AnonExp` is a downstream substitute | we offer PR | planned, on current `main` idiom | not filed; maintainer conversation open |
+| G2 | KEM anonymity (ANO-CPA/ANO-CCA) definitions in `KeyEncapMech.lean` | The ERC's explicit ANO-CCA assumption; our `KEM.AnonExp` is a downstream substitute | we offer PR | ported draft: `lean/docs/anocca-port-VCVio/ANO.lean` on `main` idiom (v4.36) | written + reviewed (fv agent rounds 1–3; verdict SHIP per 2026-11-18); not filed |
 | G3 | Hybrid combiner theorem (IND-CCA of `Hash(DS‖ss_ec‖ss_pq‖epk‖ct‖ek_ec‖ek_pq)` if either KEM is IND-CCA) | schemeId 3's core claim | we | pq-sap `lean/PqStealth` track, on upstream KEM interfaces | ours to prove; interfaces exist |
 | G4 | secp256k1 executables in our tree (ECDH, compressed encoding, address) | compiled schemeId 3 | we | thin `@[extern]` FFI to libsecp256k1 (Extern pattern) or reuse | small |
 | G5 | Pure-Lean SHA3-256 export | combiner in pure-Lean route | upstream (small) or ours | `FFI.Hashing` already exports sha3_256/shake; pure-Lean def needs a home | FFI route ready |
