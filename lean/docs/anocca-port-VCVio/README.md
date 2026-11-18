@@ -45,8 +45,11 @@ It is the port of the CI-proven SPMF-era layer on pq-sap branch
 
 ## Provenance note
 
-Definitions correspond 1:1 to the pq-sap branch layer that already carries
-proofs (`ANO_CCA_Advantage_le_of_spr`, `ANO_CCA_Advantage_le_of_spr_full`,
-zero sorry, CI-checked at the pin `a5f474fd`). The port carries the same
-statement shapes; the two big SPR bound theorems are NOT yet restated here —
-next step after review.
+Definitions and the collapse/phase lemmas follow the proven pq-sap branch
+layer (`ANO_CCA_Advantage_le_of_spr`, `ANO_CCA_Advantage_le_of_spr_full`,
+zero sorry, CI-checked at the pin `a5f474fd`) with two deliberate shape
+changes from earlier drafts: the fixed-branch `ANO_CPA_Experiment` returns
+the verdict `Bool`, and the two phase lemmas wrap the lifted phase in the
+game's real handler (pin shapes). The two big SPR bound theorems are NOT
+yet restated here — next step after review (they consume the hoisted
+general lemma `simulateQ_add_liftM_left`).

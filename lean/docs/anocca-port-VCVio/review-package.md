@@ -308,10 +308,10 @@ end KEMScheme
 
 ## Known limitations to flag in review
 
-- `ANO_CPA_Experiment` returns `cStar` (used by the branch decomposition);
-  the SPMF-era version returned `Bool` verdict in the game only. Reviewers:
-  confirm the `OracleComp spec C` shape is the intended API (mirrors the
-  LR-`Experiment` style in `AsymmEncAlg/INDCPA/Oracle.lean`).
+- `ANO_CPA_Experiment` returns the adversary's verdict bit (`Bool`), matching
+  the fixed-branch experiment convention (`AsymmEncAlg/INDCPA/Oracle.lean`);
+  the game additionally returns `b == b'` so its Boolean bias is the
+  distinguishing advantage. Reviewers: confirm both shapes are the intended API.
 - No query-budget/cost accounting yet — upstream's complexity facade
   (`Asymptotics/`) can bind these later; flagged as follow-up.
 - The two SPR-bound theorems are not restated in this file; they are the
