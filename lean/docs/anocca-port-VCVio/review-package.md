@@ -259,6 +259,9 @@ end KEMScheme
 
 ## Verification status (honest)
 
+- Fixed after round 1 (Kimi-K3, fv profile): ANO_CPA_Game closes (b == b');
+  ANO_CPA_Experiment returns the verdict bit with no runtime arg. This package
+  carries the FIXED file.
 - NOT typechecked: no host here can fit the v4.36 toolchain + Mathlib
   (29 GB disk at 96%; toolchain alone ~1.9 GB + GB-scale cache). Target is
   VCVio CI (`lake build`, `--axioms` sweep) at PR time.
