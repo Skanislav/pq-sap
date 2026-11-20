@@ -150,7 +150,7 @@ def ecdh_x(esk_scalar: int, pk_compressed: bytes) -> bytes:
 
 
 def address_from_uncompressed(uncompressed65: bytes) -> bytes:
-    """Section 1: address(stealth_pk) = keccak256(uncompressed(stealth_pk)[1..65])[12..32]."""
+    """Section 1: address = keccak256(uncompressed(stealth_pk)[1..65])[12..32]."""
     if len(uncompressed65) != 65 or uncompressed65[0] != 0x04:
         raise ValueError("expected the 65-byte uncompressed SEC1 form")
     return keccak256(uncompressed65[1:])[12:]
@@ -514,7 +514,7 @@ def check_stealth_address(
         raise KeygenError("spendingPubKey must be a 33-byte compressed point")
     spending_pk_point = decompress_point(spending_pk)  # raises on invalid
     try:
-        ss, epk_point = _derive_ss_epk(ephemeral_pubkey, viewing_key)
+        ss, _epk_point = _derive_ss_epk(ephemeral_pubkey, viewing_key)
     except _MalformedAnnouncement:
         return False
     h = H_ss_checked(ss)

@@ -1,4 +1,7 @@
-import hashlib, coincurve, scheme as S
+import hashlib
+
+import coincurve
+import scheme as S
 
 pk = coincurve.PublicKey.from_secret((7).to_bytes(32, "big"))
 priv = coincurve.PrivateKey((0x11111).to_bytes(32, "big"))
@@ -6,7 +9,9 @@ want = priv.ecdh(pk.format(compressed=True))
 
 # independent anchor: (0x11111 * 7) * G must equal 0x11111 * (7G)
 k_prod = (0x11111 * 7) % S.SECP_N
-anch = coincurve.PublicKey.from_secret(k_prod.to_bytes(32, "big")).format(compressed=False)
+anch = coincurve.PublicKey.from_secret(k_prod.to_bytes(32, "big")).format(
+    compressed=False
+)
 x, y = S.scalar_mult(0x11111, S.decompress_point(pk.format(compressed=True)))
 X = x.to_bytes(32, "big")
 mine_un = b"\x04" + x.to_bytes(32, "big") + y.to_bytes(32, "big")

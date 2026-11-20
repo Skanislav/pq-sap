@@ -15,15 +15,18 @@ import json
 import sys
 from pathlib import Path
 
-import scheme as S  # noqa: E402  (same directory)
+import scheme as S
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "data"
 
 PINNED = {
-    "section-1.json": "e05a67608ee48776b91b2e685342815c1f90fb3f77c70c78ecc3ba7cc158d151",
-    "section-2.json": "7f73be77a3ac54b0da36712db03876e6fc52a051fe5f1417658c8a0571c10d60",
-    "ml-kem-768-acvp.json": "51c2802f9958f4efdbd04daf6f565c0890eb343fb8d665cb0618f515138a606b",
+    "section-1.json":
+        "e05a67608ee48776b91b2e685342815c1f90fb3f77c70c78ecc3ba7cc158d151",
+    "section-2.json":
+        "7f73be77a3ac54b0da36712db03876e6fc52a051fe5f1417658c8a0571c10d60",
+    "ml-kem-768-acvp.json":
+        "51c2802f9958f4efdbd04daf6f565c0890eb343fb8d665cb0618f515138a606b",
 }
 
 H_ = "d8b37e9fb5fd784cc30b719589811092fce202abc0f500d6609a2f69f78b171f"
@@ -56,16 +59,29 @@ def load(name: str):
 def selftest_secp() -> None:
     import coincurve
 
-    for k in (1, 2, N1 - 1, 0x9110F8760A37D96052E3DCAF14862A147654F49F722CF213568CCEF1ECA2EC71):
-        pub = coincurve.PublicKey.from_secret(k.to_bytes(32, "big")).format(compressed=False)
+    for k in (
+        1,
+        2,
+        N1 - 1,
+        0x9110F8760A37D96052E3DCAF14862A147654F49F722CF213568CCEF1ECA2EC71,
+    ):
+        pub = coincurve.PublicKey.from_secret(k.to_bytes(32, "big")).format(
+            compressed=False
+        )
         x, y = S.scalar_mult(k)
-        assert pub == b"\x04" + x.to_bytes(32, "big") + y.to_bytes(32, "big"), f"scalar_mult {k:x}"
+        assert pub == b"\x04" + x.to_bytes(32, "big") + y.to_bytes(32, "big"), (
+            f"scalar_mult {k:x}"
+        )
     pk = coincurve.PublicKey.from_secret((7).to_bytes(32, "big"))
     pts = S.decompress_point(pk.format(compressed=True))
-    assert pk.format(compressed=False)[1:] == b"".join(v.to_bytes(32, "big") for v in pts)
+    assert pk.format(compressed=False)[1:] == b"".join(
+        v.to_bytes(32, "big") for v in pts
+    )
     ss = S.ecdh_x(0x11111, pk.format(compressed=True))
     x, y = S.scalar_mult(0x11111, S.decompress_point(pk.format(compressed=True)))
-    want = coincurve.PrivateKey((0x11111).to_bytes(32, "big")).ecdh(pk.format(compressed=True))
+    want = coincurve.PrivateKey((0x11111).to_bytes(32, "big")).ecdh(
+        pk.format(compressed=True)
+    )
     # libsecp256k1 ecdh = SHA-256 over the 33-byte compressed shared point
     assert hashlib.sha256(S.compress_point(x, y)).digest() == want
     assert ss == x.to_bytes(32, "big")  # x-coordinate of the same shared point
@@ -75,7 +91,11 @@ def selftest_secp() -> None:
 
 def run_v1(d1: dict, d2: dict) -> None:
     h = S.sha256(S.DS_OFFSET + SS1)
-    check("V1-01", h == hexb(d1["V1-01"]["expect"]["base"]) == hexb(d1["V1-01"]["expect"]["offset"]))
+    check(
+        "V1-01",
+        h == hexb(d1["V1-01"]["expect"]["base"])
+        == hexb(d1["V1-01"]["expect"]["offset"]),
+    )
     be = d1["V1-02"]["expect"]["offset_big_endian"]
     check("V1-02", be == format(int.from_bytes(h, "big"), "064x"))
     check("V1-03", S.offset_from_base(bytes(32)) is None)  # base 0 -> fail
@@ -119,7 +139,11 @@ def run_v3(d2: dict) -> None:
     META_V3 = out.meta_address
     e = d2["V3-09"]["expect"]
     ok = out.meta_address == hexb(e["meta_address"])
-    for fld, attr in (("master_key", "master_key"), ("tracking_key", "tracking_key"), ("ek", "ek")):
+    for fld, attr in (
+        ("master_key", "master_key"),
+        ("tracking_key", "tracking_key"),
+        ("ek", "ek"),
+    ):
         if fld in e:
             ok &= getattr(out, attr) == hexb(e[fld])
     check("V3-09", bool(ok), "deterministic keygen vs ACVP-26 kem seed")
@@ -132,7 +156,9 @@ def run_v3(d2: dict) -> None:
             S.keygen(bad)
         except S.KeygenError:
             errs += 1
-    check("V3-01", o1 is not None and errs == 2, "96 B and 127 B rejected, 128 B outputs")
+    check(
+        "V3-01", o1 is not None and errs == 2, "96 B and 127 B rejected, 128 B outputs"
+    )
 
     # V3-10: seed scalar bounds (0, n invalid; n-1 valid) at keygen
     base33 = bytes.fromhex("33" * 32)
@@ -191,8 +217,12 @@ def run_v3(d2: dict) -> None:
         pass
     check("V3-11", ok11, "1249/1251 rejected, 1250 decodes")
     bad_meta = good[:33] + bytes.fromhex("02" + "00" * 31 + "05") + good[66:]
-    check("V3-12", _try_err(lambda: S.decode_meta(bad_meta)) and not _try_err(lambda: S.decode_meta(good)),
-          "non-point viewing_pk_ec rejected before use")
+    check(
+        "V3-12",
+        _try_err(lambda: S.decode_meta(bad_meta))
+        and not _try_err(lambda: S.decode_meta(good)),
+        "non-point viewing_pk_ec rejected before use",
+    )
 
     # V3-13: address + EIP-55 from a given stealth_pk
     v = d2["V3-13"]
@@ -230,15 +260,21 @@ def run_v3(d2: dict) -> None:
     # internal consistency: kyber_py must reproduce NIST's encapsulation
     g6 = d2["V3-06"]["given"]
     ss_pq_k, ct_k = S._KEM._encaps_internal(hexb(p6["ek"]), hexb(g6["m"]))
-    check("V3-06a", ssa == hexb(va["expect"]["ss_a"]) and ssb2 == hexb(va["expect"]["ss_b"])
-          and ssa != ssb2
-          and ss_pq_k == hexb(p6["ss_pq"]) and ct_k == hexb(p6["ct"]),
-          "ct bound in; kyber_py == ACVP encapsulation-26 (GHP18/SP800-227 4.6.3)")
+    check(
+        "V3-06a",
+        ssa == hexb(va["expect"]["ss_a"]) and ssb2 == hexb(va["expect"]["ss_b"])
+        and ssa != ssb2
+        and ss_pq_k == hexb(p6["ss_pq"]) and ct_k == hexb(p6["ct"]),
+        "ct bound in; kyber_py == ACVP encapsulation-26 (GHP18/SP800-227 4.6.3)",
+    )
     vb = d2["V3-06b"]
     ssb = S.hybrid_combine(ds_ascii, hexb(p6["ss_ec"]), hexb(p6["ss_pq"]),
                            hexb(p6["epk"]), hexb(p6["ct"]),
                            hexb(vb["given"]["viewing_pk_ec_b"]), hexb(p6["ek"]))
-    check("V3-06b", ssb == hexb(vb["expect"]["ss_b"]) and ssb != base, "viewing_pk_ec bound in")
+    check(
+        "V3-06b",
+        ssb == hexb(vb["expect"]["ss_b"]) and ssb != base, "viewing_pk_ec bound in"
+    )
     v7 = d2["V3-07"]
     ss7 = S.hybrid_combine(ds_ascii, hexb(p6["ss_ec"]), hexb(p6["ss_pq"]),
                            hexb(v7["given"]["epk_parity_flipped"]), hexb(p6["ct"]),
@@ -359,13 +395,19 @@ def run_v3(d2: dict) -> None:
                  "ephemeralPubKey": hexb(g18["honest_ephemeralPubKey"]),
                  "metadata": hexb(g18["metadata"])})
     ok18 &= (ho.stage != "entry")
-    check("V3-18", ok18,
-          f"{len(g18['ephemeralPubKeys'])} bad epks skip at entry; honest one processed")
+    check(
+        "V3-18", ok18,
+        f"{len(g18['ephemeralPubKeys'])} bad epks skip at entry; honest one processed",
+    )
 
     # V3-19: an ek failing FIPS 203's encapsulation input check -> error
     g19 = d2["V3-19"]["given"]
-    kbad = acvp("encapsulation_key_check", g19["acvp_encapsulationKeyCheck_tcId_invalid"])
-    kgood = acvp("encapsulation_key_check", g19["acvp_encapsulationKeyCheck_tcId_valid"])
+    kbad = acvp(
+        "encapsulation_key_check", g19["acvp_encapsulationKeyCheck_tcId_invalid"]
+    )
+    kgood = acvp(
+        "encapsulation_key_check", g19["acvp_encapsulationKeyCheck_tcId_valid"]
+    )
     bad_meta19 = hexb(g19["meta_address_invalid_ek"])
     good_meta19 = hexb(g19["meta_address_valid_ek"])
     grounds = (len(hexb(kbad["ek"])) == 1184
@@ -402,8 +444,12 @@ def run_v3(d2: dict) -> None:
              and o14.ss_ec == hexb(e14["ss_ec"])
              and o14.ss_pq == hexb(e14["ss_pq"])
              and o14.view_tag == bytes.fromhex(e14["derived_view_tag"]))
-    check("V3-14", ok14,
-          f"ACVP decap-88 scan: skip at the announced tag, derives '{e14['derived_view_tag']}'")
+    check(
+        "V3-14",
+        ok14,
+        f"ACVP decap-88 scan: skip at the announced tag, "
+        f"derives '{e14['derived_view_tag']}'",
+    )
     o14b = S.scan(tk14, meta14,
                   {"stealthAddress": a14["stealthAddress"],
                    "ephemeralPubKey": a14["ephemeralPubKey"],
