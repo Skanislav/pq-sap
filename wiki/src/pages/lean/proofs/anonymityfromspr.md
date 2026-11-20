@@ -10,10 +10,14 @@ carries no information about the hidden bit -- and, chaining into
 `unlinkAdvantage_ofKEMFull_le`, the full decomposition of stealth unlinkability
 into five named advantages with no unnamed slack.
 
-Assumed: the SPR terms are decomposed in `SPRTwoHop` into two MLWE hops (both
-identities proved) plus two named residual terms (primitive idealization,
-simulator gap); lifting to ANO-CCA must track ML-KEM's implicit-rejection FO
-transform. Neither VCVio nor FIPS 203 supplies `anonymity → MLWE`.
+Assumed: the SPR terms are decomposed in `SPRTwoHop` into three MLWE hops
+(keyHopAdv, ctHopAdv, keyRestorationAdv) plus two named residual terms
+(primitive idealization, key-generation idealization); the encoding term
+vanishes by the compressed-uniform simulator. `ClosedUnlinkability` chains the
+per-branch bound into the full unlinkability decomposition. Lifting to ANO-CCA
+must track ML-KEM's implicit-rejection FO transform — the naive
+`ANO-CCA ≤ ANO-CPA + ε` is false by the Maram–Xagawa counterexample; the honest
+extended-anonymity shape and VCVio milestone are in `docs/fo-anonymity-lift.md`.
 See `docs/spr-two-hop.md`.
 
 ## `simBranch`
@@ -29,7 +33,7 @@ def simBranch (sim : ProbComp C) (adv : StealthScheme.UnlinkAdv PK C)
 
 ```
 
-[`AnonymityFromSPR.lean:33-37 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L33-L37)
+[`AnonymityFromSPR.lean:37-41 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L37-L41)
 
 ## `sprAdv`
 
@@ -41,7 +45,7 @@ noncomputable def sprAdv (kem : KEM PK SK C K) (sim : ProbComp C)
 
 ```
 
-[`AnonymityFromSPR.lean:41-45 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L41-L45)
+[`AnonymityFromSPR.lean:45-49 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L45-L49)
 
 ## `anonAdvantage_le_sprAdv`
 
@@ -63,7 +67,7 @@ theorem anonAdvantage_le_sprAdv (kem : KEM PK SK C K) (sim : ProbComp C)
 
 :::
 
-[`AnonymityFromSPR.lean:49-55 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L49-L55)
+[`AnonymityFromSPR.lean:53-59 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L53-L59)
 
 ### The simulated branch and per-branch SPR advantages
 
@@ -107,4 +111,4 @@ theorem unlinkAdvantage_ofKEMFull_le_full_decomposition
 
 :::
 
-[`AnonymityFromSPR.lean:65-87 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L65-L87)
+[`AnonymityFromSPR.lean:69-91 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/AnonymityFromSPR.lean#L69-L91)

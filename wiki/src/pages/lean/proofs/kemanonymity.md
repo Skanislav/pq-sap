@@ -12,8 +12,29 @@ also carries `auxGen sharedSecret pk` and whose scan recomputes it, with
 shared-secret-hiding terms, `auxKeyIndependence`, and anonymity; and detection
 completeness of `ofKEMFull` from VCVio's `KEMScheme.PerfectlyCorrect`.
 
-Assumed: nothing here. `anonymity → MLWE` for ML-KEM is the open piece
-(`AnonymityFromSPR`). See `docs/announcement-model.md`.
+The oracle-backed recipient-anonymity games live in `OracleGames`: ANO-CPA
+(two-phase wrapper over `AnonExp`) and oracle-backed ANO-CCA on a Bool-keyed,
+level-0 decapsulation oracle (`anonOracleSpec spec C K = spec + ((Bool × C)
+→ₒ Option K)`, matching VCVio's `IND_CCA` shape). `simulateQ_toANO_CCA` and
+`toANO_CCA_pre/PostChallenge` prove the oracle-ignoring CPA adversary is
+identical across the two games phase-for-phase. `ANO_CCA_Advantage_le_of_spr`
+closes the reduction: a CPA anonymity adversary lifted into the CCA game is
+bounded by the two per-branch SPR terms against a key-independent simulator,
+under explicit runtime-coherence hypotheses (`heval_pure/bind/liftProbComp`,
+and `hnf` totality on `Bool` computations) — the same pattern VCVio's
+KEM+DEM reduction carries.
+
+These are the local stand-ins for upstream `Verified-zkEVM/VCVio#848`; if that
+lands, this section is what gets upstreamed and replaced. The unlinkability
+chain still bottoms out in the CPA anonymity term `anonAdvantage`; the CCA
+variant here is the deployed-adversary refinement.
+`ANO_CCA_Advantage_le_of_spr_full` extends the bound to the **full CCA
+adversary** — one that queries the decapsulation oracle: the hidden-bit
+decomposition and SPR triangle were generic in the adversary all along.
+Bounding the SPR terms themselves at ML-KEM-768 (seeded-MLWE chain plus the
+ROM/PRF and collision terms of Maram–Xagawa's Theorem 2, per
+the Maram–Xagawa Theorem 2 paper verification) is what remains.
+`anonymity → MLWE` for ML-KEM is the open piece (`AnonymityFromSPR`).
 
 ## `KEM`
 
@@ -25,7 +46,7 @@ abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C
 
 ```
 
-[`KEMAnonymity.lean:30-31 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L30-L31)
+[`KEMAnonymity.lean:53-54 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L53-L54)
 
 ### An abstract KEM
 
@@ -51,7 +72,7 @@ theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α �
 
 :::
 
-[`KEMAnonymity.lean:37-43 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L37-L43)
+[`KEMAnonymity.lean:60-66 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L60-L66)
 
 ### A `Pr[= true | …] = 1` transfer lemma
 
@@ -70,7 +91,7 @@ def run : ProbComp ((PK × SK) × (C × K) × Option K) := do
 
 ```
 
-[`KEMAnonymity.lean:57-62 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L57-L62)
+[`KEMAnonymity.lean:80-85 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L80-L85)
 
 ## `correctExp_eq`
 
@@ -87,7 +108,7 @@ theorem correctExp_eq [DecidableEq K] :
 
 :::
 
-[`KEMAnonymity.lean:65-68 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L65-L68)
+[`KEMAnonymity.lean:88-91 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L88-L91)
 
 ### Correctness
 
@@ -103,7 +124,7 @@ def anonSetup : ProbComp (PK × PK) := do
 
 ```
 
-[`KEMAnonymity.lean:75-79 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L75-L79)
+[`KEMAnonymity.lean:98-102 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L98-L102)
 
 ## `anonBranch`
 
@@ -114,7 +135,7 @@ def anonBranch (b : Bool) (a : PK × PK) : ProbComp Bool := do
 
 ```
 
-[`KEMAnonymity.lean:81-84 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L81-L84)
+[`KEMAnonymity.lean:104-107 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L104-L107)
 
 ## `AnonExp`
 
@@ -127,7 +148,7 @@ def AnonExp : ProbComp Bool := do
 
 ```
 
-[`KEMAnonymity.lean:86-91 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L86-L91)
+[`KEMAnonymity.lean:109-114 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L109-L114)
 
 ## `anonAdvantage`
 
@@ -136,7 +157,7 @@ noncomputable def anonAdvantage : ℝ := (kem.AnonExp adv).boolBiasAdvantage
 
 ```
 
-[`KEMAnonymity.lean:93-94 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L93-L94)
+[`KEMAnonymity.lean:116-117 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L116-L117)
 
 ## `anonAdvantage_eq_branchDistAdvantage`
 
@@ -151,9 +172,535 @@ theorem anonAdvantage_eq_branchDistAdvantage :
 
 ```
 
-[`KEMAnonymity.lean:97-102 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L97-L102)
+[`KEMAnonymity.lean:120-125 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L120-L125)
 
 ### Anonymity (key privacy)
+
+## `anonOracleSpec`
+
+Oracle spec for the anonymity games: the base `spec` plus a decapsulation
+oracle taking `(whichKey : Bool, ciphertext : C)` to the shared key `K`. Both
+recipient keys share one oracle, selected by the Boolean, exactly as VCVio's
+`IND_CCA_oracleSpec` shares one `C →ₒ Option K` for its single key.
+
+```lean
+@[reducible] def anonOracleSpec {ι : Type} (spec : OracleSpec ι) (C K : Type) :
+    OracleSpec (ι ⊕ Bool × C) :=
+  spec + ((Bool × C) →ₒ Option K)
+
+```
+
+[`KEMAnonymity.lean:151-154 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L151-L154)
+
+## `ANO_Adversary`
+
+```lean
+structure ANO_Adversary {ι : Type} (spec : OracleSpec ι) (PK C : Type) where
+  /-- Internal adversary state carried across the challenge. -/
+  State : Type
+  /-- Pre-challenge phase: sees both public keys, returns a state. -/
+  preChallenge : PK → PK → OracleComp spec State
+  /-- Post-challenge phase: sees the state and the challenge ciphertext. -/
+  postChallenge : State → C → OracleComp spec Bool
+
+```
+
+[`KEMAnonymity.lean:159-166 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L159-L166)
+
+## `ANO_CPA_Exp`
+
+```lean
+def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (b : Bool)
+    (adv : ANO_Adversary spec PK C) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, _) ← kem.keygen
+    let (pk1, _) ← kem.keygen
+    let st ← adv.preChallenge pk0 pk1
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    adv.postChallenge st cStar
+
+```
+
+[`KEMAnonymity.lean:169-179 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L169-L179)
+
+## `ANO_CPA_Game`
+
+```lean
+def ANO_CPA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) :
+    SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, _) ← kem.keygen
+    let (pk1, _) ← kem.keygen
+    let st ← adv.preChallenge pk0 pk1
+    let b ← runtime.liftProbComp ($ᵗ Bool)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    let b' ← adv.postChallenge st cStar
+    return (b == b')
+
+```
+
+[`KEMAnonymity.lean:181-193 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L181-L193)
+
+## `ANO_CPA_Advantage`
+
+```lean
+noncomputable def ANO_CPA_Advantage {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) : ℝ :=
+  (ANO_CPA_Game kem runtime adv).boolBiasAdvantage
+
+```
+
+[`KEMAnonymity.lean:195-199 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L195-L199)
+
+## `ANO_CCA_Adversary`
+
+```lean
+structure ANO_CCA_Adversary {ι : Type} (spec : OracleSpec ι) (PK C K : Type) where
+  /-- Internal adversary state carried across the challenge. -/
+  State : Type
+  /-- Pre-challenge phase: sees both public keys, may decapsulate under both. -/
+  preChallenge : PK → PK → OracleComp (anonOracleSpec spec C K) State
+  /-- Post-challenge phase: sees the state and ciphertext, oracle still live. -/
+  postChallenge : State → C → OracleComp (anonOracleSpec spec C K) Bool
+
+```
+
+[`KEMAnonymity.lean:204-211 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L204-L211)
+
+## `anoPreChallengeImpl`
+
+```lean
+def anoPreChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) (sk0 sk1 : SK) :
+    QueryImpl (anonOracleSpec spec C K) (OracleComp spec) :=
+  (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) +
+    (fun (bc : Bool × C) => if bc.1 then kem.decaps sk1 bc.2 else kem.decaps sk0 bc.2)
+
+```
+
+[`KEMAnonymity.lean:214-219 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L214-L219)
+
+## `anoPostChallengeImpl`
+
+```lean
+def anoPostChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) [DecidableEq C]
+    (sk0 sk1 : SK) (cStar : C) :
+    QueryImpl (anonOracleSpec spec C K) (OracleComp spec) :=
+  (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) +
+    (fun (bc : Bool × C) => if bc.2 = cStar then return none
+      else if bc.1 then kem.decaps sk1 bc.2 else kem.decaps sk0 bc.2)
+
+```
+
+[`KEMAnonymity.lean:222-229 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L222-L229)
+
+## `ANO_CCA_Game`
+
+```lean
+def ANO_CCA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let b ← runtime.liftProbComp ($ᵗ Bool)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    let b' ← simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+    return (b == b')
+
+```
+
+[`KEMAnonymity.lean:233-245 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L233-L245)
+
+## `ANO_CCA_Advantage`
+
+```lean
+noncomputable def ANO_CCA_Advantage {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) : ℝ :=
+  (ANO_CCA_Game kem runtime adv).boolBiasAdvantage
+
+```
+
+[`KEMAnonymity.lean:247-252 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L247-L252)
+
+## `ANO_Adversary.toANO_CCA`
+
+```lean
+def ANO_Adversary.toANO_CCA {ι : Type} {spec : OracleSpec ι} {PK C K : Type}
+    (adv : ANO_Adversary spec PK C) : ANO_CCA_Adversary spec PK C K where
+  State := adv.State
+  preChallenge pk0 pk1 := simulateQ
+    (HasQuery.toQueryImpl (spec := spec) (m := OracleComp (anonOracleSpec spec C K)))
+    (adv.preChallenge pk0 pk1)
+  postChallenge st c := simulateQ
+    (HasQuery.toQueryImpl (spec := spec) (m := OracleComp (anonOracleSpec spec C K)))
+    (adv.postChallenge st c)
+
+```
+
+[`KEMAnonymity.lean:259-268 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L259-L268)
+
+## `simulateQ_toANO_CCA`
+
+`axioms: propext, Quot.sound` · sorry-free ✓
+
+```lean
+theorem simulateQ_toANO_CCA {ι : Type} {spec : OracleSpec ι} {K C : Type}
+    (impl₂ : QueryImpl ((Bool × C) →ₒ Option K) (OracleComp spec))
+    {α : Type} (oa : OracleComp spec α) :
+    simulateQ ((HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec)) + impl₂)
+      (simulateQ (HasQuery.toQueryImpl (spec := spec)
+        (m := OracleComp (anonOracleSpec spec C K))) oa) = oa := by
+```
+
+:::details[proof]
+
+```lean
+  rw [← QueryImpl.simulateQ_compose]
+  have : (HasQuery.toQueryImpl (spec := spec) (m := OracleComp spec) + impl₂) ∘ₛ
+      HasQuery.toQueryImpl (spec := spec)
+        (m := OracleComp (anonOracleSpec spec C K)) = QueryImpl.id' spec := by
+    ext t
+    simp only [QueryImpl.compose, QueryImpl.id']
+    change simulateQ (QueryImpl.id' spec + impl₂)
+      (liftM (liftM (spec.query t) : OracleQuery (anonOracleSpec spec C K) _)) = _
+    simp [simulateQ_query]
+  rw [this, simulateQ_id']
+```
+
+:::
+
+[`KEMAnonymity.lean:274-290 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L274-L290)
+
+## `toANO_CCA_preChallenge`
+
+```lean
+theorem toANO_CCA_preChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) (sk0 sk1 : SK)
+    (adv : ANO_Adversary spec PK C) (pk0 pk1 : PK) :
+    simulateQ (anoPreChallengeImpl kem sk0 sk1)
+      ((ANO_Adversary.toANO_CCA adv).preChallenge pk0 pk1) = adv.preChallenge pk0 pk1 :=
+  simulateQ_toANO_CCA _ _
+
+```
+
+[`KEMAnonymity.lean:293-299 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L293-L299)
+
+## `toANO_CCA_postChallenge`
+
+```lean
+theorem toANO_CCA_postChallenge {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C) [DecidableEq C]
+    (sk0 sk1 : SK) (cStar : C) (adv : ANO_Adversary spec PK C) (st : adv.State) (c : C) :
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar)
+      ((ANO_Adversary.toANO_CCA adv).postChallenge st c) = adv.postChallenge st c :=
+  simulateQ_toANO_CCA _ _
+
+```
+
+[`KEMAnonymity.lean:303-309 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L303-L309)
+
+## `ANO_CCA_Branch`
+
+Fixed-branch ANO-CCA experiment: the hidden bit is fixed to `b`, so the
+challenge ciphertext is always encapsulated to public key `b`; both
+decapsulation oracles stay live (pre-challenge unmasked, post-challenge masking
+its own challenge).
+
+```lean
+def ANO_CCA_Branch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (b : Bool) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+
+```
+
+[`KEMAnonymity.lean:327-337 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L327-L337)
+
+## `ANO_CCA_SimBranch`
+
+```lean
+def ANO_CCA_SimBranch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) : SPMF Bool :=
+  runtime.evalDist do
+    let (pk0, sk0) ← kem.keygen
+    let (pk1, sk1) ← kem.keygen
+    let st ← simulateQ (anoPreChallengeImpl kem sk0 sk1) (adv.preChallenge pk0 pk1)
+    let cStar ← runtime.liftProbComp sim
+    simulateQ (anoPostChallengeImpl kem sk0 sk1 cStar) (adv.postChallenge st cStar)
+
+```
+
+[`KEMAnonymity.lean:341-351 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L341-L351)
+
+## `ANO_SPR_Term`
+
+```lean
+noncomputable def ANO_SPR_Term {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
+    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) (b : Bool) : ℝ :=
+  (ANO_CCA_Branch kem runtime adv b).boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv sim)
+
+```
+
+[`KEMAnonymity.lean:355-360 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L355-L360)
+
+## `ANO_CCA_Advantage_le_of_spr`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
+    [IsUniformSpec spec]
+    {K PK SK C : Type} [DecidableEq C]
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec))
+    (adv : ANO_Adversary spec PK C)
+    (sim : ProbComp C)
+    (heval_pure : ∀ {α : Type} (a : α),
+      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+      (f : α → OracleComp spec β),
+      runtime.evalDist (mx >>= f) =
+        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+      runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
+    (hnf : ∀ (mx : OracleComp spec Bool),
+      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+    {sprTrue sprFalse : ℝ}
+    (hT : ANO_SPR_Term kem runtime adv.toANO_CCA sim true ≤ sprTrue)
+    (hF : ANO_SPR_Term kem runtime adv.toANO_CCA sim false ≤ sprFalse) :
+    ANO_CCA_Advantage kem runtime adv.toANO_CCA ≤ sprTrue + sprFalse := by
+```
+
+:::details[proof]
+
+```lean
+  -- Local SPMF-level commutation of independent draws (`bind_swap`), proved by
+  -- pointwise `probOutput_bind_bind_swap` exactly as in VCVio's KEMDEM proof.
+  have bind_swap : ∀ {α β γ : Type} (mx : SPMF α) (my : SPMF β)
+      (f : α → β → SPMF γ),
+      (mx >>= fun a => my >>= fun b => f a b) =
+        (my >>= fun b => mx >>= fun a => f a b) := by
+    intro α β γ mx my f
+    ext x
+    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
+  have hite_false : (false : Bool) = true ↔ False := ⟨Bool.noConfusion, False.elim⟩
+  have hite_true : (true : Bool) = true ↔ True := ⟨fun _ => trivial, fun _ => rfl⟩
+  -- Fairness of the runtime coin: it is a uniform `Bool` sample observed via `𝒟`.
+  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
+      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+    constructor
+    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
+          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
+          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+  -- The hidden-bit decomposition, packaged for arbitrary branch SPMFs.
+  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
+      Pr[= true | Y] + Pr[= false | Y] = 1 →
+      (𝒟[uniformSample Bool] >>= fun b =>
+          (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
+        SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
+    SPMF.boolBiasAdvantage_eq_boolDistAdvantage_coin_branch (𝒟[uniformSample Bool]) X Y
+      hcoin.1 hcoin.2 hX hY
+  -- Stage 1: the hidden-bit ANO-CCA game of the lift is the fair-coin branch
+  -- over the two fixed branches, with the coin drawn first. Both sides of each
+  -- branch are the same computation, because the game's adversary is exactly
+  -- the lift `adv.toANO_CCA` whose phases the branch experiments re-run.
+  have hgame : ANO_CCA_Game kem runtime adv.toANO_CCA =
+      𝒟[uniformSample Bool] >>= fun b =>
+        (if b then ANO_CCA_Branch kem runtime adv.toANO_CCA true
+              else ANO_CCA_Branch kem runtime adv.toANO_CCA false) >>=
+          fun z => pure (b == z) := by
+    simp only [ANO_CCA_Game, ANO_CCA_Branch, ANO_Adversary.toANO_CCA,
+      heval_bind, heval_pure, heval_liftProbComp]
+    simp_rw [bind_swap (my := 𝒟[uniformSample Bool])]
+    congr 1
+    funext b
+    cases b
+    · simp only [hite_false, ite_false, bind_assoc]
+    · simp only [ite_true, bind_assoc]
+  -- Stage 2: the bias of the hidden-bit game is the distinguishing advantage
+  -- between the branches; totality of each branch is `hnf` at the branch
+  -- experiment (`ANO_CCA_Branch … b` is `runtime.evalDist` of an
+  -- `OracleComp spec Bool` computation).
+  have h_cca : ANO_CCA_Advantage kem runtime adv.toANO_CCA =
+      SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+        (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := by
+    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA true] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA true] = 1 :=
+      hnf _
+    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA false] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA false] = 1 :=
+      hnf _
+    change (ANO_CCA_Game kem runtime adv.toANO_CCA).boolBiasAdvantage = _
+    rw [hgame, coin_branch _ _ htotT htotF]
+  -- Stage 3: branch-wise SPR bounds via the triangle inequality. The `true`
+  -- SPR term is definitionally the `true`-branch-to-simulator advantage; the
+  -- `false` SPR term is the same advantage read on the other argument order.
+  have htriT : SPMF.boolDistAdvantage
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA false) ≤
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim true +
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim false := by
+    have h := SPMF.boolDistAdvantage_triangle (ANO_CCA_Branch kem runtime
+      adv.toANO_CCA true) (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim)
+      (ANO_CCA_Branch kem runtime adv.toANO_CCA false)
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+        (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim) =
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim true from rfl] at h
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv.toANO_CCA sim)
+        (ANO_CCA_Branch kem runtime adv.toANO_CCA false) =
+      ANO_SPR_Term kem runtime adv.toANO_CCA sim false from by
+      unfold ANO_SPR_Term
+      exact abs_sub_comm _ _] at h
+    exact h
+  calc ANO_CCA_Advantage kem runtime adv.toANO_CCA
+      = SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
+          (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := h_cca
+    _ ≤ ANO_SPR_Term kem runtime adv.toANO_CCA sim true +
+        ANO_SPR_Term kem runtime adv.toANO_CCA sim false := htriT
+    _ ≤ sprTrue + sprFalse := add_le_add hT hF
+```
+
+:::
+
+[`KEMAnonymity.lean:384-494 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L384-L494)
+
+## `ANO_CCA_Advantage_le_of_spr_full`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
+    [IsUniformSpec spec]
+    {K PK SK C : Type} [DecidableEq C]
+    (kem : KEMScheme (OracleComp spec) K PK SK C)
+    (runtime : ProbCompRuntime (OracleComp spec))
+    (adv : ANO_CCA_Adversary spec PK C K)
+    (sim : ProbComp C)
+    (heval_pure : ∀ {α : Type} (a : α),
+      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+      (f : α → OracleComp spec β),
+      runtime.evalDist (mx >>= f) =
+        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+      runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
+    (hnf : ∀ (mx : OracleComp spec Bool),
+      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+    {sprTrue sprFalse : ℝ}
+    (hT : ANO_SPR_Term kem runtime adv sim true ≤ sprTrue)
+    (hF : ANO_SPR_Term kem runtime adv sim false ≤ sprFalse) :
+    ANO_CCA_Advantage kem runtime adv ≤ sprTrue + sprFalse := by
+```
+
+:::details[proof]
+
+```lean
+  have bind_swap : ∀ {α β γ : Type} (mx : SPMF α) (my : SPMF β)
+      (f : α → β → SPMF γ),
+      (mx >>= fun a => my >>= fun b => f a b) =
+        (my >>= fun b => mx >>= fun a => f a b) := by
+    intro α β γ mx my f
+    ext x
+    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
+  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
+      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+    constructor
+    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
+          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
+          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+        show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
+      norm_num
+  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
+      Pr[= true | Y] + Pr[= false | Y] = 1 →
+      (𝒟[uniformSample Bool] >>= fun b =>
+          (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
+        SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
+    SPMF.boolBiasAdvantage_eq_boolDistAdvantage_coin_branch (𝒟[uniformSample Bool]) X Y
+      hcoin.1 hcoin.2 hX hY
+  have hgame : ANO_CCA_Game kem runtime adv =
+      𝒟[uniformSample Bool] >>= fun b =>
+        (if b then ANO_CCA_Branch kem runtime adv true
+              else ANO_CCA_Branch kem runtime adv false) >>=
+          fun z => pure (b == z) := by
+    have hite_false : (false : Bool) = true ↔ False := ⟨Bool.noConfusion, False.elim⟩
+    simp only [ANO_CCA_Game, ANO_CCA_Branch, heval_bind, heval_pure,
+      heval_liftProbComp]
+    simp_rw [bind_swap (my := 𝒟[uniformSample Bool])]
+    congr 1
+    funext b
+    cases b
+    · simp only [hite_false, ite_false, bind_assoc]
+    · simp only [ite_true, bind_assoc]
+  have h_cca : ANO_CCA_Advantage kem runtime adv =
+      SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+        (ANO_CCA_Branch kem runtime adv false) := by
+    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv true] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv true] = 1 :=
+      hnf _
+    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv false] +
+        Pr[= false | ANO_CCA_Branch kem runtime adv false] = 1 :=
+      hnf _
+    change (ANO_CCA_Game kem runtime adv).boolBiasAdvantage = _
+    rw [hgame, coin_branch _ _ htotT htotF]
+  have htriT : SPMF.boolDistAdvantage
+      (ANO_CCA_Branch kem runtime adv true)
+      (ANO_CCA_Branch kem runtime adv false) ≤
+      ANO_SPR_Term kem runtime adv sim true +
+      ANO_SPR_Term kem runtime adv sim false := by
+    have h := SPMF.boolDistAdvantage_triangle (ANO_CCA_Branch kem runtime adv true)
+      (ANO_CCA_SimBranch kem runtime adv sim)
+      (ANO_CCA_Branch kem runtime adv false)
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+        (ANO_CCA_SimBranch kem runtime adv sim) =
+      ANO_SPR_Term kem runtime adv sim true from rfl] at h
+    rw [show SPMF.boolDistAdvantage (ANO_CCA_SimBranch kem runtime adv sim)
+        (ANO_CCA_Branch kem runtime adv false) =
+      ANO_SPR_Term kem runtime adv sim false from by
+      unfold ANO_SPR_Term
+      exact abs_sub_comm _ _] at h
+    exact h
+  calc ANO_CCA_Advantage kem runtime adv
+      = SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
+          (ANO_CCA_Branch kem runtime adv false) := h_cca
+    _ ≤ ANO_SPR_Term kem runtime adv sim true +
+        ANO_SPR_Term kem runtime adv sim false := htriT
+    _ ≤ sprTrue + sprFalse := add_le_add hT hF
+```
+
+:::
+
+[`KEMAnonymity.lean:511-605 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L511-L605)
+
+### Recipient anonymity as a security game
 
 ## `StealthScheme.ofKEM`
 
@@ -173,7 +720,7 @@ def StealthScheme.ofKEM (kem : KEM PK SK C K) : StealthScheme PK SK C where
 
 ```
 
-[`KEMAnonymity.lean:112-120 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L112-L120)
+[`KEMAnonymity.lean:617-625 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L617-L625)
 
 ## `unlinkAdvantage_ofKEM_eq_anonAdvantage`
 
@@ -197,7 +744,7 @@ theorem unlinkAdvantage_ofKEM_eq_anonAdvantage
 
 :::
 
-[`KEMAnonymity.lean:124-132 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L124-L132)
+[`KEMAnonymity.lean:629-637 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L629-L637)
 
 ### The KEM-based stealth scheme and the reduction
 
@@ -222,7 +769,7 @@ def StealthScheme.ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
 
 ```
 
-[`KEMAnonymity.lean:145-156 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L145-L156)
+[`KEMAnonymity.lean:650-661 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L650-L661)
 
 ## `perfectlyComplete_ofKEMFull`
 
@@ -255,7 +802,7 @@ theorem perfectlyComplete_ofKEMFull [DecidableEq K] [DecidableEq Aux]
 
 :::
 
-[`KEMAnonymity.lean:160-177 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L160-L177)
+[`KEMAnonymity.lean:665-682 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L665-L682)
 
 ## `unlinkSetup_ofKEMFull`
 
@@ -274,7 +821,7 @@ theorem unlinkSetup_ofKEMFull [DecidableEq Aux] (kem : KEM PK SK C K)
 
 :::
 
-[`KEMAnonymity.lean:180-185 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L180-L185)
+[`KEMAnonymity.lean:685-690 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L685-L690)
 
 ## `StealthScheme.UnlinkAdv.cipherOf`
 
@@ -292,7 +839,7 @@ def StealthScheme.UnlinkAdv.cipherOf
 
 ```
 
-[`KEMAnonymity.lean:191-197 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L191-L197)
+[`KEMAnonymity.lean:696-702 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L696-L702)
 
 ## `randAuxBranch`
 
@@ -307,7 +854,7 @@ def randAuxBranch (b : Bool) (a : PK × PK) : ProbComp Bool := do
 
 ```
 
-[`KEMAnonymity.lean:203-207 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L203-L207)
+[`KEMAnonymity.lean:708-712 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L708-L712)
 
 ## `randAuxBranch_false`
 
@@ -317,7 +864,7 @@ theorem randAuxBranch_false :
 
 ```
 
-[`KEMAnonymity.lean:211-213 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L211-L213)
+[`KEMAnonymity.lean:716-718 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L716-L718)
 
 ## `sharedSecretHiding`
 
@@ -334,7 +881,7 @@ noncomputable def sharedSecretHiding (b : Bool) : ℝ :=
 
 ```
 
-[`KEMAnonymity.lean:219-224 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L219-L224)
+[`KEMAnonymity.lean:724-729 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L724-L729)
 
 ## `auxKeyIndependence`
 
@@ -346,7 +893,7 @@ noncomputable def auxKeyIndependence : ℝ :=
 
 ```
 
-[`KEMAnonymity.lean:228-232 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L228-L232)
+[`KEMAnonymity.lean:733-737 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L733-L737)
 
 ## `unlinkAdvantage_ofKEMFull_le`
 
@@ -396,8 +943,134 @@ theorem unlinkAdvantage_ofKEMFull_le :
     _ = Pt.boolDistAdvantage Mt + Mt.boolDistAdvantage Qt
           + Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf := by
         ring
+
 ```
 
 :::
 
-[`KEMAnonymity.lean:236-274 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L236-L274)
+[`KEMAnonymity.lean:741-780 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L741-L780)
+
+### Folding in the view tag and stealth address
+
+## `neverFail_of_unifSpec`
+
+Uniform-spec `OracleComp` computations never fail: a pure return is
+total, a query's distribution is a total `PMF.uniformOfFintype`, and
+`NeverFail.bind_of_mem_support` propagates totality through the bind.
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [IsUniformSpec spec]
+    {α : Type} (oa : OracleComp spec α) : NeverFail oa := by
+```
+
+:::details[proof]
+
+```lean
+  induction oa using OracleComp.inductionOn with
+  | pure a => exact inferInstance
+  | query_bind t oa ih =>
+      have hq : ∀ x ∈ support (spec.query t : OracleComp spec _), NeverFail (oa x) := by
+        intro x _
+        exact ih x
+      exact NeverFail.bind_of_mem_support (hx := by
+        constructor
+        simp [probFailure, evalDist_query]) hq
+```
+
+:::
+
+[`KEMAnonymity.lean:794-805 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L794-L805)
+
+## `probComp_hnf`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probComp_hnf : ∀ (mx : OracleComp unifSpec Bool),
+    Pr[= true | ProbCompRuntime.probComp.evalDist mx] +
+      Pr[= false | ProbCompRuntime.probComp.evalDist mx] = 1 := by
+```
+
+:::details[proof]
+
+```lean
+  intro mx
+  have h0 : NeverFail mx := neverFail_of_unifSpec mx
+  have h2 : Pr[= true | mx] + Pr[= false | mx] = 1 - Pr[⊥ | mx] :=
+    probOutput_true_add_false mx (m := ProbComp)
+  have h3 : Pr[⊥ | mx] = 0 := h0.probFailure_eq_zero
+  have h4 : (1 : ENNReal) - 0 = 1 := by norm_num
+  rw [h3, h4] at h2
+  exact h2
+```
+
+:::
+
+[`KEMAnonymity.lean:807-818 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L807-L818)
+
+## `probComp_heval_pure`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probComp_heval_pure : ∀ {α : Type} (a : α),
+    ProbCompRuntime.probComp.evalDist (pure a : OracleComp unifSpec α) = pure a := by
+```
+
+:::details[proof]
+
+```lean
+  intro α a
+  show liftM (pure a : OracleComp unifSpec α) = pure a
+  exact evalDist_pure a
+```
+
+:::
+
+[`KEMAnonymity.lean:821-826 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L821-L826)
+
+## `probComp_heval_bind`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probComp_heval_bind : ∀ {α β : Type} (mx : OracleComp unifSpec α)
+    (f : α → OracleComp unifSpec β),
+    ProbCompRuntime.probComp.evalDist (mx >>= f) =
+      ProbCompRuntime.probComp.evalDist mx >>= fun a => ProbCompRuntime.probComp.evalDist (f a) := by
+```
+
+:::details[proof]
+
+```lean
+  intro α β mx f
+  show liftM (mx >>= f) = liftM mx >>= fun a => liftM (f a)
+  exact evalDist_bind mx f
+```
+
+:::
+
+[`KEMAnonymity.lean:828-835 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L828-L835)
+
+## `probComp_heval_liftProbComp`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem probComp_heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+    ProbCompRuntime.probComp.evalDist (ProbCompRuntime.probComp.liftProbComp pc) = 𝒟[pc] := by
+```
+
+:::details[proof]
+
+```lean
+  intro α pc
+  show liftM (pc : OracleComp unifSpec α) = 𝒟[pc]
+  rfl
+```
+
+:::
+
+[`KEMAnonymity.lean:838-842 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/KEMAnonymity.lean#L838-L842)

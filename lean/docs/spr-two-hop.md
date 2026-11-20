@@ -65,8 +65,14 @@ Both hops land on VCVio's `LearningWithErrors.advantage`.
 
 ### Caveats for the analysis
 
-* This is the **CPA-level** statement. Lifting it to ANO-CCA must track ML-KEM's
-  implicit-rejection Fujisaki–Okamoto transform (Maram–Xagawa).
+* This is the **CPA-level** statement. The lift to a decap-*querying* adversary
+  is now `KEM.ANO_CCA_Advantage_le_of_spr_full` (`KEMAnonymity.lean`) with the
+  concrete instance `mlkem768_ANO_CCA_Advantage_le_sprTerms` (`SPRTwoHop.lean`);
+  what it consumes is exactly the two per-branch SPR terms computed here, so the
+  residual is this file's named terms, not a new game. The FO/implicit-rejection
+  subtlety (Maram–Xagawa's counterexample to a naive `ANO-CCA ≤ ANO-CPA + ε`) is
+  why the lift carries a key-independent simulator and a bad event rather than a
+  black-box FO step — see `fo-anonymity-lift.md`.
 * FIPS 203's final KDF hashes only the message-derived secret and does **not**
   hash the ciphertext. That is what makes the modular route applicable; a
   ciphertext-hashing KDF would need a different argument.
@@ -211,18 +217,29 @@ IND-CPA advantage; the anonymity term is the one link neither VCVio nor FIPS
   takes its simulator as an explicit argument rather than as a uniform sample
   over the ciphertext type.
 
-### The simulator: uniform FIPS 203 ciphertext bytes
+### The simulator: compressed-uniform, not uniform bytes
 
-`mlkem768UniformCiphertext` is uniform over the fixed-length byte strings of
-the FIPS 203 ciphertext layout: `32 · du · k = 960` bytes of `u` followed by
-`32 · dv = 128` bytes of `v`, 1088 bytes in total. That is the distribution the
-SPR literature means by "uniform ciphertext bytes", and it is a *sharper*
-simulator than uniform-over-the-encoded-type would be, since the latter would
-range over byte arrays of every length — its support is a strict subset of the
-encoded type, which is all of `ByteArray × ByteArray`.
+Two key-independent simulators exist in `MLKEM.lean`, and only one is admissible.
+
+`mlkem768CompressedUniformCiphertext` (= `randCt mlkem768Encoding`) is the one
+every capstone uses. It draws uniform `(u, v)` in `R_q^k × R_q` and applies FIPS
+203's own `compressDU`/`compressDV` then byte encoding, which is exactly the
+distribution of the last idealized game — so its encoding residual is *zero*.
+
+`mlkem768UniformCiphertext` is uniform over the fixed-length byte strings of the
+FIPS 203 layout: `32 · du · k = 960` bytes of `u` followed by `32 · dv = 128`
+bytes of `v`, 1088 bytes in total. That is what the SPR literature means by
+"uniform ciphertext bytes", and it is a *sharper* simulator than
+uniform-over-the-encoded-type would be, since the latter ranges over byte arrays
+of every length. It is nevertheless **inadmissible here**: it sits at total
+variation `0.9262656353` from the honest compressed-ciphertext distribution (see
+`The SPR route` below for the arithmetic). It is retained only as the object
+that fact is stated about.
 
 `size_uEncoded_encrypt_mlkem768` checks the `u` half of that layout against
-what honest K-PKE encryption actually emits.
+what honest K-PKE encryption actually emits. The layout fact is still needed:
+it is what makes the 960/128 split of the uniform-byte simulator well defined,
+and what the `0.9262656353` figure is computed over.
 
 **Documented gap:** the matching `v`-half check is not machine-checked. VCVio
 proves it (`byteEncode_size`,
@@ -260,7 +277,8 @@ KEM.sprAdv (asKEMScheme ring encoding prims) sim adv b
 
 `sprAdv_le_two_hop_decomposition` is the generic statement;
 `mlkem768_sprAdv_le_two_hop_decomposition` is it at `mlkem768KEM` and
-`mlkem768UniformCiphertext`, with no instance hypotheses left open — so it plugs
+`mlkem768CompressedUniformCiphertext` (not the uniform-byte simulator — see
+`## The simulator` below), with no instance hypotheses left open, so it plugs
 straight into the SPR terms of
 `mlkem768_unlinkAdvantage_le_full_decomposition`. Neither name claims
 `SPR ≤ 2·MLWE`: the bound has four terms, two of which are not lattice terms.
@@ -351,15 +369,73 @@ nothing but the primitive idealization.
 simulated branch. `simulatorGap_le` splits it, by one triangle inequality, into
 
 * `encodingRegularity` — `compressDU`/`compressDV` followed by `byteEncodeDUVec`
-  / `byteEncodeDV` applied to *uniform ring elements*, against `sim` (for
-  ML-KEM-768, uniform 1088 FIPS 203 bytes). This is a regularity property of the
-  concrete encoding, it is **not** in `Encoding.Laws`, and stating it needs the
-  `private` `byteEncode_size` discussed above. Compression is lossy, so this is
-  a genuine statistical claim, not a bijection argument.
+  / `byteEncodeDV` applied to *uniform ring elements*, against `sim`. For
+  ML-KEM-768 it is not a small gap against uniform 1088-byte output. The
+  arithmetic matters, because the conclusion is that a uniform-byte simulator
+  is **not admissible at all**, not merely loose.
+
+  `Compress₁₀ : ZMod 3329 → ZMod 1024` and `3329 = 3·1024 + 257`, so 257 output
+  values have four preimages and 767 have three. A uniform coefficient lands on
+  a four-preimage output with probability `1028/3329 ≈ 0.3088` instead of
+  `257/1024 ≈ 0.250977`. One coefficient's total-variation distance from uniform
+  10-bit output is `197119/3408896 ≈ 0.0578248794`; over the 768 independent `u`
+  coefficients it is `0.9262656353`, the exact product distance computed by
+  binning on the number of four-preimage coordinates. The `v` half adds
+  `0.0073880701` (256 coefficients at `dv = 4`, preimage counts 209 and 208), so
+  the whole 1 088-byte ciphertext sits at `0.9262656353` from the honest
+  compressed distribution. The residual is a **constant**: no theorem of the
+  form `SPR ≤ MLWE + negligible` can hold with that simulator.
+
+  `scripts/check_simulator_distances.py` recomputes every figure above from the
+  compression definition and fails CI if any drifts from the values quoted
+  here, in `MLKEM.lean`, or in the review package.
+
+  The same trap applies to scheme 3's `epk`. A 33-byte SEC1-compressed
+  secp256k1 point is one of `2^264` 33-byte strings, but only `p − 1` decode:
+  two parity tags per on-curve x-coordinate, and `x³ + 7 = 0` has no solution
+  mod `p`, so no x contributes both. A uniform-33-byte `epk` simulator is
+  therefore at `1 − (p−1)/2^264 = 255/256 ≈ 0.99609375` — it fails to parse 255
+  times out of 256. Scheme 3's ECDH leg must be simulated with a *real curve
+  point* (free, since an honestly generated `epk` is recipient-independent),
+  never with uniform bytes. Same class of error, 256 times more violent;
+  `docs/research/xwing-hybrid-kem.md` records the X-Wing instance.
+
 * `keyRestoration` — putting the honest key distribution back once the challenge
   ciphertext is key-independent. Bounded by the same primitive-idealization and
   key-hop content applied to a ciphertext-blind distinguisher; naming it
   separately keeps the encoding claim clean.
+
+`keyRestoration` is no longer an opaque epsilon in the strongest in-tree
+statement. `keyRestorationAdv` is a third explicit seeded-MLWE adversary, and
+`keyRestoration_le_mlwe_add_keyIdealization` proves its bound by that advantage
+plus `keyIdealization`. Consequently `sprAdv_le_three_mlwe` and its
+ML-KEM-768 specialization `mlkem768_sprAdv_le_three_mlwe_compressed` state:
+
+```text
+SPR ≤ ε_prim + MLWE_key + MLWE_ciphertext
+      + ε_encoding + MLWE_restore + ε_key-idealization.
+```
+
+This is not a two-MLWE theorem: the three epsilon terms retain exactly the
+non-lattice claims that still require a ROM/PRF or encoding argument.
+
+`mlkem768CompressedUniformCiphertext` is the simulator every ML-KEM-768
+capstone now uses — it is the final ideal game's own `randCt` distribution.
+`encodingRegularity_mlkem768CompressedUniformCiphertext` proves the resulting
+encoding term is exactly zero, and
+`mlkem768_sprAdv_le_three_mlwe_compressed` removes `ε_encoding` from the
+concrete ML-KEM-768 bound.
+
+There is deliberately no `mlkem768_sprAdv_le_three_mlwe` (the uniform-byte
+specialization): with the constant encoding residual above it could only be
+instantiated at `ε_encoding ≥ Θ(1)`, which states nothing. `mlkem768UniformCiphertext`
+survives in `MLKEM.lean` purely so that its inadmissibility is documented next
+to the definition.
+
+
+`sprAdv_le_three_mlwe_hypotheses_inhabited` also witnesses that the generic
+conditional theorem is non-vacuous: each residual bound can be the maximum of
+its two Boolean-branch distances.
 
 **Implicit rejection is irrelevant here.** SPR is a CPA-level notion: the
 distinguisher gets two public keys and one ciphertext and no decapsulation
@@ -367,9 +443,15 @@ oracle, so `decapsInternal`, `jReject` and the `c = c'` re-encryption check neve
 appear in any game of the chain. The implicit-rejection caveat belongs to the
 ANO-CCA lift (Maram–Xagawa), not to this file.
 
-**Not attempted:** chaining `mlkem768_sprAdv_le_two_hop_decomposition` into
-`mlkem768_unlinkAdvantage_le_full_decomposition`. It is one `calc` over
-`gcongr`, but would produce an eight-term inequality; the two statements compose
-by hand. Issue #7's acceptance also asks for the "remaining lattice step"
-paragraph of `AnonymityFromSPR.lean`'s module docstring to be rewritten to point
-here — that file belongs to another work item and is left untouched.
+`ClosedUnlinkability.lean` proves the full composition:
+`mlkem768_unlinkAdvantage_le_three_mlwe_compressed` chains the per-branch
+SPR bound into `unlinkAdvantage_ofKEMFull_le_full_decomposition` against the
+compressed-uniform simulator, so the ML-KEM-768 stealth unlinkability advantage
+is bounded by the two hiding terms, key independence, both named
+idealizations, and six seeded-MLWE advantages (keyHopAdv/ctHopAdv per branch,
+keyRestorationAdv per restoration). The encoding term vanishes by
+`encodingRegularity_mlkem768CompressedUniformCiphertext`.
+
+`Scheme3.scheme3_unlinkAdvantage_le_of_sprTerms` is the ERC-8441 scheme-3
+instance of the same shape: the four-term unlinkability bound with the
+anonymity slot replaced by the SPR-decomposed form above.
