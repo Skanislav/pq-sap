@@ -4,7 +4,8 @@ Reading guide (2026-09-14): D-024/D-025 define the current key-exchange focus.
 Earlier entries preserve dated research decisions and measurements. The
 [current technical reference](TECHNICAL_SPEC.md) and [ERC evidence](ERC_EVIDENCE.md)
 separate those from spending/tooling work. Detailed former technical sections
-are retained in [Construction A](construction-a.md).
+are retained in [Construction A](construction-a.md). The cohort's end-of-work
+revision of the proposal, and the closure of its spend stretch goal, are D-034.
 
 Locked decisions and empirical findings for the post-quantum ERC-5564 stealth
 address project. Each entry is dated and states the rationale so the reasoning
@@ -137,11 +138,18 @@ The spec ships two variants, not one, each honest about what it protects:
 |---|---|---|---|---|
 | PQ-detect / classical-spend (pq-sap v1) | ML-KEM | secp256k1 EOA | cheap, today | privacy (HNDL) |
 | Full PQ (construction A) | ML-KEM | blinded ML-DSA + 4337 | ~6M deploy + ~8M verify | privacy + long-term funds |
-| (Direction A) PQ-detect / ZK-spend | ML-KEM | ZK ownership proof | ~300k verify (classical) | privacy; funds until QC |
+| ~~(Direction A) PQ-detect / ZK-spend~~ — **retired**, see below | ML-KEM | ZK ownership proof | ~300k verify (classical) | privacy; funds until QC |
 
 Given D-001, the **PQ-detect core is the urgent, differentiated deliverable**; the
 spend-side variants are future-proofing that ride the account-abstraction rails the EF
 is building (D-002).
+
+*Status (2026-10-29).* The third row is **retired**, not a live option: after D-024 the
+address form is the commitment meta-address and the spend proof is whatever the account
+bound to the commitment accepts, and D-025's browser preimage proof is explicitly not
+PQ-sound. The C13 commit route (D-018) and the ML-DSA-44 committed-key route (D-027)
+replaced it; `docs/SPENDING_RESEARCH.md` is the current map. D-024's format `0x02` also
+supersedes this entry's "two variants" framing on the spend axis.
 
 ## D-010 — Three algebra invariants machine-checked (Lean items 1–3) — **FINDING**
 
@@ -253,19 +261,33 @@ adversaries), `MLKEMInstance` (bridge to VCVio's concrete ML-KEM),
 `AnonymityFromSPR` (SPR games + full decomposition capstone),
 `Ownership` (spend forgery as VCVio `SIS.Problem`, honest-witness validity).
 
+**Update (2026-08-26).** The game layer expanded from the original five
+modules to 18 content modules plus the root and `Axioms.lean`; `lake build`
+green and sorry-free. That round added `MultiUnlink`, `MultiRecipient`,
+`KEMAnonymity`, `ConstructionA`, `BlindingROM`, `ROMUpToBad`,
+`SharedSecretHiding`, `AnonymityFromSPR`, `MLKEM`, `SPRTwoHop`, `Ownership`,
+`Soundness`, `DKSAPOracle`, `Controls` and `Demo`, and the renamed theorems.
+A `sorry` under any headline theorem's dependency cone turns the axiom guard
+into a compile error. A full module map and the iteration queue live in
+`docs/lean-iterations.md`.
+
 **Update (2026-08-27).** Added `Soundness.UniformCoordinate` with `card_fiber_eval'`
 and `probOutput_map_get_uniformSample_vector`: a coordinate projection of a uniform
 vector is uniform, giving a generic `1/|α|` view-tag fallback when the tag is a direct
-function of a vector-shaped shared secret. `Axioms.lean` now freezes **118**
-`#print axioms` blocks. Full `lake build` remains green and sorry-free.
+function of a vector-shaped shared secret. `Axioms.lean` froze **118**
+`#print axioms` blocks at that point. Full `lake build` green and sorry-free.
 
-**Update (2026-08-26).** The game layer expanded from the original five
-modules to 18 content modules plus the root and `Axioms.lean`. The full
-`lake build` remains green and sorry-free. `PqStealth/Axioms.lean` now
-freezes **114** `#print axioms` blocks (up from 95 after round 3/4 added
-`MultiUnlink`, `MultiRecipient`, `KEMAnonymity`, `ConstructionA`,
-
-**Update (2026-09-01).** Closed the four remaining Construction A gaps: widened-signature leakage (`WidenedSigning.lean`, acceptance probability `(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash (`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`); SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a separate literature note); and related-key spend extraction (`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-021 selecting Construction A and rejecting Construction B for the ERC-5564 sender-address flow. The headline theorems intentionally carry `sorryAx` for the proof obligations scheduled in `docs/construction-a-security.md`; `#print axioms` guards in `Axioms.lean` are updated to expect it.
+**Update (2026-09-01).** Closed the four remaining Construction A gaps:
+widened-signature leakage (`WidenedSigning.lean`, acceptance probability
+`(1047791/1048576)^1280` for ML-DSA-65); ROM bad-query bound for the address hash
+(`BlindingROM.lean` + `BlindingEntropy.lean`, `blindBadProb_le_queryBound`);
+SPR-to-MLWE/ANO-CCA (`SPRTwoHop.lean`, `sprAdv_le_mlwe` with three named
+seeded-MLWE advantages plus `epsilonPrim`/`epsilonEnc`, and ANO-CCA kept as a
+separate literature note); and related-key spend extraction
+(`SpendSecurity.lean`, `ConstructionASecurity.lean`). Added D-021 selecting
+Construction A and rejecting Construction B for the ERC-5564 sender-address
+flow. The headline theorems temporarily carried `sorryAx` for the proof
+obligations scheduled in `docs/lean-iterations.md`.
 
 **Update (2026-09-02).** All of those obligations are discharged; `lean/PqStealth/` is sorry-free
 again and every new theorem is guarded. Along the way several of the frozen statements turned out
@@ -277,12 +299,11 @@ proven `q`-fold offset-subtraction reduction), the ROM bad-query bound had no qu
 adversary, and the ML-DSA point-mass bound was unprovable for an opaque `Prims`. See
 `docs/construction-a-security.md` for the current statements and their hypotheses.
 
-`BlindingROM`, `ROMUpToBad`, `SharedSecretHiding`, `AnonymityFromSPR`,
-`MLKEM`, `SPRTwoHop`, `Ownership`, `Soundness`, `DKSAPOracle`, `Controls`,
-`Demo`, and the renamed theorems). The build is the guard: a `sorry`
-under any headline theorem's dependency cone turns the axiom mismatch into
-a compile error. A full module map and the iteration queue live in
-`docs/lean-iterations.md`.
+**Current guard count (2026-10-29).** `Axioms.lean` freezes **154**
+`#guard_msgs … in #print axioms …` blocks (counted: 154 lines; the file's 155th
+`#guard_msgs` is the module-docstring mention). The counts in the dated updates above
+are the totals at that date; the file is the ground truth and `lake build` is the
+check that they all still pass.
 
 ## D-014 — Spend and registry authentication standardize on ERC-7913 signers — **LOCKED (interim; re-scoped by D-020)**
 
@@ -679,7 +700,18 @@ expose type `0x06`.
 ## D-011 — On-chain cost is data, not compute; announce hits the EIP-7623 floor — **FINDING**
 
 Cost model in `python/benchmarks/onchain_cost.py`, anchored to the measured
-67,580-gas Sepolia-fork announcement and reproducing it **to the gas (0.00%)**.
+67,580-gas Sepolia-fork announcement and reproducing it to **0.04%** (see the
+provenance correction below).
+
+*(Provenance correction, 2026-10-29.)* The 67,580 measurement stands, at scheme
+ID `2`. Re-run on today's committed vectors the model gives **67,550** (−0.04%):
+the residual is the zero/nonzero byte split of the encoded arguments, so the
+model is anchored to 0.04%, not exact. The same re-run showed `announce_dksap`
+had been reporting the PQ row's measurement as its own (`measured_gas` 67,580,
+`error_pct` −59.54) because the field was set unconditionally; DKSAP is
+**modelled only** and now records `null`. The finding in this entry — the floor
+binds, PQ is 2.5× DKSAP on L1 — is unaffected. See
+[stretch-goal report](research/stretch-goal-report.md) §6.
 
 - **The announce tx pays the EIP-7623 calldata floor.** Its exact
   `announce(uint256,address,bytes,bytes)` calldata is 1,316 B → 4,658 tokens;
@@ -722,7 +754,7 @@ result. We measure against DKSAP everywhere (scanning `scan_bench.py`, on-chain
 
 - Security analysis of construction A (widened-`z` leakage; unlinkability;
   the Dilithium-like signature-of-knowledge in D-008). Fellow A's core work.
-- Spec freeze + ERC draft + declared scheme ID `2` (placeholder `0x5567` retired).
+- Spec freeze + ERC draft + declared scheme ID `2`.
 - Cost report: **L2 pricing + ~5.6 kB meta-address story DONE (D-011)**;
   DKSAP is the single EC baseline (Curvy dropped, D-011).
 - NTT-domain + negacyclic + centered-range version of the ownership circuit.
@@ -891,7 +923,7 @@ only the shared secret and a deployment binding (factory, creation code,
 constructor args); the scanner needs the viewing key. The derivation is
 byte-identical to the deployed C13 commit signer and the D-023 ZK circuit
 (checked against the fixture), so the live `Stealth8141ZkFactory` accepts it
-unchanged, and the Lean roundtrip `meta_address_zk_roundtrips_1217`
+unchanged, and the Lean roundtrip `meta_address_commit_roundtrips_1217`
 (`Invariants.lean`) already covers the encoding.
 
 **What changes.** The meta-address shrinks 5,633 → 1,217 B (4.6×): the
@@ -1187,8 +1219,11 @@ separated from the spend side (accounts, verifiers, factories):
 - a write-once, index-referenced registry of encapsulation keys (SSTORE2,
   typed by length). **This is an implementation experiment, not part of the
   proposal**: meta-address distribution and the ERC-6538 registry are out of
-  the ERC's scope (D-014 scope update, 2026-09-28; issue #36). It stays
-  because the Lean model covers it and nothing else depends on it.
+  the ERC's scope (D-014 scope update, 2026-09-28; issue #36). It stays only
+  as an implementation experiment whose Lean model (`js-client/contracts/lean/`)
+  covers its announce/registry theorems; **that model is not an argument for its
+  inclusion in the proposal** — nothing in the ERC's claim set, vectors, or
+  security analysis depends on it (D-032).
 
 **Reconciliation with D-024 (done).** The record's earlier table followed
 D-017 (`0x01` for Construction A, `0x02` for the X-Wing hybrid) and rejected
@@ -1547,7 +1582,7 @@ which is line drift from this branch's own additions, not a spec change. The
 `ui/package-lock.json` lockfile churn is pre-existing workspace state,
 untouched by this work.
 
-## D-033 — Scheme-3 wire-format and fail-closed-scanning invariants machine-checked unconditionally; agreement/completeness ride the existing correctness theorems — **Lean (2026-10-17)**
+## D-034 — Scheme-3 wire-format and fail-closed-scanning invariants machine-checked unconditionally; agreement/completeness ride the existing correctness theorems — **Lean (2026-10-17)**
 
 Following D-032 (the anonymity *assumption*), this entry records the
 *unconditional* invariants — facts true by construction, no cryptographic
@@ -1595,7 +1630,7 @@ reports 6 rows, 0 mismatches — this entry changes no byte size — and
 `check_citations.py` is clean after the D-032 refresh noted above. The
 `ui/package-lock.json` churn is pre-existing and untouched.
 
-## D-034 — A uniform 1,088-byte ciphertext simulator is inadmissible for ML-KEM-768: the encoding residual is a constant, so every capstone now uses the compressed-uniform simulator — **FINDING / Lean (2026-10-28)**
+## D-035 — A uniform 1,088-byte ciphertext simulator is inadmissible for ML-KEM-768: the encoding residual is a constant, so every capstone now uses the compressed-uniform simulator — **FINDING / Lean (2026-10-28)**
 
 The SPR route needs a *key-independent* ciphertext simulator, and the textbook
 pick — uniform over the FIPS 203 ciphertext layout — was used by the ML-KEM-768
@@ -1670,3 +1705,210 @@ ruled out on paper with a two-line argument.
 Verification: `lake build` green (2886 jobs), axiom audit clean, no `sorryAx`;
 `check_citations.py` 35 citations / 0 problems; `check_sizes.py` 6 rows /
 0 mismatches; `check_simulator_distances.py` 21 checks / 0 failures.
+
+## D-036 — ERC-8441 stays outside this repository; the repo is the EPF cohort artifact and decision log for our own scheme — **LOCKED (2026-10-28)**
+
+External work converged on the same design space: a stealth-address proposal
+for post-quantum recipients with an ML-KEM-768 (and hybrid) discovery layer. Its
+first public text was the author's draft repository, opened **2026-08-27**; its
+PQ-anonymity design was posted on ethresear.ch on **2026-09-28** (topic 26094 by
+`namnc` — this repository replied the same day), and its ERC text was opened as
+`ethereum/ERCs#2059` on 2026-10-09 and merged as **ERC-8441** on 2026-10-29 —
+concurrent with this work, not earlier than it (see "Not prior art" below). It
+is similar to, and in places ahead of, what this project specifies. It is
+**not** merged into, cited as normative by, or vendored into
+this repository, and it is not a dependency of any implementation here.
+
+**Decision.** This repository stays the record of *our* EPF cohort work: the
+scheme we specify, the vectors it generates, the proofs we checked, the
+decisions we made and the reasons for them. ERC-8441 is at most material for a
+human comparison — never a second scheme compiled, mirrored, or re-exported from
+here.
+
+**Not prior art (user, 2026-10-29; sources verified 2026-10-29).** The claim
+holds, but three public artifacts precede the post that a reader is most likely
+to cite, and the earlier "around 2026-10-01" figure matched none of them:
+
+1. **Public draft repo — 2026-08-27.** `namnc/pq-stealth-scheme3-public` was
+   created `2026-08-27T12:33:38Z`; its first commit (`e6dcba0`,
+   `spec/ERC-VVVV-schemeid3.md`) is `2026-08-30T03:22:05Z`. This is the earliest
+   *public* text of the proposal.
+2. **Design disclosure — 2026-09-28.** "PQ anonymity for Stealth Address
+   Protocol", ethresear.ch topic
+   [26094](https://ethresear.ch/t/pq-anonymity-for-stealth-address-protocol/26094),
+   created `2026-09-28T01:05:52Z` by `namnc`; the sibling spending post (topic
+   26095) is `2026-09-28T01:09:06Z`. This repository replied in that thread the
+   same day (`2026-09-28T08:54:43Z`), and D-029 (2026-09-29) argues against the
+   thread's combiner — the engagement is on our own record, not reconstructed.
+3. **Normative text — 2026-10-09 → 2026-10-29.** Opened as
+   `ethereum/ERCs#2059` on 2026-10-09, Magicians thread
+   ([29923](https://ethereum-magicians.org/t/29923)) the same day, merged as
+   ERC-8441 on 2026-10-29 (commit `4878022`). The frontmatter's `created:
+   2026-08-28` is the authors' self-reported drafting start (consistent with
+   artifact 1), **not** a disclosure date; quote artifact 1 instead.
+
+Every artifact postdates our implementation, vectors, contracts and proofs:
+first commits 2026-08-06/07, JS client 2026-08-14, Lean core 2026-08-17, and the
+target scheme ID `2` chosen 2026-08-26 06:18Z (`c9fc5b9`) — i.e. **~30 h before
+the author's public repo existed**. D-013's game layer is 2026-07-31 and
+D-024's format-`0x02` commitment 2026-09-04. It is therefore a **concurrent**
+design that converged on the same space, not an earlier disclosure we built on
+or failed to precede. Nothing in this repo is derived from it, and no claim of
+priority either way should be read into this record.
+
+**Scope of the claim.** "Not prior art" is about *this repository's* derivation
+history, not a legal priority position. The honest statement is narrow and
+checkable: our scheme-ID-`2` selection (`c9fc5b9`, 2026-08-26 06:18Z) predates
+the author's public repo by ~30 h; the format-`0x02` commitment (D-024) is
+2026-09-04; and the `ml-dsa-44-commit/v0` profile (`f8b0f77`, 2026-09-27
+23:28Z) predates the 09-28 ethresear.ch post (01:05Z) by 1 h 37 min — with the
+post's own first reply from this repository at 08:54Z the same morning. Date a
+specific artifact rather than the project. Quote the dates above; never "around
+October 1".
+
+Concretely:
+
+1. No ERC-8441 modules, pages, or decision records land on `main`. The
+   `feat/erc-8441-scheme3-lean` branch carries that work (hybrid-KEM
+   constructor, scheme-3 wire model, ANO-CCA capstones) and stays out; its
+   `docs/DECISIONS.md` numbers D-036–D-038 are therefore **not** part of this
+   log, and a future merge would have to renumber them against this entry.
+2. Review scratch — notes, PR comment drafts, anonymity supplements under
+   `docs-review-ws/` — is untracked and now gitignored. It is working material
+   for reviewing somebody else's proposal, not an artifact of ours.
+3. The generated proof browser must never publish a module the repository does
+   not contain. `lean/scripts/gen_browser.py` previously only ever added
+   pages, so pages generated on a branch survived its removal and
+   `wiki/scripts/sync.mjs` (which mirrors `lean/docs-proofs/*.md` wholesale)
+   would publish them. It now prunes pages with no matching
+   `lean/PqStealth/<Module>.lean`, which is what removed the leftover
+   scheme-3/ANO-CCA pages from a local tree.
+
+**Why record it at all.** Because "we did not do this" is itself a decision
+with a reason, and this repository is the place the reasoning survives
+alongside the work that was done. Anyone reading the log should not have to
+reconstruct from an absent branch whether the omission was an oversight or a
+choice.
+
+**Enforcement (2026-10-29).** The rule is now mechanical rather than a review
+habit: `scripts/check_scope.py` scans every file that would land on `main`
+(tracked, plus untracked and not gitignored) for identifiers that only exist in
+that work tree — `Scheme3Wire`, `ANOAssumption`, `ClosedUnlinkability`,
+`HybridKEM`, `fo-rom`, `scheme3-…`/`scheme-3-…` — and the `scope` job in
+`.github/workflows/ci.yml` runs it. The bare string `8441` is deliberately not
+matched: prose that records the separation must stay legal, and four hex digits
+occur inside vector constants by chance. A planted `Scheme3Wire` was verified to
+fail the check.
+
+**What it does not change.** Scope under D-024/D-025 is unaffected: the
+key-exchange ERC remains the deliverable, spending stays supporting research.
+No vector, contract, proof, or measurement in this repo depends on ERC-8441.
+
+## D-037 — The in-repo cohort proposal is the canonical text; the upstream cohort copy is refreshed from it — **LOCKED (2026-10-29)**
+
+Question (audit B01-F1, 2026-10-29): two copies of the cohort proposal exist — this
+repository's `projects/pq-sap.md` and
+`eth-protocol-fellows/cohort-seven/projects/pq-sap.md` — and they have diverged, so
+every "the proposal says" statement in outside communication is ambiguous.
+
+**Measured drift (2026-10-29).** 86 diff lines, 47 changed lines, all in the
+repository's favour. The repo copy carries: the Hegotá/EIP-8141 roadmap reference;
+"we dropped the Curvy run on purpose" with the measured 67,580-gas announcement
+(anchored at D-011 and `python/benchmarks/onchain_results.json`); construction-A
+pseudocode with the ML-DSA spending keypair rather than a second ML-KEM keypair;
+and the cost-report status. The cohort copy still says "The Curvy run and the L2
+pricing are still to do" and keeps the `prooving` / `existiing` typos.
+
+**Decision.** `projects/pq-sap.md` is canonical. The cohort PR is refreshed *from*
+it; the cohort copy is never edited in place, because the next refresh would
+overwrite those edits. The tracked copy now carries that instruction in a header
+comment so the split cannot silently re-form.
+
+**What this does not settle.** Pushing the refresh needs credentials this session
+did not have (`git push --dry-run` to `Skanislav/pq-sap` failed authentication);
+until the upstream PR is updated, the safe wording in outside communication is "our
+repository's proposal text", with the commit hash, not "the cohort proposal".
+
+*(Superseded, 2026-10-30 — see D-039.)* The refresh never happened: the cohort PR
+**was** merged on 2026-10-30 as `c392779`, carrying the pre-retrospective text, so
+the divergence this entry describes is now permanent upstream and cannot be
+resolved by refreshing it. The in-repo copy has moved out of `projects/` and the
+two-copy arrangement is retired. The measurement above stands.
+
+## D-038 — The cohort proposal is revised into a retrospective; the spend stretch goal is closed and the successor-work rule is recorded — **LOCKED (2026-10-29)**
+
+End of cohort. Two editorial decisions and one factual one.
+
+**The tracked proposal becomes a retrospective.** [`PROJECT_RETROSPECTIVE.md`](PROJECT_RETROSPECTIVE.md)
+keeps the proposal's structure (motivation, research question, deliverables, roadmap,
+challenges, success criteria, resources) but each section now separates **"As
+proposed"** from **"Outcome"**. This is deliberate: the value of a cohort artifact
+at the end is the delta between what was planned and what exists, and rewriting
+the text into a pure post-hoc description would delete the evidence that the
+plan was ever different. The success criteria are scored rather than restated —
+four of five met, the first (a frozen ERC draft with normative text) explicitly
+partial, with the reason named. (Path updated 2026-10-30; the file left
+`projects/` under D-039.)
+
+**The spend stretch goal closes as delivered, not as required.** The
+[stretch-goal report](research/stretch-goal-report.md) assembles the requested
+measurements — speed, gas, end-to-end implementation, ZK ownership proof — and
+keeps them outside the ERC's conformance surface. The verdict it records is that
+post-quantum spending is possible today at 0.19 M (direct C13) to 3.54 M (ZK
+proof) gas per spend versus 13.68 M for an on-chain ML-DSA verify, but that the
+ZK route is a *privacy* purchase rather than a cost saving, and the genuinely
+cheap routes (EIP-8164 native keys at 50 k, EIP-8288 aggregation at a proposed
+3 k/30 k per dependency) are protocol changes a scheme ID cannot deliver. No
+claim in the ERC package depends on any of it.
+
+**If a similar proposal arises, contribute to the existing effort.** Recorded
+because it is a judgement about where effort is worth spending, not a
+description of this repository: the remaining risk in PQ stealth addresses is
+the concrete commitment/address privacy composition, the normative text and its
+review, and protocol-native spending — not the absence of an implementation.
+New work should adopt this repository's vectors, deployment binding and per-route
+gas table and target the open security composition, rather than produce a
+seventh independent design.
+
+**Two provenance defects fixed while assembling the report.** Both are in
+living documents; the dated entries keep their text and gain a correction note
+(D-011).
+
+- `onchain_cost.py` reported `measured_gas` on *every* row it modelled, so
+  `announce_dksap` carried the PQ row's 67,580 with a `-59.54%` "error". DKSAP
+  was never measured on chain. `measured_gas`/`error_pct` are now `None` unless a
+  measurement is passed in explicitly.
+- The model reproduces the measurement to 0.04%, not to the gas: 67,550 on the
+  committed vectors against 67,580 measured, the residual being the
+  zero/nonzero-byte split of the encoded arguments. Every "0.00% error" claim is
+  now ≤0.04%.
+- The native scan slope in circulation had two values; 22.6 µs
+  (1,809 ms / 80,000) is the one that reproduces from the committed row, and the
+  cost report and benchmarks README now quote it and say so.
+## D-039 — The cohort proposal leaves `projects/`; the retrospective is the single copy, filed with the docs — **LOCKED (2026-10-30)**
+
+Question. The cohort PR merged on 2026-10-30 as `c392779` carrying the
+pre-retrospective text, so D-037's "refresh the upstream copy from ours" is dead:
+the public cohort artifact states the 5,633-byte Construction A meta-address as
+the default and lists ERC-6538 in scope, which no longer matches what this
+repository implements. A file that (a) restates a design decision the project
+overturned, (b) duplicates content already in `docs/`, and (c) exists only to be
+copied upstream is a liability in the artifact trail.
+
+**Decision.** `projects/pq-sap.md` → [`docs/PROJECT_RETROSPECTIVE.md`](PROJECT_RETROSPECTIVE.md).
+`projects/` is emptied and removed. The document is kept — it is the only record
+of the planned-versus-delivered delta (D-038) — but it is filed with the
+decision log and the specs, where a reader looking for "why does this repository
+look like this" is already standing, rather than under a directory whose entire
+purpose was to hold a copy of someone else's artifact. Its 18 former
+`../docs/…` links became same-directory links, and the header no longer claims
+canonical-source status it cannot enforce.
+
+**Not done, deliberately.** No history rewrite: `git log --diff-filter=D --
+projects/pq-sap.md` still recovers the old path, and the merged cohort commit is
+permanent. Deleting the text from this repository would also delete the only
+copy of the retrospective, since the cohort repo has the plan and not the work.
+
+**What this does not change.** No vector, contract, proof, measurement, or claim
+in the ERC package referenced `projects/pq-sap.md`; `README.md` is the only
+inbound link and it is updated in the same change.

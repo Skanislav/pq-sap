@@ -80,7 +80,7 @@ Key module callouts:
 
 | Directory | Purpose |
 | --- | --- |
-| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-028 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
+| `docs/` | Specs and decisions: `TECHNICAL_SPEC.md`, `erc-draft.md` (pre-freeze), `DECISIONS.md` (ADR log D-001–D-032 — read before changing scheme behavior), `SECURITY_ANALYSIS.md`, `research/` |
 | `python/` | Executable spec, conformance vectors (`python/vectors/v0/`, `vectors/classical/v0/`), benchmarks, scripts that generate fixtures for TS tests |
 | `js-client/` | TS scanning client, Foundry contracts (`js-client/contracts/`), anvil/fork e2e tests, devnet config |
 | `ui/` | Vite + React demo (receive/send/scan/spend/frames), dev-chain bootstrapping, signer service |
@@ -88,7 +88,7 @@ Key module callouts:
 | `wiki/` | Vocs site mirroring `docs/` + `lean/docs/`; everything under `wiki/src/pages/` is generated |
 | `noir/` | Noir ZK ownership-proof PoC |
 | `pq-sap/`, `ETHDILITHIUM/` | Third-party clones, gitignored at root — do not treat as project code to modify |
-| `docs-review-ws/` | Doc-review scratch workspace, not a buildable subproject |
+| `docs-review-ws/` | Gitignored doc-review scratch for *external* proposals (e.g. ERC-8441, which is **not prior art** — its first public draft was committed 2026-08-30 and its ERC merged 2026-10-29, both after this project's implementation and proofs); not a subproject and never tracked (D-032) |
 
 ## Development Commands
 
@@ -97,10 +97,12 @@ Run these from the subproject directory unless noted.
 ```sh
 # python/  (Python ≥3.10, pip)
 pip install -e ".[dev]"          # add ",audit" for liboqs cross-check, ",bench" for coincurve
-pytest -q                       # full suite (~18 tests)
+pytest -q                       # full suite (49 collected; 48 run, +4 opt-in skips)
 ruff check .
 python vectors/generate_vectors.py            # MUST be byte-identical to committed vectors/v0/vectors.json
 python vectors/generate_classical_vectors.py  # same for vectors/classical/v0/vectors.json
+python vectors/generate_commit_vectors.py     # same for vectors/v0/commit_vectors.json
+python vectors/generate_native_key_vectors.py  # same for vectors/v0/native_key.json
 python vectors/generate_mldsa44_commit_vectors.py  # same for vectors/v0/mldsa44_commit_vectors.json
 
 # js-client/  (Node ≥26, npm)
@@ -110,9 +112,10 @@ npm test                        # replays ../python/vectors/v0 — byte-for-byte
 npm run build-contracts         # forge build --root contracts (needs Foundry)
 npm run test-contracts          # forge test: StealthKeyExchange vs python/vectors/v0
 npm run e2e                     # anvil-backed e2e (auto-boots anvil via test/util/anvil.ts)
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-mldsa44
-npm run test:commit | test:mldsa44   # commitment-format / ML-DSA-44 profile vector replay
-npm run e2e-7913 | e2e-7913-classical | e2e-7913-sphincs | e2e-pointer-sig | e2e-key-exchange
+npm run e2e-key-exchange | e2e-7913 | e2e-7913-classical | e2e-7913-sphincs
+npm run e2e-pointer-sig | e2e-mldsa44
+npm run test:commit | test:mldsa44 | test:native-key | test:frames
+                                # commitment / ML-DSA-44 profile / native-key / frame-tx vector replay
 npm run e2e:fork                # offline Sepolia fork replay; e2e:fork:record to re-record
 
 # ui/  (Node ≥22.12, npm; needs ../js-client npm-installed)
@@ -199,7 +202,7 @@ spec-to-proof-to-impl correspondence.
 
 | File | Why it matters |
 | --- | --- |
-| `docs/DECISIONS.md` | ADR log (D-001–D-028). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
+| `docs/DECISIONS.md` | ADR log (D-001–D-032). Read the relevant entry before changing scheme behavior; add an entry when a decision changes |
 | `docs/TECHNICAL_SPEC.md`, `docs/erc-draft.md` | Working spec / ERC text (pre-freeze) |
 | `python/pq_stealth/commit.py` | Commitment-format API; the key-exchange porting contract |
 | `python/vectors/v0/vectors.json` | Conformance vectors consumed by pytest, js-client tests, ui e2e, and `lean/scripts/check_sizes.py` — the cross-language glue |

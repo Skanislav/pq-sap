@@ -1,3 +1,5 @@
+import pytest
+
 from pq_stealth import DEFAULT, check_announcement, gen_meta_address, scan, send
 
 
@@ -31,3 +33,12 @@ def test_deterministic_send_is_reproducible(recipient, announcement):
     meta_pub, _ = recipient
     again = send(meta_pub, encaps_m=b"\x04" * 32)
     assert again == announcement
+
+
+def test_gen_meta_address_rejects_partial_kem_seeds():
+    """Same seed policy as `commit.gen_commit_meta_address`: a half-seeded KEM
+    keypair is an error, never a silent fallback to `os.urandom`."""
+    with pytest.raises(ValueError):
+        gen_meta_address(DEFAULT, zeta=b"\x11" * 32, kem_d=b"\x12" * 32)
+    with pytest.raises(ValueError):
+        gen_meta_address(DEFAULT, zeta=b"\x11" * 32, kem_z=b"\x12" * 32)

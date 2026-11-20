@@ -69,7 +69,7 @@ hardness family — the blinding algebra transfers across parameter sets
   bar. The paper's ~66.8% headline is versus Curvy (pairing-based), which
   nobody runs and which flatters the result — we don't carry that number.
   Against DKSAP on libsecp256k1, native lattice scanning is moderately
-  faster (Rust 23.8 µs vs 27.9 µs), not 3×.
+  faster (Rust 22.6 µs from the 80k row above vs 27.6–27.9 µs), not 3×.
 - Pure-Python is the executable spec, not a scanning engine: 4.2 ms per
   decaps makes it ~150× slower than liboqs. Vector generation and testing
   are unaffected; wallets must bind to native crypto.

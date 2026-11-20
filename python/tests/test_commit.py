@@ -71,14 +71,44 @@ def test_derivation_matches_the_d018_fixture(recipient):
     """Same opener/commitment as the deployed C13 commit signer and ZK circuit."""
     fx, meta, _ = recipient
     ss = bytes.fromhex(fx["shared_secret_DEMO_ONLY"].removeprefix("0x"))
-    opener = derive_opener(ss)
+    opener = derive_opener(ss, SPHINCS_C13_DOMAINS)
     assert opener == bytes.fromhex(fx["opener"].removeprefix("0x"))
-    assert derive_commitment(meta.spend_key, opener) == bytes.fromhex(
-        fx["commitment"].removeprefix("0x")
-    )
-    assert derive_commitment(meta.spend_key, opener) == keccak256(
+    expected = bytes.fromhex(fx["commitment"].removeprefix("0x"))
+    assert derive_commitment(meta.spend_key, opener, SPHINCS_C13_DOMAINS) == expected
+    assert derive_commitment(meta.spend_key, opener, SPHINCS_C13_DOMAINS) == keccak256(
         SPHINCS_C13_DOMAINS.commit_domain + meta.spend_key + opener
     )
+
+
+def test_partial_kem_seeds_are_rejected():
+    """Seed policy: `gen_meta_address` and `gen_commit_meta_address` both refuse
+    a half-seeded keypair instead of filling the missing half silently."""
+    with pytest.raises(ValueError):
+        gen_commit_meta_address(b"\x11" * 32, kem_d=b"\x12" * 32)
+    with pytest.raises(ValueError):
+        gen_commit_meta_address(b"\x11" * 32, kem_z=b"\x12" * 32)
+    with pytest.raises(ValueError):
+        gen_commit_meta_address(b"\x11" * 32, kem_d=b"\x12" * 31, kem_z=b"\x13" * 32)
+
+
+def test_domains_are_not_defaulted():
+    """The 32-byte spend key is opaque; no derivation may pick a domain set for
+    the caller. Omitting `domains` is a TypeError, not the C13 profile."""
+    meta, dk = gen_commit_meta_address(
+        b"\x11" * 32, kem_d=b"\x12" * 32, kem_z=b"\x13" * 32
+    )
+    ann, _ = send_commit(meta, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
+    with pytest.raises(TypeError):
+        derive_opener(b"\x00" * 32)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        derive_commitment(meta.spend_key, b"\x00" * 32)  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        check_commit_announcement(meta, dk, ann, DEP)  # type: ignore[call-arg]
+    # a wrong *type* fails closed too, not just a missing argument
+    with pytest.raises(TypeError):
+        derive_opener(b"\x00" * 32, None)  # type: ignore[arg-type]
+    with pytest.raises(TypeError):
+        derive_commitment(meta.spend_key, b"\x00" * 32, {"open": b""})  # type: ignore[arg-type]
 
 
 def test_create2_binding_is_deterministic():
@@ -97,16 +127,16 @@ def test_create2_binding_is_deterministic():
 
 def test_send_scan_roundtrip(recipient):
     _, meta, dk = recipient
-    ann, commitment = send_commit(meta, DEP, encaps_m=b"\x47" * 32)
+    ann, commitment = send_commit(meta, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
     assert len(ann.stealth_address) == 20 and len(ann.ephemeral_pub_key) == 1088
-    hit = check_commit_announcement(meta, dk, ann, DEP)
+    hit = check_commit_announcement(meta, dk, ann, DEP, SPHINCS_C13_DOMAINS)
     assert hit is not None
     assert hit.commitment == commitment
     assert account_address(hit.commitment, DEP) == ann.stealth_address
     # a second payment gets a different address from the same key
-    ann2, c2 = send_commit(meta, DEP, encaps_m=b"\x48" * 32)
+    ann2, c2 = send_commit(meta, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x48" * 32)
     assert c2 != commitment and ann2.stealth_address != ann.stealth_address
-    assert len(scan_commit(meta, dk, [ann, ann2], DEP)) == 2
+    assert len(scan_commit(meta, dk, [ann, ann2], DEP, SPHINCS_C13_DOMAINS)) == 2
 
 
 def test_preimage_scheme_roundtrip():
@@ -132,30 +162,33 @@ def test_preimage_scheme_roundtrip():
         PREIMAGE_DOMAINS.commit_domain + spend_key + hit.opener
     )
     # the C13 domains do not open the same account
-    assert check_commit_announcement(meta, dk, ann, DEP) is None
+    assert check_commit_announcement(meta, dk, ann, DEP, SPHINCS_C13_DOMAINS) is None
     with pytest.raises(ValueError):
         spend_key_from_secret(b"\x00" * 31)
 
 
 def test_negatives(recipient):
     _, meta, dk = recipient
-    ann, _ = send_commit(meta, DEP, encaps_m=b"\x47" * 32)
+    ann, _ = send_commit(meta, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
     # wrong viewing key
     _, other_dk = gen_commit_meta_address(
         meta.spend_key, kem_d=b"\x01" * 32, kem_z=b"\x02" * 32
     )
-    assert check_commit_announcement(meta, other_dk, ann, DEP) is None
+    other_hit = check_commit_announcement(
+        meta, other_dk, ann, DEP, SPHINCS_C13_DOMAINS
+    )
+    assert other_hit is None
     # wrong view tag
     bad = CommitAnnouncement(
         ann.stealth_address, ann.ephemeral_pub_key, bytes([ann.view_tag[0] ^ 1])
     )
-    assert check_commit_announcement(meta, dk, bad, DEP) is None
+    assert check_commit_announcement(meta, dk, bad, DEP, SPHINCS_C13_DOMAINS) is None
     # wrong address
     bad = CommitAnnouncement(b"\x00" * 20, ann.ephemeral_pub_key, ann.view_tag)
-    assert check_commit_announcement(meta, dk, bad, DEP) is None
+    assert check_commit_announcement(meta, dk, bad, DEP, SPHINCS_C13_DOMAINS) is None
     # malformed ciphertext never raises
     bad = CommitAnnouncement(ann.stealth_address, b"\x00" * 10, ann.view_tag)
-    assert check_commit_announcement(meta, dk, bad, DEP) is None
+    assert check_commit_announcement(meta, dk, bad, DEP, SPHINCS_C13_DOMAINS) is None
     # different deployment, different address
     other = Deployment(b"\x01" * 20, DEP.creation_code, DEP.verifier, DEP.frame_ctx)
-    assert check_commit_announcement(meta, dk, ann, other) is None
+    assert check_commit_announcement(meta, dk, ann, other, SPHINCS_C13_DOMAINS) is None

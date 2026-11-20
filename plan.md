@@ -16,7 +16,10 @@ update, 2026-09-28). The original cohort plan is preserved as
 3. Present the full-announcement security argument, separating existing generic
    KEM results from the commitment/address composition still needing review.
 4. Publish reproducible receive/scan and data-size measurements with the exact
-   profile, hardware, and environment.
+   profile, hardware, and environment — assembled in the
+   [cost report](docs/research/cost-report.md), which names each figure's
+   provenance and separates setup, recurring, whole-transaction, and
+   client-side costs.
 5. Obtain community review before freezing the text and preparing a submission.
 
 ## Current evidence and next work
@@ -27,6 +30,7 @@ update, 2026-09-28). The original cohort plan is preserved as
 | Portable conformance | Reference tests and cross-language replay | Standalone checker and self-contained assets |
 | Security | Generic KEM/announcement Lean results; Construction A analysis | Concrete commitment-profile privacy argument and explicit assumptions |
 | Deployment feasibility | Account routes, browser preimage demo, explicit account profiles with an ML-DSA-44 committed-key reference and local contract path (D-027) | Separate route review; trustless ML-DSA key setup and any ML-DSA-65 verifier remain open; not a prerequisite to describe KEM conformance |
+| Costs and benchmarks | [Cost report](docs/research/cost-report.md): measured 67,580-gas L1 announcement, L2 blob regime, meta-address registration, per-route spend gas, scan throughput, each with provenance and dated price anchors | Keep the report in step with the frozen profile and the parameter-level decision (#30/#31), which moves the spend rows only |
 | Documentation | Key-exchange review path, research and tooling separated | Keep public claims aligned with actual evidence |
 
 Start with the [technical reference](docs/TECHNICAL_SPEC.md),

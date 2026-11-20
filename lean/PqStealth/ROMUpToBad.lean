@@ -17,11 +17,12 @@ Proved, for that shape (everything here is stated over an arbitrary `hashSpec`):
 * `tvDist_programmedROImpl_trackingROImpl_le`: the engine bound
   (`tvDist_simulateQ_run_le_probEvent_output_bad`) for `unifFwd + withProgramming policy` vs
   `unifFwd + withCachingTrackingPolicy policy`, with the programming flag as the bad event;
-* `evalDist_run'_programmedROImpl`: the programmed run from `(cache₀, false)` is, on the output
-  marginal, the plain random oracle run from the cache `cache₀` overridden by the policy;
-* `evalDist_run'_trackingROImpl`: the tracking run is, on the output marginal, the plain random
-  oracle run from `cache₀`;
-* `tvDist_run'_romImpl_policy_le_probEvent_bad`: the three combined — the distance between the
+* `relTriple_run'_programmedROImpl_roImpl`: the programmed run from `(cache₀, false)` is, on the
+  output marginal (`evalDist_eq_of_relTriple_eqRel`), the plain random oracle run from the cache
+  `cache₀` overridden by the policy;
+* `relTriple_run'_trackingROImpl_roImpl`: the tracking run is, on the output marginal, the plain
+  random oracle run from `cache₀`;
+* `tvDist_run'_roImpl_cacheOr_le_probEvent_bad`: the three combined — the distance between the
   random oracle run from `cache₀ ⊕ policy` and from `cache₀` is at most the probability that the
   policy fires. This is the lemma `DKSAPOracle` and `BlindingROM` consume.
 -/

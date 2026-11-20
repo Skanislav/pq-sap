@@ -186,7 +186,7 @@ announcements to two fixed recipients,
 `Adv_unlink_q ≤ q · ε_single` (`unlinkAdvantageMulti_le_mul`,
 `MultiUnlink.lean:241`), with the single-announcement decomposition into KEM
 IND-CPA, blinding, and SPR-to-MLWE terms at
-`unlinkAdvantage_scheme_le` (`ConstructionA.lean:173`; announcement model
+`unlinkAdvantage_metaKem_le` (`ConstructionA.lean`; announcement model
 `ofKEMFull`, `KEMAnonymity.lean:145`; ROM query bound
 `blindBadProb_le_queryBound`, `BlindingEntropy.lean:94`). Everything below is
 a *spend-time* disclosure and does not touch that bound — but the security
@@ -235,10 +235,12 @@ branch.
   prerequisite for any nontrivial `zetaWide` and hence for composing
   `CmaToNmaLossNN`.
 - **QROM blinding.** Even with all of the above, key blinding for lattice
-  schemes has no QROM proof — the open problem recorded in
-  `research/key-blinding-bibliography.md` (Eaton et al.'s generic framework
-  is symmetric-scheme-only; Balumuri et al. 2024/945 is MPCitH). The `z`
-  analysis here is classical-ROM throughout.
+  schemes has no QROM proof — the open problem recorded in the
+  [key-blinding bibliography](key-blinding-bibliography.md) (Eaton et al.'s
+  generic framework is ROM-only at every family it covers, Dilithium
+  included; Balumuri et al. 2024/945 is the MPCitH QROM proof, Basso et al.
+  2026 an unconditional isogeny result). The `z` analysis here is
+  classical-ROM throughout.
 
 ## Reproduce
 

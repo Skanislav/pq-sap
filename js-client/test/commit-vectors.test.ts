@@ -68,7 +68,7 @@ for (const c of doc.cases) {
     assert.equal(accountAddress(hit.commitment, dep).toLowerCase(), c.announcement.stealth_address);
     if (r.scheme === 'preimage') assert.equal(spendKeyFromSecret(hexToBytes(r.sk as Hex)), r.spend_key);
     // sender side with the same shared secret reproduces the announcement
-    const sent = sendCommit(meta, dep, { cipherText: hexToBytes(c.announcement.ephemeral_pub_key as Hex), sharedSecret: hit.sharedSecret }, dom);
+    const sent = sendCommit(meta, dep, dom, { cipherText: hexToBytes(c.announcement.ephemeral_pub_key as Hex), sharedSecret: hit.sharedSecret });
     assert.equal(sent.announcement.stealthAddress.toLowerCase(), c.announcement.stealth_address);
     assert.deepEqual(sent.announcement.viewTag, hexToBytes(c.announcement.view_tag as Hex));
   });
@@ -81,7 +81,7 @@ test('scan finds exactly the matching announcements', () => {
   const seen = new Set<string>();
   const anns = doc.cases.filter((c) => !seen.has(c.announcement.stealth_address) && seen.add(c.announcement.stealth_address))
     .map((c) => toAnn(c.announcement));
-  const hits = scanCommit(meta, hexToBytes(r.kem_dk as Hex), anns, dep);
+  const hits = scanCommit(meta, hexToBytes(r.kem_dk as Hex), anns, dep, domainsOf(r));
   assert.equal(hits.length, doc.cases.filter((c) => c.recipient === 'a' && c.expect === 'match').length);
   assert.deepEqual(hits.map((h) => h.commitment).sort(), doc.cases.filter((c) => c.recipient === 'a' && c.expect === 'match').map((c) => c.commitment!).sort());
 });

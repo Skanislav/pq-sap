@@ -14,6 +14,22 @@ env:
   ETHDILITHIUM_REV: df999ed4f8032d26d9d3d22748407afbb7978ae7
 
 jobs:
+  # ------------------------------------------------------------ repo scope
+  # D-032: ERC-8441 / scheme-3 work lives on its branch, never on `main`. The
+  # rule used to be enforced by review only; this makes it mechanical. It reads
+  # the checkout plus untracked-but-not-ignored files, so a stray module fails
+  # before it is committed as well as after.
+  scope:
+    name: repo scope (D-032)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 scripts/check_scope.py --verbose
+
   # ---------------------------------------------------------------- python
   python:
     name: python (spec, vectors)

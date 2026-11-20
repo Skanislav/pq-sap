@@ -12,6 +12,15 @@ probability slack; and, on the other side, DKSAP's unlinkability is bounded by
 two hashed-Diffie-Hellman terms and nothing else, the idealized middle game
 contributing exactly zero.
 
+Scope of the break, precisely: `dksap_key_recovery` recovers the scalar that
+`recover` computes, and the statement is `(recover …) • g = (m • g) + (h (r •
+(v • g))) • g` -- the recovered scalar controls the announced ADDRESS, i.e. the
+public key. It does NOT say the adversary can produce a signature or otherwise
+SPEND from it; that needs the discrete-log-to-signing step of the concrete
+signature scheme, which this module does not model. Call it "key/address
+recovery modulo the address-hashing step", and do not read it as a signing-key
+extraction theorem.
+
 Assumed: the discrete-log oracle's answers are hypotheses (no quantum
 computation is formalized), and hashed-DH is stated, not proved -- exactly as
 MLWE is on the lattice side. See `docs/dksap-asymmetry.md`.
@@ -37,7 +46,7 @@ theorem dksap_derivation_agrees (g : G) (h : G → F) (m v r : F) :
 
 :::
 
-[`DKSAP.lean:36-39 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L36-L39)
+[`DKSAP.lean:45-48 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L45-L48)
 
 ### The group model
 
@@ -60,7 +69,7 @@ def dksap : StealthScheme (G × G) (F × F) (G × G) where
 
 ```
 
-[`DKSAP.lean:52-61 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L52-L61)
+[`DKSAP.lean:61-70 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L61-L70)
 
 ## `dksap_perfectlyComplete`
 
@@ -81,7 +90,7 @@ theorem dksap_perfectlyComplete : (dksap g h).PerfectlyComplete := by
 
 :::
 
-[`DKSAP.lean:65-70 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L65-L70)
+[`DKSAP.lean:74-79 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L74-L79)
 
 ### The scheme
 
@@ -95,7 +104,7 @@ def recover (xM xV : F) (R : G) : F := xM + h (xV • R)
 
 ```
 
-[`DKSAP.lean:84-85 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L84-L85)
+[`DKSAP.lean:93-94 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L93-L94)
 
 ## `dksap_recover_eq_honest`
 
@@ -116,7 +125,7 @@ theorem dksap_recover_eq_honest
 
 :::
 
-[`DKSAP.lean:89-94 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L89-L94)
+[`DKSAP.lean:98-103 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L98-L103)
 
 ## `dksap_key_recovery`
 
@@ -137,7 +146,7 @@ theorem dksap_key_recovery
 
 :::
 
-[`DKSAP.lean:98-103 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L98-L103)
+[`DKSAP.lean:107-112 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L107-L112)
 
 ### Key recovery from the published meta-address
 
@@ -161,7 +170,7 @@ def dksapIdeal : StealthScheme (G × G) (F × F) (G × G) where
 
 ```
 
-[`DKSAP.lean:116-126 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L116-L126)
+[`DKSAP.lean:125-135 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L125-L135)
 
 ### DKSAP under a classical adversary
 
@@ -197,7 +206,7 @@ theorem dksapIdeal_announce_indep
 
 :::
 
-[`DKSAP.lean:133-150 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L133-L150)
+[`DKSAP.lean:142-159 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L142-L159)
 
 ## `dksapIdeal_branch_indep`
 
@@ -220,7 +229,7 @@ theorem dksapIdeal_branch_indep
 
 :::
 
-[`DKSAP.lean:152-161 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L152-L161)
+[`DKSAP.lean:161-170 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L161-L170)
 
 ## `dksapIdeal_unlinkAdvantage_eq_zero`
 
@@ -248,7 +257,7 @@ theorem dksapIdeal_unlinkAdvantage_eq_zero
 
 :::
 
-[`DKSAP.lean:165-177 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L165-L177)
+[`DKSAP.lean:174-186 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L174-L186)
 
 ### The idealized scheme is perfectly unlinkable
 
@@ -265,7 +274,7 @@ noncomputable def hashedDH (b : Bool) : ℝ :=
 
 ```
 
-[`DKSAP.lean:193-196 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L193-L196)
+[`DKSAP.lean:202-205 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L202-L205)
 
 ### The two hops
 
@@ -313,7 +322,7 @@ theorem dksap_unlinkAdvantage_le_hashedDH
 
 :::
 
-[`DKSAP.lean:204-228 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L204-L228)
+[`DKSAP.lean:213-237 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L213-L237)
 
 ### The classical security statement
 
@@ -332,7 +341,7 @@ def ddhReductionDKSAP (b : Bool) : DiffieHellman.DDHAdversary F G := fun g A B T
 
 ```
 
-[`DKSAP.lean:248-253 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L248-L253)
+[`DKSAP.lean:257-262 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L257-L262)
 
 ## `dksapDHGame`
 
@@ -346,7 +355,7 @@ def dksapDHGame (b : Bool) : ProbComp Bool := do
 
 ```
 
-[`DKSAP.lean:257-263 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L257-L263)
+[`DKSAP.lean:266-272 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L266-L272)
 
 ## `esReductionDKSAP`
 
@@ -360,7 +369,7 @@ def esReductionDKSAP (b : Bool) : Fin 1 × F → ProbComp Bool := fun x => do
 
 ```
 
-[`DKSAP.lean:267-273 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L267-L273)
+[`DKSAP.lean:276-282 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L276-L282)
 
 ## `evalDist_unlinkBranch_dksap_eq_ddhExpReal`
 
@@ -396,7 +405,7 @@ theorem evalDist_unlinkBranch_dksap_eq_ddhExpReal [DecidableEq G] (b : Bool) :
 
 :::
 
-[`DKSAP.lean:275-297 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L275-L297)
+[`DKSAP.lean:284-306 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L284-L306)
 
 ## `evalDist_ddhExpRand_eq_dksapDHGame`
 
@@ -413,7 +422,7 @@ theorem evalDist_ddhExpRand_eq_dksapDHGame (b : Bool) :
 
 :::
 
-[`DKSAP.lean:299-302 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L299-L302)
+[`DKSAP.lean:308-311 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L308-L311)
 
 ## `evalDist_dksapDHGame_eq_esReal`
 
@@ -432,7 +441,7 @@ theorem evalDist_dksapDHGame_eq_esReal (b : Bool) :
 
 :::
 
-[`DKSAP.lean:304-309 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L304-L309)
+[`DKSAP.lean:313-318 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L313-L318)
 
 ## `evalDist_esIdeal_eq_unlinkBranch_dksapIdeal`
 
@@ -468,7 +477,7 @@ theorem evalDist_esIdeal_eq_unlinkBranch_dksapIdeal (b : Bool) :
 
 :::
 
-[`DKSAP.lean:311-333 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L311-L333)
+[`DKSAP.lean:320-342 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L320-L342)
 
 ## `hashedDH_le_ddh_add_es`
 
@@ -495,7 +504,7 @@ theorem hashedDH_le_ddh_add_es [DecidableEq G] (b : Bool) :
 
 :::
 
-[`DKSAP.lean:337-348 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L337-L348)
+[`DKSAP.lean:346-357 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L346-L357)
 
 ## `dksap_unlinkAdvantage_le_ddh_add_es`
 
@@ -514,4 +523,4 @@ theorem dksap_unlinkAdvantage_le_ddh_add_es [DecidableEq G]
 
 ```
 
-[`DKSAP.lean:351-360 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L351-L360)
+[`DKSAP.lean:360-369 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/DKSAP.lean#L360-L369)

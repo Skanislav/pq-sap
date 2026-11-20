@@ -21,14 +21,14 @@ Both are modelled in Lean as honest fixed-length byte strings —
   at type `Bytes (1 + (32 + (nt + nek)))`;
 * `metaAddressDecode` splits at the fixed offsets `1`, `33`, `33 + nt` with
   `splitBytes`, defined by `Vector.extract` + `Vector.cast`;
-* `meta_address_roundtrips` / `meta_address_zk_roundtrips` prove
+* `meta_address_roundtrips` / `meta_address_commit_roundtrips` prove
   `decode (encode …) = (version, rho, t, ek)` from the single byte-level lemma
   `splitBytes_append : splitBytes (a ++ b) = (a, b)`.
 
 The type is written right-nested (`1 + (32 + (nt + nek))`) on purpose: that is
 the association `splitBytes` peels from the front, and it avoids a `Vector.cast`
 on every use. The concrete corollaries `meta_address_roundtrips_5633` and
-`meta_address_zk_roundtrips_1217` restate the same fact with every binder at a
+`meta_address_commit_roundtrips_1217` restate the same fact with every binder at a
 literal length (`Bytes 4416`, `Bytes 1184`, `Bytes 32`); the `: Bytes 5633` /
 `: Bytes 1217` ascription on the encoded argument typechecks by definitional
 unfolding of the numerals but, being elaboration-time only, does not survive
@@ -41,7 +41,7 @@ into the stored type — the total is carried by the size theorems below.
 | `pack23(t)`, ML-DSA-65 | `packedTBytes mldsa65 = mldsa65.k * ringDegree * qBits / 8` | 4416 |
 | ML-KEM-768 `ek` | `MLKEM.Params.publicKeyBytes MLKEM.mlkem768 = 384 * k + 32` | 1184 |
 | Meta-address | `metaAddress_size_mldsa65_mlkem768` | **5633** |
-| ZK-spend meta-address | `metaAddressZk_size_mlkem768` | **1217** |
+| commitment meta-address (`0x02`) | `metaAddressCommit_size_mlkem768` | **1217** |
 
 `qBits = 23` is a literal (`q = 8380417 < 2^23`, the spec's `Q_BITS`); it is not
 derived from `Nat.log2 (modulus - 1) + 1` because `Nat.log2` is well-founded

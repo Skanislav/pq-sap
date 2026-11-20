@@ -140,6 +140,10 @@ export const generatedSidebar = [
         "link": "/lean/lean-study-notes"
       },
       {
+        "text": "Commitment anonymity module design",
+        "link": "/lean/commitment-anonymity-design"
+      },
+      {
         "text": "Engineering lessons",
         "link": "/lean/etheorem-lessons"
       },
@@ -161,12 +165,28 @@ export const generatedSidebar = [
         "link": "/research/authenticated-utxo-discovery"
       },
       {
+        "text": "The commitment format in the announcement-privacy model",
+        "link": "/research/commitment-announcement-privacy"
+      },
+      {
+        "text": "Cost report — measured L1/L2 gas and client-side scanning",
+        "link": "/research/cost-report"
+      },
+      {
+        "text": "Composing the scheme-2 spec into ethereum/ERCs, and where Lean evidence can live",
+        "link": "/research/erc-lean-composition"
+      },
+      {
         "text": "Hash-based key exchange (SHA-256 / BLAKE3 commitments) as an ML-KEM alternative: why the lattice is load-bearing",
         "link": "/research/hash-based-key-exchange"
       },
       {
         "text": "After Poseidon: BLAKE2/3, Binius-era proving, and the hash policy for PQ stealth discovery",
         "link": "/research/hash-migration-blake2-binius"
+      },
+      {
+        "text": "Key-blinding prior art — bibliography",
+        "link": "/research/key-blinding-bibliography"
       },
       {
         "text": "Keyed nonces as nullifiers (EIP-8250/8266)",
@@ -183,6 +203,14 @@ export const generatedSidebar = [
       {
         "text": "Poseidon2 + Merkle trees + zk-STARKs for a customized registry/discovery layer",
         "link": "/research/poseidon2-stark-discovery"
+      },
+      {
+        "text": "Stretch goal closed — ERC-4337 spending with post-quantum key exchange and a zero-knowledge ownership proof",
+        "link": "/research/stretch-goal-report"
+      },
+      {
+        "text": "VCVio ML-KEM gap analysis for ERC-8441 — formal verification and a compiled Lean implementation",
+        "link": "/research/vcvio-mlkem-gap-analysis"
       },
       {
         "text": "Widened-z distribution and signature-route distinguishability",
@@ -248,6 +276,10 @@ export const generatedSidebar = [
       {
         "text": "DKSAPOracle",
         "link": "/lean/proofs/dksaporacle"
+      },
+      {
+        "text": "Erc8441Concrete",
+        "link": "/lean/proofs/erc8441concrete"
       },
       {
         "text": "Games",

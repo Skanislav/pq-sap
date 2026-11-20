@@ -115,6 +115,22 @@ def registered : Except Error State := do
 #guard (announce s0 0x7b92272fa4496199726b4b21ed7a56c9cd44d44e (zeros 1088) (zeros 1)).toBool = true
 #guard announce s0 0x7b92272fa4496199726b4b21ed7a56c9cd44d44e (zeros 1088) (zeros 1) = .ok (.mlkem768, { s0 with log := [forwarded s0 0x7b92272fa4496199726b4b21ed7a56c9cd44d44e (zeros 1088) (zeros 1)] })
 
+-- commit a-1-wrong-view-tag: ct 1088 B, view tag 1 B; scanner: no_match; on-chain: accepted
+#guard (announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)).toBool = true
+#guard announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1) = .ok (.mlkem768, { s0 with log := [forwarded s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)] })
+
+-- commit a-1-truncated-ciphertext: ct 1087 B, view tag 1 B; scanner: no_match; on-chain: REJECTED
+#guard (announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1087) (zeros 1)).toBool = false
+#guard announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1087) (zeros 1) = .error (.unsupportedCiphertextLength 1087)
+
+-- commit a-1-bitflipped-ciphertext: ct 1088 B, view tag 1 B; scanner: no_match; on-chain: accepted
+#guard (announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)).toBool = true
+#guard announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1) = .ok (.mlkem768, { s0 with log := [forwarded s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)] })
+
+-- commit a-1-tampered-address: ct 1088 B, view tag 1 B; scanner: no_match; on-chain: accepted
+#guard (announce s0 0x557694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)).toBool = true
+#guard announce s0 0x557694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1) = .ok (.mlkem768, { s0 with log := [forwarded s0 0x557694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)] })
+
 -- commit a-1-seen-by-b: ct 1088 B, view tag 1 B; scanner: no_match; on-chain: accepted
 #guard (announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)).toBool = true
 #guard announce s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1) = .ok (.mlkem768, { s0 with log := [forwarded s0 0xaa7694f11496e669970e0d26396d29ba3eb7107c (zeros 1088) (zeros 1)] })

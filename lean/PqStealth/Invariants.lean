@@ -13,7 +13,8 @@ and the signer bound doubles (`beta' = tau·(2·eta) = 2·beta`); the ownership
 relation TOGETHER WITH the coefficient bound IS possession of an ML-DSA signing
 key, and the blinded secret is such a key; the stealth public key roundtrips,
 and so do both meta-address wire formats as CONCRETE byte strings at their
-spec lengths (5,633 B and 1,217 B) (`docs/DECISIONS.md`, Lean items 1-3).
+spec lengths — `0x01` at 5,633 B and the commitment form `0x02` at 1,217 B
+(`docs/DECISIONS.md` D-024, Lean items 1-3).
 
 Assumed: the two inner packers (`pack23` of full-precision `t`, the ML-KEM
 encapsulation key) are parameters with roundtrip hypotheses — VCVio has no
@@ -213,44 +214,49 @@ theorem meta_address_roundtrips_5633 {T Ek : Type*}
       = (version, rho, t, ek) :=
   meta_address_roundtrips packT unpackT hT packEk unpackEk hEk version rho t ek
 
-/-! ### The reduced ZK-spend layout (D-012) -/
+/-! ### The commitment layout (format `0x02`, D-024)
 
-/-- The ZK-spend meta-address, `version(1) ‖ commitment(32) ‖ ek`: with a ZK
-ownership proof the full-precision `t` is replaced by a 32-byte commitment. -/
-def metaAddressZkEncode {Ek : Type*} {nek : ℕ} (packEk : Ek → Bytes nek)
+This is the format the ERC specifies, not the D-012 ZK-spend variant it grew out
+of: the 32-byte field is the recipient's published `spend_key` commitment and the
+address is rebuilt from it with the opener. D-012's "ZK-spend" framing is
+superseded (D-024, D-025). -/
+
+/-- The commitment meta-address, `version(1) ‖ spend_key(32) ‖ ek`: the full-precision
+`t` of format `0x01` is replaced by a 32-byte commitment to the spending key. -/
+def metaAddressCommitEncode {Ek : Type*} {nek : ℕ} (packEk : Ek → Bytes nek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) : Bytes (1 + (32 + nek)) :=
   #v[version] ++ (commitment ++ packEk ek)
 
-/-- Decode the ZK-spend layout by splitting at the fixed offsets `1`, `33`. -/
-def metaAddressZkDecode {Ek : Type*} {nek : ℕ} (unpackEk : Bytes nek → Ek)
+/-- Decode the commitment layout by splitting at the fixed offsets `1`, `33`. -/
+def metaAddressCommitDecode {Ek : Type*} {nek : ℕ} (unpackEk : Bytes nek → Ek)
     (m : Bytes (1 + (32 + nek))) : UInt8 × Bytes 32 × Ek :=
   let s := splitBytes m
   let r := splitBytes s.2
   (s.1[0], r.1, unpackEk r.2)
 
-/-- The ZK-spend meta-address roundtrips byte-for-byte. -/
-theorem meta_address_zk_roundtrips {Ek : Type*} {nek : ℕ}
+/-- The commitment meta-address roundtrips byte-for-byte. -/
+theorem meta_address_commit_roundtrips {Ek : Type*} {nek : ℕ}
     (packEk : Ek → Bytes nek) (unpackEk : Bytes nek → Ek)
     (hEk : ∀ ek, unpackEk (packEk ek) = ek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) :
-    metaAddressZkDecode unpackEk (metaAddressZkEncode packEk version commitment ek)
+    metaAddressCommitDecode unpackEk (metaAddressCommitEncode packEk version commitment ek)
       = (version, commitment, ek) := by
-  simp only [metaAddressZkEncode, metaAddressZkDecode, splitBytes_append, hEk]
+  simp only [metaAddressCommitEncode, metaAddressCommitDecode, splitBytes_append, hEk]
   rfl
 
-/-- ZK-spend at ML-KEM-768: `1 + 32 + 1184 = 1217` bytes, the 4.6× shrink
-recorded in `docs/DECISIONS.md` D-012. -/
-theorem metaAddressZk_size_mlkem768 :
+/-- Format `0x02` at ML-KEM-768: `1 + 32 + 1184 = 1217` bytes, the 4.6× shrink
+recorded in `docs/DECISIONS.md` D-024 (first computed in D-012). -/
+theorem metaAddressCommit_size_mlkem768 :
     1 + (32 + MLKEM.Params.publicKeyBytes MLKEM.mlkem768) = 1217 := rfl
 
-/-- The ZK-spend roundtrip on the wire at ML-KEM-768: 1,217 bytes. -/
-theorem meta_address_zk_roundtrips_1217 {Ek : Type*}
+/-- The commitment roundtrip on the wire at ML-KEM-768: 1,217 bytes. -/
+theorem meta_address_commit_roundtrips_1217 {Ek : Type*}
     (packEk : Ek → Bytes 1184) (unpackEk : Bytes 1184 → Ek)
     (hEk : ∀ ek, unpackEk (packEk ek) = ek)
     (version : UInt8) (commitment : Bytes 32) (ek : Ek) :
-    metaAddressZkDecode unpackEk
-        (metaAddressZkEncode packEk version commitment ek : Bytes 1217)
+    metaAddressCommitDecode unpackEk
+        (metaAddressCommitEncode packEk version commitment ek : Bytes 1217)
       = (version, commitment, ek) :=
-  meta_address_zk_roundtrips packEk unpackEk hEk version commitment ek
+  meta_address_commit_roundtrips packEk unpackEk hEk version commitment ek
 
 end PqStealth

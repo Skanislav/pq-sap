@@ -19,6 +19,7 @@ from pq_stealth.commit import (
     PREIMAGE_DOMAINS,
     PREIMAGE_KEY_DOMAIN,
     SPHINCS_C13_DOMAINS,
+    CommitAnnouncement,
     Deployment,
     check_commit_announcement,
     gen_commit_meta_address,
@@ -71,8 +72,8 @@ def generate() -> dict:
         ("c-1", meta_c, dk_c, b"\x4a" * 32, "match"),
     ]:
         dom = domains_of[name[0]]
-        ann, commitment = send_commit(meta, DEP, encaps_m=m, domains=dom)
-        hit = check_commit_announcement(meta, dk, ann, DEP, domains=dom)
+        ann, commitment = send_commit(meta, DEP, dom, encaps_m=m)
+        hit = check_commit_announcement(meta, dk, ann, DEP, dom)
         assert hit is not None and hit.commitment == commitment
         cases.append(
             {
@@ -90,9 +91,72 @@ def generate() -> dict:
                 "commitment": hx(commitment),
             }
         )
+    # negative cases: the same announcement with one field damaged. Parity with
+    # Construction A's set (vectors.json) — the view tag, the ciphertext, and the
+    # destination must each be checked, and malformed bytes must be rejected
+    # rather than raise.
+    ann_a, _ = send_commit(meta_a, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
+    for name, damaged, note in [
+        (
+            "a-1-wrong-view-tag",
+            CommitAnnouncement(
+                ann_a.stealth_address,
+                ann_a.ephemeral_pub_key,
+                bytes([ann_a.view_tag[0] ^ 0xFF]),
+            ),
+            "view tag does not match SHA-256(ss)[0]",
+        ),
+        (
+            "a-1-truncated-ciphertext",
+            CommitAnnouncement(
+                ann_a.stealth_address, ann_a.ephemeral_pub_key[:-1], ann_a.view_tag
+            ),
+            "malformed ciphertext must be rejected, not raise",
+        ),
+        (
+            "a-1-bitflipped-ciphertext",
+            CommitAnnouncement(
+                ann_a.stealth_address,
+                bytes([ann_a.ephemeral_pub_key[0] ^ 0x01])
+                + ann_a.ephemeral_pub_key[1:],
+                ann_a.view_tag,
+            ),
+            "ML-KEM implicit rejection yields an unrelated secret",
+        ),
+        (
+            "a-1-tampered-address",
+            CommitAnnouncement(
+                bytes([ann_a.stealth_address[0] ^ 0xFF]) + ann_a.stealth_address[1:],
+                ann_a.ephemeral_pub_key,
+                ann_a.view_tag,
+            ),
+            "correct tag and ciphertext, destination not re-derived",
+        ),
+    ]:
+        assert (
+            check_commit_announcement(meta_a, dk_a, damaged, DEP, SPHINCS_C13_DOMAINS)
+            is None
+        )
+        cases.append(
+            {
+                "name": name,
+                "recipient": "a",
+                "expect": "no_match",
+                "announcement": {
+                    "stealth_address": hx(damaged.stealth_address),
+                    "ephemeral_pub_key": hx(damaged.ephemeral_pub_key),
+                    "view_tag": hx(damaged.view_tag),
+                },
+                "note": note,
+            }
+        )
+
     # recipient b must not see a's payment
-    ann_a, _ = send_commit(meta_a, DEP, encaps_m=b"\x47" * 32)
-    assert check_commit_announcement(meta_b, dk_b, ann_a, DEP) is None
+    ann_a, _ = send_commit(meta_a, DEP, SPHINCS_C13_DOMAINS, encaps_m=b"\x47" * 32)
+    assert (
+        check_commit_announcement(meta_b, dk_b, ann_a, DEP, SPHINCS_C13_DOMAINS)
+        is None
+    )
     cases.append(
         {
             "name": "a-1-seen-by-b",

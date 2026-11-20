@@ -6,11 +6,13 @@ Source: [`lean/docs-proofs/constructionasecurity.md`](https://github.com/Skanisl
 
 ## `unlinkAdvantage_full_bound`
 
-**Single-announcement unlinkability of Construction A, assembled.** The
-scheme-level decomposition `unlinkAdvantage_scheme_le` with each of its four
-terms replaced by its named bound: shared-secret hiding on both branches
-(IND-CPA), the blinding term (`epsilonBlindExpand + Adv_blindMLWE + 2·qH·β`),
-and KEM anonymity (the SPR chain, counted once per branch).
+**Single-announcement unlinkability of Construction A, with every term
+bounded.** Starts from `unlinkAdvantage_metaKem_le` (the generic four-term
+`ofKEMFull` decomposition at the spec's objects) and replaces each term by its
+named bound: shared-secret hiding on both branches (IND-CPA), the blinding term
+(`epsilonBlindExpand + Adv_blindMLWE + 2·qH·β`), and KEM anonymity (the SPR
+chain, counted once per branch). The hypotheses are the whole content — no
+term's bound is produced here.
 
 `axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
@@ -37,7 +39,7 @@ theorem unlinkAdvantage_full_bound
 :::details[proof]
 
 ```lean
-  have h := unlinkAdvantage_scheme_le P Smp kem adv
+  have h := unlinkAdvantage_metaKem_le P Smp kem adv
   have h0 : 0 ≤ (epsilonPrim + Adv_keyHop + Adv_ctHop + epsilonEnc + Adv_keyRestore).toReal :=
     ENNReal.toReal_nonneg
   linarith
@@ -47,7 +49,7 @@ omit [SampleableType R] in
 
 :::
 
-[`ConstructionASecurity.lean:25-47 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionASecurity.lean#L25-L47)
+[`ConstructionASecurity.lean:27-49 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionASecurity.lean#L27-L49)
 
 ## `relatedSpendAdvantage_le_mul_capstone`
 
@@ -70,4 +72,4 @@ theorem relatedSpendAdvantage_le_mul_capstone
 
 ```
 
-[`ConstructionASecurity.lean:63-71 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionASecurity.lean#L63-L71)
+[`ConstructionASecurity.lean:65-73 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/ConstructionASecurity.lean#L65-L73)

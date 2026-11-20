@@ -68,7 +68,6 @@ from .commit import (
     KemSet,
     check_commit_announcement,
     derive_commitment,
-    derive_opener,
     gen_commit_meta_address,
     send_commit,
 )
@@ -328,7 +327,9 @@ def send_with_profile(
     """Sender: only the public meta-address, the trusted binding, and the
     sender-generated KEM result are needed."""
     _check_meta(meta, binding.profile)
-    return send_commit(meta, binding.deployment, encaps_m, binding.profile.domains)
+    return send_commit(
+        meta, binding.deployment, binding.profile.domains, encaps_m
+    )
 
 
 def check_with_profile(
@@ -435,7 +436,3 @@ def verify_authorization(
         # bytes; any of them means "invalid", never an error for the caller
         return False
 
-
-def opener_for_payment(ss: bytes, profile: AccountProfile) -> bytes:
-    """Opener under the selected profile's domain (sender- and scanner-known)."""
-    return derive_opener(ss, profile.domains)

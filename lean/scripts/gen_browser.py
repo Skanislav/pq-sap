@@ -33,12 +33,18 @@ IDENT_RE = r"[A-Za-z_][\w.'\u1D09\u2083\u2084\u2085\u2086]*"
 DECL_KEYWORDS = (
     "theorem|lemma|def|abbrev|structure|class|instance|inductive|opaque|axiom|example"
 )
+# `^` (with re.M) is load-bearing: only column-0 lines can declare, while a
+# docstring body is indented prose that may start with a keyword word. A
+# doc-comment line beginning "theorem …" previously produced a page section named
+# after the next word; the `^` anchor is why that cannot recur once the prose is
+# properly wrapped (see `ConstructionA.unlinkAdvantage_metaKem_le`'s docstring).
 DECL_PAT = re.compile(
     rf"^(?:@[\[\]\w\s,\.\(\)]+\s+)?"
     rf"(?:private\s+|protected\s+|noncomputable\s+|nonrec\s+|unsafe\s+)*"
     rf"({DECL_KEYWORDS})\s+({IDENT_RE})\b",
     re.M,
 )
+
 BOUNDARY_PAT = re.compile(
     rf"^(?:{DECL_KEYWORDS})\b|"
     r"^(?:/--|/-!|namespace|section|variable|open|end|set_option|attribute|"
@@ -328,6 +334,10 @@ def main() -> int:
 
     axiom_map = load_axiom_map()
 
+    # Prune pages whose module no longer exists. The wiki mirrors this directory
+    # wholesale, so a stale page left by a deleted/abandoned module would publish
+    # a module the repository does not contain.
+    written: set[str] = set()
     index: dict[str, dict] = {}
     summaries: list[dict] = []
 
@@ -342,6 +352,7 @@ def main() -> int:
 
         page = render_module_page(module, intro, sections, decls, axiom_map)
         (OUT_DIR / f"{module.lower()}.md").write_text(page)
+        written.add(f"{module.lower()}.md")
         summaries.append(module_summary(module, intro, decls, axiom_map))
 
         for decl in decls:
@@ -360,7 +371,13 @@ def main() -> int:
     (OUT_DIR / "index.md").write_text(render_index_page(summaries))
     INDEX_PATH.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n")
 
-    print(f"gen-browser: wrote {len(list(OUT_DIR.glob('*.md')))} pages to {OUT_DIR}")
+    pruned = [p for p in sorted(OUT_DIR.glob("*.md")) if p.name not in written and p.name != "index.md"]
+    for p in pruned:
+        p.unlink()
+
+    print(f"gen-browser: wrote {len(written) + 1} pages to {OUT_DIR}")
+    if pruned:
+        print(f"gen-browser: pruned {len(pruned)} stale page(s): {', '.join(p.name for p in pruned)}")
     print(f"gen-browser: wrote {len(index)} entries to {INDEX_PATH}")
     return 0
 

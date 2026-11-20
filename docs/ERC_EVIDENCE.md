@@ -35,7 +35,7 @@ semantic reading map, **not** an isolated build target.
 | `Scheme3`, `Scheme3Wire` | `scheme3_unlinkAdvantage_le_of_sprTerms`, `scheme3EphemeralPubKey_roundtrips`, `mlkem768_scan_is_total_and_pure` | Scheme-3 fold-in and wire invariants; agreement is conditional on `PerfectlyCorrect` of the underlying KEM |
 | `MultiUnlink`, `MultiRecipient` | `unlinkAdvantageMulti_le_mul`, `unlinkAdvantageN_le_mul` | Generic losses for multiple announcements/recipients; requires an applicable single-challenge bound |
 | `Soundness` | `falsePositiveRate_ofKEMFull_le`, `soundWithin_ofKEMFull_oneByteTag` | Conditional bounds; does not prove arbitrary SHA-256 tag behavior unconditionally |
-| `Invariants` | `meta_address_zk_roundtrips_1217` | Abstract encode/decode roundtrip; does not prove commitment hiding, CREATE2 correctness, or runtime code |
+| `Invariants` | `meta_address_commit_roundtrips_1217` | Abstract encode/decode roundtrip; does not prove commitment hiding, CREATE2 correctness, or runtime code |
 
 The current `check_sizes.py` compares Construction A and classical-hybrid
 vectors, including the documented 1,217/1,218-byte layout difference. It does
