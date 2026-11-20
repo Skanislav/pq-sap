@@ -334,7 +334,7 @@ is not yet composed, and the widened HVZK bound remains the trivial `1`:
 - **SPR → MLWE/ANO-CCA** — `SPRTwoHop.lean` gives `sprAdv_le_three_mlwe`: three
   named seeded-MLWE advantages plus `epsilonPrim` and `epsilonKeyIdeal` (the
   encoding residual is exactly zero against the compressed-uniform simulator —
-  D-034). The ANO-CCA lift is
+  D-035, which rules the uniform-byte simulator inadmissible). The ANO-CCA lift is
   no longer literature only: `KEMAnonymity.lean` defines the ANO-CCA game and
   proves `ANO_CCA_Advantage_le_of_spr_full`, with the concrete
   `mlkem768_ANO_CCA_Advantage_le_sprTerms` (`SPRTwoHop.lean`). What is still named

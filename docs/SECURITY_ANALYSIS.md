@@ -1,6 +1,6 @@
 # Key-exchange security — claims and review boundaries
 
-Current scope after D-024/D-025. The ERC focus is ML-KEM key exchange and
+Current scope after D-024/D-025 (scheme = key exchange; the demo spend proves the spending secret in-browser). The ERC focus is ML-KEM key exchange and
 sender-computable address derivation. A complete argument must cover the
 **whole announcement**, including the tag and destination. KEM security alone
 is not a proof that a derived account address hides its recipient.
@@ -41,7 +41,7 @@ message binding, replay controls, and upgrades need separate review.
 
 An active attacker can supply malformed announcements or ciphertexts; the
 scanner is total and never errors on them (`Scheme3Wire.mlkem768_scan_is_total_and_pure`,
-D-033), so a foreign ciphertext yields a non-match rather than a crash. Against
+D-034 — scheme-3 wire-format invariants machine-checked, scanner total and fail-closed), so a foreign ciphertext yields a non-match rather than a crash. Against
 an attacker who actively queries decapsulation, the ANO-CCA game is formalized
 and bounded by the per-branch SPR terms (`ANO_CCA_Advantage_le_of_spr_full`,
 `mlkem768_ANO_CCA_Advantage_le_sprTerms`); what is *not* established is the

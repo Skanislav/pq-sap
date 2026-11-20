@@ -232,7 +232,7 @@ classical-ROM). The naive `ANO-CCA ≤ ANO-CPA + ε` lift is *false* under impli
 re-encryption consistency check leak the key), so no such statement is claimed; see
 `lean/docs/fo-anonymity-lift.md`. Mapping the round-3 Kyber analysis to the final FIPS-203 ML-KEM
 specification is also unformalized, so the ERC-facing claim travels as the named
-`mlkem768ANOCCA_assumed` (`ANOAssumption.lean`, `CRYPTREC_ANOCCA_Bundle`, D-032).
+`mlkem768ANOCCA_assumed` (`ANOAssumption.lean`, `CRYPTREC_ANOCCA_Bundle`, D-032 — ML-KEM-768 ANO-CCA is a named, stated assumption).
 
 ---
 

@@ -5,7 +5,8 @@ Earlier entries preserve dated research decisions and measurements. The
 [current technical reference](TECHNICAL_SPEC.md) and [ERC evidence](ERC_EVIDENCE.md)
 separate those from spending/tooling work. Detailed former technical sections
 are retained in [Construction A](construction-a.md). The cohort's end-of-work
-revision of the proposal, and the closure of its spend stretch goal, are D-034.
+revision of the proposal, and the closure of its spend stretch goal, are D-038
+(the proposal is revised into the retrospective; the spend stretch goal is closed).
 
 Locked decisions and empirical findings for the post-quantum ERC-5564 stealth
 address project. Each entry is dated and states the rationale so the reasoning
