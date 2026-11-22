@@ -23,7 +23,7 @@ The generic chain (`KEMAnonymity.lean:236`) bounds unlinkability of
 Adv_unlink ≤ ssHiding(true) + auxKeyIndependence + KEM.anonAdvantage + ssHiding(false)
 ```
 
-and everything except `auxKeyIndependence` (`KEMAnonymity.lean:228`) is
+and everything except `auxKeyIndependence` (`KEMAnonymity.lean:733`) is
 already discharged generically or named. The commitment profile's
 `auxGen` is (§1 of the companion note):
 
@@ -202,7 +202,7 @@ claim creeps past what is proved:
 - **No identification with `auxKeyIndependence` inside the module.** Like
   `BlindingROM.lean`'s "Assumed / NOT closed" header note, the bridge from
   `commitGameRO` to the concrete `auxKeyIndependence`
-  (`KEMAnonymity.lean:228`) of `ofKEMFull commitKem commitAuxGen` is stated
+  (`KEMAnonymity.lean:733`) of `ofKEMFull commitKem commitAuxGen` is stated
   as an explicit TODO comment + docstring, not proved. The bridge needs the
   instantiation layer (concrete `K := Fin 256 → Bool`-shaped shared secret,
   `SpendKey := Bytes`, the composite-as-one-function reading of
