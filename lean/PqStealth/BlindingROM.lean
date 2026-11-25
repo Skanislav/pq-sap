@@ -177,7 +177,7 @@ noncomputable def blindBadQuery (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : 
 noncomputable def blindBadProb (P : Prims R Rho Bytes T1 Tag Addr K k l) (tg : Tag)
     (rho : Bool → Rho) (t : Bool → (Fin k → R)) (adv : BlindAdvRO Tag Addr Bytes) (b : Bool) :
     ℝ :=
-  (Pr[= true | blindBadQuery P tg rho t adv b]).toReal
+  (Pr{let x ← blindBadQuery P tg rho t adv b}[x = true]).toReal
 
 /-- The oracle-free middle game: the adversary sees a uniform address and an empty oracle. -/
 noncomputable def blindGameROFree (tg : Tag) (adv : BlindAdvRO Tag Addr Bytes) :

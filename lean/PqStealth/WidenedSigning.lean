@@ -351,9 +351,9 @@ depend on `δ`, which is the independence-from-the-secret statement. -/
 theorem cube_shift_accept_prob
     (hB : widenedBeta p < p.gamma1) (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
     (delta : RqVec p.l) (hd : polyVecNorm delta ≤ widenedBeta p) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube p
-        pure (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p)) ] =
+        pure (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p))}[x = true] =
       (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
         ^ (p.l * ringDegree) := by
   have hBpos : 0 < p.gamma1 - widenedBeta p := by omega
@@ -369,9 +369,9 @@ theorem cube_shift_accept_prob
       = (fun v => decide (polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)) <$>
           ($ᵗ (Fin p.l → Fin ringDegree → Fin (2 * p.gamma1))) := by
     simp only [sampleMaskCube, map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-  rw [hcomp, probOutput_map]
+  rw [hcomp, prEvent_map]
   simp only [decide_eq_true_eq]
-  rw [probEvent_uniformSample]
+  rw [SampleableType.prEvent_uniformSample]
   -- 2. The accepted set is a product of per-coefficient accepted sets.
   have hfilter : (Finset.univ.filter fun v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1) =>
         polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)
@@ -404,10 +404,10 @@ theorem widened_z_accepted_independent (h_laws : Primitives.Laws prims nttOps)
     (pk : PublicKey p prims) (sk : SecretKey p)
     (hw : widenedValidKeyPair p prims pk sk = true)
     (cTilde : CommitHashBytes p) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube p
         let z := y + prims.sampleInBall cTilde • sk.s1
-        pure (polyVecNorm z < p.gamma1 - widenedBeta p)) ] =
+        pure (polyVecNorm z < p.gamma1 - widenedBeta p))}[x = true] =
       (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
         ^ (p.l * ringDegree) := by
   obtain ⟨-, -, ⟨a, b, hs1, ha, hb⟩, -⟩ := (widenedValidKeyPair_eq_true_iff p prims pk sk).mp hw
@@ -465,7 +465,7 @@ not abort, the verifier accepts. Same shape as VCVio's
 `idsWithAbort_complete`, with the widened bound `β'` in place of `β` and the
 key identity taken from `widenedValidKeyPair` instead of an honest seed. -/
 theorem widened_ids_complete
-    [DecidableEq prims.High] [IsUniformSpec unifSpec]
+    [DecidableEq prims.High] [OracleSpec.UniformAnswerMeasure unifSpec]
     (h_laws : Primitives.Laws prims nttOps) :
     (widenedIdentificationScheme p prims).Complete := by
   classical
@@ -571,7 +571,7 @@ noncomputable def widenedHvzkDistance : ℝ≥0∞ := 1
 distance pinned to `1` this is the universal bound `tvDist ≤ 1`; the theorem
 exists so the statement shape is fixed while the bound is sharpened. -/
 theorem widened_ids_hvzk
-    [DecidableEq prims.High] [IsUniformSpec unifSpec] :
+    [DecidableEq prims.High] [OracleSpec.UniformAnswerMeasure unifSpec] :
     (widenedIdentificationScheme p prims).HVZK
       (fun pk => widenedHvzkSimulator p prims pk)
       widenedHvzkDistance.toReal := by
@@ -595,10 +595,10 @@ theorem mldsa65_widened_z_accept_prob
     (pk : PublicKey mldsa65 prims65) (sk : SecretKey mldsa65)
     (hw : widenedValidKeyPair mldsa65 prims65 pk sk = true)
     (cTilde : CommitHashBytes mldsa65) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube mldsa65
         let z := y + prims65.sampleInBall cTilde • sk.s1
-        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65)) ] =
+        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65))}[x = true] =
       (1047791 / 1048576 : ℝ≥0∞) ^ 1280 := by
   rw [widened_z_accepted_independent mldsa65 prims65 h_laws
     (by simp [widenedBeta, Params.beta, mldsa65, ParameterSet.params])

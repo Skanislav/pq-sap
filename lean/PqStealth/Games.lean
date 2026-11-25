@@ -83,7 +83,7 @@ def CorrectExp : ProbComp Bool := do
 
 /-- The scheme is perfectly complete when detection of an honestly generated
 announcement always succeeds. -/
-def PerfectlyComplete : Prop := Pr[= true | S.CorrectExp] = 1
+def PerfectlyComplete : Prop := Pr{let x ← S.CorrectExp}[x = true] = 1
 
 /-! ## The false-positive experiment
 
@@ -102,7 +102,7 @@ def FalsePositiveExp : ProbComp Bool := do
 /-- False-positive rate: how often a non-recipient's scan fires. `.toReal`
 because every advantage in the development is an `ℝ`, and this number is added
 to distinguishing advantages in `Soundness`. -/
-noncomputable def falsePositiveRate : ℝ := (Pr[= true | S.FalsePositiveExp]).toReal
+noncomputable def falsePositiveRate : ℝ := (Pr{let x ← S.FalsePositiveExp}[x = true]).toReal
 
 /-- Detection soundness within `ε`: a non-recipient false-positives with
 probability at most `ε`. The counterpart of `PerfectlyComplete`.

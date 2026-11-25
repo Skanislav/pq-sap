@@ -52,17 +52,17 @@ namespace PqStealth
 (producing a ciphertext and a shared secret), and decapsulation. -/
 abbrev KEM (PK SK C K : Type) := KEMScheme ProbComp K PK SK C
 
-/-! ## A `Pr[= true | …] = 1` transfer lemma -/
+/-! ## A `Pr{let x ← …}[x = true] = 1` transfer lemma -/
 
 /-- Transfer a probability-one Boolean verdict along a pointwise implication:
-VCVio's `probEvent_mono` read through `probOutput_map`. Used to derive detection
+VCVio's `prEvent_mono` read through `prEvent_map`. Used to derive detection
 completeness from the strictly stronger verdict of KEM correctness. -/
 theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α → Bool}
     (h : ∀ a ∈ support oa, p a = true → q a = true)
-    (hp : Pr[= true | (do let a ← oa; pure (p a))] = 1) :
-    Pr[= true | (do let a ← oa; pure (q a))] = 1 := by
-  rw [bind_pure_comp, probOutput_map] at hp ⊢
-  exact le_antisymm probEvent_le_one (hp ▸ probEvent_mono h)
+    (hp : Pr{let x ← (do let a ← oa; pure (p a))}[x = true] = 1) :
+    Pr{let x ← (do let a ← oa; pure (q a))}[x = true] = 1 := by
+  rw [bind_pure_comp, prEvent_map] at hp ⊢
+  exact le_antisymm (prEvent_le_one _) (hp ▸ prEvent_mono h)
 
 namespace KEM
 
@@ -165,11 +165,13 @@ structure ANO_Adversary {ι : Type} (spec : OracleSpec ι) (PK C : Type) where
   postChallenge : State → C → OracleComp spec Bool
 
 /-- Fixed-branch ANO-CPA experiment: no decapsulation oracle, matching
-`IND_CPA_Exp` but on the challenge ciphertext rather than the shared key. -/
+`IND_CPA_Exp` but on the challenge ciphertext rather than the shared key; the
+observation is the output measure of the runtime. -/
 def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    [OracleSpec.AnswerMeasure spec]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) (b : Bool)
-    (adv : ANO_Adversary spec PK C) : SPMF Bool :=
+    (adv : ANO_Adversary spec PK C) : Measure Bool :=
   runtime.evalDist do
     let (pk0, _) ← kem.keygen
     let (pk1, _) ← kem.keygen
@@ -177,11 +179,12 @@ def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     let (cStar, _) ← kem.encaps (if b then pk1 else pk0)
     adv.postChallenge st cStar
 
-/-- Single-bit ANO-CPA experiment. -/
+/-- Single-bit ANO-CPA experiment (output measure). -/
 def ANO_CPA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    [OracleSpec.AnswerMeasure spec]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) :
-    SPMF Bool :=
+    Measure Bool :=
   runtime.evalDist do
     let (pk0, _) ← kem.keygen
     let (pk1, _) ← kem.keygen
@@ -229,11 +232,12 @@ def anoPostChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
 
 /-- ANO-CCA experiment: the hidden bit picks which key encapsulates the
 challenge ciphertext; both decapsulation oracles stay live throughout, each
-masking its own challenge. -/
+masking its own challenge (output measure). -/
 def ANO_CCA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
-    (adv : ANO_CCA_Adversary spec PK C K) : SPMF Bool :=
+    [OracleSpec.AnswerMeasure spec]
+    (adv : ANO_CCA_Adversary spec PK C K) : Measure Bool :=
   runtime.evalDist do
     let (pk0, sk0) ← kem.keygen
     let (pk1, sk1) ← kem.keygen
@@ -323,11 +327,12 @@ pattern of VCVio's `ind_cpa_one_time_bias_advantage_compose_with_dem_le`. -/
 /-- Fixed-branch ANO-CCA experiment: the hidden bit is fixed to `b`, so the
 challenge ciphertext is always encapsulated to public key `b`; both
 decapsulation oracles stay live (pre-challenge unmasked, post-challenge masking
-its own challenge). -/
+its own challenge); observation is the runtime's output measure. -/
 def ANO_CCA_Branch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
-    (adv : ANO_CCA_Adversary spec PK C K) (b : Bool) : SPMF Bool :=
+    [OracleSpec.AnswerMeasure spec]
+    (adv : ANO_CCA_Adversary spec PK C K) (b : Bool) : Measure Bool :=
   runtime.evalDist do
     let (pk0, sk0) ← kem.keygen
     let (pk1, sk1) ← kem.keygen
@@ -337,11 +342,12 @@ def ANO_CCA_Branch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
 
 /-- Key-independent simulator branch: the challenge ciphertext is drawn from
 `sim` instead of an encapsulation, both decapsulation oracles stay live, and the
-adversary's verdict is returned. -/
+adversary's verdict is returned (output measure). -/
 def ANO_CCA_SimBranch {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
-    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) : SPMF Bool :=
+    [OracleSpec.AnswerMeasure spec]
+    (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) : Measure Bool :=
   runtime.evalDist do
     let (pk0, sk0) ← kem.keygen
     let (pk1, sk1) ← kem.keygen
@@ -365,7 +371,7 @@ two stages:
 * **Hidden-bit decomposition.** The single ANO-CCA game equals a fair-coin
   branch over the two fixed-branch experiments — the branches re-run exactly
   the game's own phases for the lift `adv.toANO_CCA`, and the independent
-  draws are commuted (`bind_swap` from `probOutput_bind_bind_swap`) so the coin
+  draws are commuted (`bind_swap` from `OracleComp.prEvent_bind_bind_swap`) so the coin
   sits in front — so its bias advantage equals the distinguishing advantage
   between the branches (`boolBiasAdvantage_eq_boolDistAdvantage_coin_branch`,
   with the fair-coin probabilities from `probOutput_uniformSample`).
@@ -382,7 +388,7 @@ agreement with `𝒟` on lifted `ProbComp` sampling (`heval_liftProbComp`, givin
 the fair coin), and totality on `Bool`-valued computations (`hnf`, giving the
 per-branch totality the coin-branch decomposition requires). -/
 theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
-    [IsUniformSpec spec]
+    [OracleSpec.UniformAnswerMeasure spec]
     {K PK SK C : Type} [DecidableEq C]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec))
@@ -397,37 +403,37 @@ theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
     (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
       runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
     (hnf : ∀ (mx : OracleComp spec Bool),
-      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+      Pr{let x ← runtime.evalDist mx}[x = true] + Pr{let x ← runtime.evalDist mx}[x = false] = 1)
     {sprTrue sprFalse : ℝ}
     (hT : ANO_SPR_Term kem runtime adv.toANO_CCA sim true ≤ sprTrue)
     (hF : ANO_SPR_Term kem runtime adv.toANO_CCA sim false ≤ sprFalse) :
     ANO_CCA_Advantage kem runtime adv.toANO_CCA ≤ sprTrue + sprFalse := by
   -- Local SPMF-level commutation of independent draws (`bind_swap`), proved by
-  -- pointwise `probOutput_bind_bind_swap` exactly as in VCVio's KEMDEM proof.
+  -- pointwise `OracleComp.prEvent_bind_bind_swap` exactly as in VCVio's KEMDEM proof.
   have bind_swap : ∀ {α β γ : Type} (mx : SPMF α) (my : SPMF β)
       (f : α → β → SPMF γ),
       (mx >>= fun a => my >>= fun b => f a b) =
         (my >>= fun b => mx >>= fun a => f a b) := by
     intro α β γ mx my f
     ext x
-    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
+    exact OracleComp.prEvent_bind_bind_swap mx my (fun a b => f a b) x
   have hite_false : (false : Bool) = true ↔ False := ⟨Bool.noConfusion, False.elim⟩
   have hite_true : (true : Bool) = true ↔ True := ⟨fun _ => trivial, fun _ => rfl⟩
   -- Fairness of the runtime coin: it is a uniform `Bool` sample observed via `𝒟`.
-  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
-      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+  have hcoin : Pr{let x ← 𝒟[uniformSample Bool]}[x = true] = 1 / 2 ∧
+      Pr{let x ← 𝒟[uniformSample Bool]}[x = false] = 1 / 2 := by
     constructor
-    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
-          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+    · rw [show Pr{let x ← 𝒟[uniformSample Bool]}[x = true] =
+          Pr{let x ← uniformSample Bool}[x = true] from rfl, probOutput_uniformSample,
         show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
       norm_num
-    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
-          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+    · rw [show Pr{let x ← 𝒟[uniformSample Bool]}[x = false] =
+          Pr{let x ← uniformSample Bool}[x = false] from rfl, probOutput_uniformSample,
         show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
       norm_num
   -- The hidden-bit decomposition, packaged for arbitrary branch SPMFs.
-  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
-      Pr[= true | Y] + Pr[= false | Y] = 1 →
+  have coin_branch : ∀ X Y : SPMF Bool, Pr{let x ← X}[x = true] + Pr{let x ← X}[x = false] = 1 →
+      Pr{let x ← Y}[x = true] + Pr{let x ← Y}[x = false] = 1 →
       (𝒟[uniformSample Bool] >>= fun b =>
           (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
         SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
@@ -457,11 +463,11 @@ theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
   have h_cca : ANO_CCA_Advantage kem runtime adv.toANO_CCA =
       SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv.toANO_CCA true)
         (ANO_CCA_Branch kem runtime adv.toANO_CCA false) := by
-    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA true] +
-        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA true] = 1 :=
+    have htotT : Pr{let x ← ANO_CCA_Branch kem runtime adv.toANO_CCA true}[x = true] +
+        Pr{let x ← ANO_CCA_Branch kem runtime adv.toANO_CCA true}[x = false] = 1 :=
       hnf _
-    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv.toANO_CCA false] +
-        Pr[= false | ANO_CCA_Branch kem runtime adv.toANO_CCA false] = 1 :=
+    have htotF : Pr{let x ← ANO_CCA_Branch kem runtime adv.toANO_CCA false}[x = true] +
+        Pr{let x ← ANO_CCA_Branch kem runtime adv.toANO_CCA false}[x = false] = 1 :=
       hnf _
     change (ANO_CCA_Game kem runtime adv.toANO_CCA).boolBiasAdvantage = _
     rw [hgame, coin_branch _ _ htotT htotF]
@@ -509,7 +515,7 @@ names. Same runtime-coherence hypotheses as the lifted variant; proved with
 the identical tactic structure (verified against the paper text, see
 Maram–Xagawa, eprint 2022/1696). -/
 theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
-    [IsUniformSpec spec]
+    [OracleSpec.UniformAnswerMeasure spec]
     {K PK SK C : Type} [DecidableEq C]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec))
@@ -524,7 +530,7 @@ theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
     (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
       runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
     (hnf : ∀ (mx : OracleComp spec Bool),
-      Pr[= true | runtime.evalDist mx] + Pr[= false | runtime.evalDist mx] = 1)
+      Pr{let x ← runtime.evalDist mx}[x = true] + Pr{let x ← runtime.evalDist mx}[x = false] = 1)
     {sprTrue sprFalse : ℝ}
     (hT : ANO_SPR_Term kem runtime adv sim true ≤ sprTrue)
     (hF : ANO_SPR_Term kem runtime adv sim false ≤ sprFalse) :
@@ -535,20 +541,20 @@ theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
         (my >>= fun b => mx >>= fun a => f a b) := by
     intro α β γ mx my f
     ext x
-    exact probOutput_bind_bind_swap mx my (fun a b => f a b) x
-  have hcoin : Pr[= true | 𝒟[uniformSample Bool]] = 1 / 2 ∧
-      Pr[= false | 𝒟[uniformSample Bool]] = 1 / 2 := by
+    exact OracleComp.prEvent_bind_bind_swap mx my (fun a b => f a b) x
+  have hcoin : Pr{let x ← 𝒟[uniformSample Bool]}[x = true] = 1 / 2 ∧
+      Pr{let x ← 𝒟[uniformSample Bool]}[x = false] = 1 / 2 := by
     constructor
-    · rw [show Pr[= true | 𝒟[uniformSample Bool]] =
-          Pr[= true | uniformSample Bool] from rfl, probOutput_uniformSample,
+    · rw [show Pr{let x ← 𝒟[uniformSample Bool]}[x = true] =
+          Pr{let x ← uniformSample Bool}[x = true] from rfl, probOutput_uniformSample,
         show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
       norm_num
-    · rw [show Pr[= false | 𝒟[uniformSample Bool]] =
-          Pr[= false | uniformSample Bool] from rfl, probOutput_uniformSample,
+    · rw [show Pr{let x ← 𝒟[uniformSample Bool]}[x = false] =
+          Pr{let x ← uniformSample Bool}[x = false] from rfl, probOutput_uniformSample,
         show (Fintype.card Bool : ENNReal) = 2 from by exact_mod_cast Fintype.card_bool]
       norm_num
-  have coin_branch : ∀ X Y : SPMF Bool, Pr[= true | X] + Pr[= false | X] = 1 →
-      Pr[= true | Y] + Pr[= false | Y] = 1 →
+  have coin_branch : ∀ X Y : SPMF Bool, Pr{let x ← X}[x = true] + Pr{let x ← X}[x = false] = 1 →
+      Pr{let x ← Y}[x = true] + Pr{let x ← Y}[x = false] = 1 →
       (𝒟[uniformSample Bool] >>= fun b =>
           (if b then X else Y) >>= fun z => pure (b == z)).boolBiasAdvantage =
         SPMF.boolDistAdvantage X Y := fun X Y hX hY =>
@@ -571,11 +577,11 @@ theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
   have h_cca : ANO_CCA_Advantage kem runtime adv =
       SPMF.boolDistAdvantage (ANO_CCA_Branch kem runtime adv true)
         (ANO_CCA_Branch kem runtime adv false) := by
-    have htotT : Pr[= true | ANO_CCA_Branch kem runtime adv true] +
-        Pr[= false | ANO_CCA_Branch kem runtime adv true] = 1 :=
+    have htotT : Pr{let x ← ANO_CCA_Branch kem runtime adv true}[x = true] +
+        Pr{let x ← ANO_CCA_Branch kem runtime adv true}[x = false] = 1 :=
       hnf _
-    have htotF : Pr[= true | ANO_CCA_Branch kem runtime adv false] +
-        Pr[= false | ANO_CCA_Branch kem runtime adv false] = 1 :=
+    have htotF : Pr{let x ← ANO_CCA_Branch kem runtime adv false}[x = true] +
+        Pr{let x ← ANO_CCA_Branch kem runtime adv false}[x = false] = 1 :=
       hnf _
     change (ANO_CCA_Game kem runtime adv).boolBiasAdvantage = _
     rw [hgame, coin_branch _ _ htotT htotF]
@@ -791,7 +797,7 @@ these lemmas instead of re-proving it. -/
 /-- Uniform-spec `OracleComp` computations never fail: a pure return is
 total, a query's distribution is a total `PMF.uniformOfFintype`, and
 `NeverFail.bind_of_mem_support` propagates totality through the bind. -/
-theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [IsUniformSpec spec]
+theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [OracleSpec.UniformAnswerMeasure spec]
     {α : Type} (oa : OracleComp spec α) : NeverFail oa := by
   induction oa using OracleComp.inductionOn with
   | pure a => exact inferInstance
@@ -801,17 +807,17 @@ theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [IsUniformSpec 
         exact ih x
       exact NeverFail.bind_of_mem_support (hx := by
         constructor
-        simp [probFailure, evalDist_query]) hq
+        simp [prFail, evalDist_query]) hq
 
 /-- The `hnf` totality hypothesis of the ANO-CCA reductions, at `probComp`. -/
 theorem probComp_hnf : ∀ (mx : OracleComp unifSpec Bool),
-    Pr[= true | ProbCompRuntime.probComp.evalDist mx] +
-      Pr[= false | ProbCompRuntime.probComp.evalDist mx] = 1 := by
+    Pr{let x ← ProbCompRuntime.probComp.evalDist mx}[x = true] +
+      Pr{let x ← ProbCompRuntime.probComp.evalDist mx}[x = false] = 1 := by
   intro mx
   have h0 : NeverFail mx := neverFail_of_unifSpec mx
-  have h2 : Pr[= true | mx] + Pr[= false | mx] = 1 - Pr[⊥ | mx] :=
+  have h2 : Pr{let x ← mx}[x = true] + Pr{let x ← mx}[x = false] = 1 - prFail mx :=
     probOutput_true_add_false mx (m := ProbComp)
-  have h3 : Pr[⊥ | mx] = 0 := h0.probFailure_eq_zero
+  have h3 : prFail mx = 0 := h0.OracleComp.prFail_eq_zero
   have h4 : (1 : ENNReal) - 0 = 1 := by norm_num
   rw [h3, h4] at h2
   exact h2

@@ -28,7 +28,7 @@ wire encoding is hit with probability above `β`. -/
 def BlindPointMassBound (P : Prims R Rho WireBytes T1 Tag Addr K k l)
     [SampleableType R] (beta : ℝ≥0∞) : Prop :=
   ∀ (rho : Rho) (t : Fin k → R) (x : WireBytes),
-    Pr[= x | blindPointSample P rho t] ≤ beta
+    Pr{let y ← blindPointSample P rho t}[y = x] ≤ beta
 
 /-- **ROM bad-query bound.** An adversary making at most `qH` address-oracle queries hits
 recipient `b`'s address point with probability at most `qH · β`. -/
@@ -39,48 +39,44 @@ theorem probOutput_blindBadQuery_le
     (adv : BlindAdvRO Tag Addr WireBytes) (qH : ℕ)
     (hq : ∀ x, IsQueryBoundP (adv x) (fun i => i.isRight = true) qH)
     (beta : ℝ≥0∞) (hB : BlindPointMassBound P beta) (b : Bool) :
-    Pr[= true | blindBadQuery P tg rho t adv b] ≤ (qH : ℝ≥0∞) * beta := by
+    Pr{let x ← blindBadQuery P tg rho t adv b}[x = true] ≤ (qH : ℝ≥0∞) * beta := by
   -- the point-mass hypothesis in event form over the mask alone
   have hpt : ∀ (a : Addr) (x : WireBytes),
-      Pr[fun u : Fin k → R => blindPoint P rho t b (u, a) = x | $ᵗ (Fin k → R)] ≤ beta := by
+      Pr{let u ← $ᵗ (Fin k → R)}[blindPoint P rho t b (u, a) = x] ≤ beta := by
     intro a x
     have := hB (rho b) (t b) x
     rw [show blindPointSample P (rho b) (t b) =
         (fun u => blindPoint P rho t b (u, a)) <$> ($ᵗ (Fin k → R)) from by
       simp only [blindPointSample, blindPoint, map_eq_bind_pure_comp, Function.comp_def],
-      probOutput_map] at this
+      prEvent_map] at this
     exact this
   -- 1. the flag of the programmed run, as an event over the prefix and the run
   unfold blindBadQuery badQueryGame
-  rw [← map_bind, probOutput_map]
+  rw [← map_bind, prEvent_map]
   -- 2. programmed flag ≤ plain-run "point cached", pointwise in the prefix
-  have hstep : Pr[fun z => z.2.2 = true |
-      blindPrefix (R := R) (k := k) (Addr := Addr) >>= fun x =>
+  have hstep : Pr{let z ← (blindPrefix (R := R) (k := k) (Addr := Addr) >>= fun x =>
         (simulateQ (programmedROImpl (pointPolicy (blindPoint P rho t b x) x.2))
-          (adv (tg, x.2))).run (∅, false)] ≤
-      Pr[fun w : ((Fin k → R) × Addr) × (Bool × (WireBytes →ₒ Addr).QueryCache) =>
-          QueryCache.isCached w.2.2 (blindPoint P rho t b w.1) = true |
-        blindPrefix (R := R) (k := k) (Addr := Addr) >>= fun x =>
-          (fun z => (x, z)) <$> (simulateQ (roImpl (WireBytes →ₒ Addr)) (adv (tg, x.2))).run ∅] := by
-    rw [probEvent_bind_eq_tsum, probEvent_bind_eq_tsum]
+          (adv (tg, x.2))).run (∅, false))}[z.2.2 = true] ≤
+      Pr{let w ← (blindPrefix (R := R) (k := k) (Addr := Addr) >>= fun x =>
+          (fun z => (x, z)) <$> (simulateQ (roImpl (WireBytes →ₒ Addr)) (adv (tg, x.2))).run ∅)}[QueryCache.isCached w.2.2 (blindPoint P rho t b w.1) = true] := by
+    rw [OracleComp.prEvent_bind_eq_tsum, OracleComp.prEvent_bind_eq_tsum]
     refine ENNReal.tsum_le_tsum fun x => mul_le_mul' le_rfl ?_
-    rw [probEvent_flag_programmed_eq_tracking, probEvent_map]
+    rw [probEvent_flag_programmed_eq_tracking, prEvent_map]
     exact probEvent_flag_trackingROImpl_pointPolicy_le (adv (tg, x.2)) _ _ ∅
       (QueryCache.empty_apply _)
   refine hstep.trans ?_
   -- 3. sample the mask last: it is independent of the adversary's run
   simp only [blindPrefix, bind_assoc, pure_bind]
-  rw [probEvent_bind_bind_swap]
+  rw [OracleComp.prEvent_bind_bind_swap]
   refine probEvent_bind_le_const _ _ _ _ fun a _ => ?_
   simp only [map_eq_bind_pure_comp, Function.comp_def]
-  rw [probEvent_bind_bind_swap]
+  rw [OracleComp.prEvent_bind_bind_swap]
   refine probEvent_bind_le_const _ _ _ _ fun z hz => ?_
   obtain ⟨S, hS, hkeys⟩ := roImpl_run_keys_subset (adv (tg, a)) qH (hq _) ∅ z hz
   rw [show (($ᵗ (Fin k → R)) >>= fun u => pure (((u, a), z))) =
       (fun u => ((u, a), z)) <$> ($ᵗ (Fin k → R)) from by
-    simp only [map_eq_bind_pure_comp, Function.comp_def], probEvent_map]
-  calc Pr[fun u : Fin k → R => QueryCache.isCached z.2 (blindPoint P rho t b (u, a)) = true |
-          $ᵗ (Fin k → R)]
+    simp only [map_eq_bind_pure_comp, Function.comp_def], prEvent_map]
+  calc Pr{let u ← $ᵗ (Fin k → R)}[QueryCache.isCached z.2 (blindPoint P rho t b (u, a)) = true]
       ≤ S.card * beta :=
         probEvent_isSome_apply_le ($ᵗ (Fin k → R)) (fun u => blindPoint P rho t b (u, a)) beta
           (hpt a) z.2 S (fun t' h => by
@@ -229,7 +225,7 @@ theorem blindPointMassBound_mldsa [SampleableType Rq]
   rw [show blindPointSample P rho t =
       (fun u => P.pack rho (P.power2Round (u + t))) <$> ($ᵗ (Fin k → Rq)) from by
     simp only [blindPointSample, map_eq_bind_pure_comp, Function.comp_def]
-    rfl, probOutput_map]
+    rfl, prEvent_map]
   rcases Classical.em (∃ h, P.pack rho h = x) with hx | hx
   · obtain ⟨h, rfl⟩ := hx
     -- the fiber, in coordinates
@@ -261,11 +257,11 @@ theorem blindPointMassBound_mldsa [SampleableType Rq]
       rw [Fintype.card_congr (coords k), Fintype.card_pi]
       simp only [Fintype.card_pi, Finset.prod_const, Finset.card_univ, Fintype.card_fin, ZMod.card]
       rw [← pow_mul, mul_comm]
-    calc Pr[fun u => P.pack rho (P.power2Round (u + t)) = P.pack rho h | $ᵗ (Fin k → Rq)]
-        ≤ Pr[fun u => P.power2Round (u + t) = h | $ᵗ (Fin k → Rq)] :=
+    calc Pr{let u ← $ᵗ (Fin k → Rq)}[P.pack rho (P.power2Round (u + t)) = P.pack rho h]
+        ≤ Pr{let u ← $ᵗ (Fin k → Rq)}[P.power2Round (u + t) = h] :=
           probEvent_mono'' fun u hu => hpack rho hu
       _ = ((Finset.univ.filter fun u : Fin k → Rq => P.power2Round (u + t) = h).card : ℝ≥0∞)
-            / Fintype.card (Fin k → Rq) := probEvent_uniformSample _ _
+            / Fintype.card (Fin k → Rq) := SampleableType.prEvent_uniformSample _ _
       _ ≤ (((2 ^ droppedBits) ^ (k * ringDegree) : ℕ) : ℝ≥0∞)
             / ((modulus ^ (k * ringDegree) : ℕ) : ℝ≥0∞) := by
           rw [htot]

@@ -133,7 +133,7 @@ theorem parallel_correctOnSupport
 theorem perfectlyCorrect_of_correctOnSupport [DecidableEq K]
     (kem : KEM PK₁ SK₁ C₁ K) (hcorrect : kem.CorrectOnSupport) :
     kem.PerfectlyCorrect ProbCompRuntime.probComp := by
-  change Pr[= true | kem.CorrectExp] = 1
+  change Pr{let x ← kem.CorrectExp}[x = true] = 1
   rw [probOutput_eq_one_iff_forall]
   refine ⟨probFailure_of_liftM_PMF _, ?_⟩
   intro verdict hverdict

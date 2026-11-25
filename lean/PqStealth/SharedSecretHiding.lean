@@ -63,7 +63,7 @@ theorem evalDist_bind_pull_front {α β δ ζ : Type}
 /-- Boolean games with the same output distribution have the same bias. -/
 theorem boolBiasAdvantage_congr {p q : ProbComp Bool} (h : 𝒟[p] = 𝒟[q]) :
     p.boolBiasAdvantage = q.boolBiasAdvantage := by
-  simp only [ProbComp.boolBiasAdvantage, probOutput_def, h]
+  simp only [ProbComp.boolBiasAdvantage, prEvent_eq_evalDist_singleton, h]
 
 end Bridges
 

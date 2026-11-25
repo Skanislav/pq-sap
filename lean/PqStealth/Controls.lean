@@ -36,10 +36,10 @@ def leakyAdv : StealthScheme.UnlinkAdv PK PK :=
 obstruction to an advantage of `1`, not a proof artifact, since on a collision
 the game's two branches are literally the same computation. -/
 noncomputable def keyCollisionProb (keygen : ProbComp (PK × SK)) : ℝ :=
-  (Pr[= true | do
+  (Pr{let x ← (do
       let (pk0, _) ← keygen
       let (pk1, _) ← keygen
-      pure (decide (pk0 = pk1))]).toReal
+      pure (decide (pk0 = pk1)))}[x = true]).toReal
 
 /-- A stealth scheme whose announcement IS the recipient's public meta-address:
 the maximal leak. Detection is unconditional on purpose -- a scheme can be
@@ -63,7 +63,7 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
       = (do let (pk0, _) ← S.keygen; let (pk1, _) ← S.keygen; pure (decide (pk0 = pk1))) := by
     simp only [leakyAdv, StealthScheme.unlinkSetup, bind_pure_comp, map_pure, bind_assoc,
       bind_map_left, StealthScheme.unlinkBranch, hann, Bool.false_eq_true, if_false]
-  have hTrue : Pr[= true | S.unlinkSetup >>= S.unlinkBranch leakyAdv true] = 1 := by
+  have hTrue : Pr{let x ← S.unlinkSetup >>= S.unlinkBranch leakyAdv true}[x = true] = 1 := by
     rw [hT, probOutput_eq_one_iff_forall]
     refine ⟨?_, ?_⟩
     · exact probFailure_of_liftM_PMF _
@@ -73,7 +73,7 @@ theorem unlinkAdvantage_leakyAdv_eq_one_sub_keyCollisionProb
       exact hy
   have hle : keyCollisionProb S.keygen ≤ 1 := by
     simpa only [keyCollisionProb, bind_pure_comp, ENNReal.toReal_one] using
-      ENNReal.toReal_mono ENNReal.one_ne_top (probOutput_le_one (x := true))
+      ENNReal.toReal_mono ENNReal.one_ne_top ((prEvent_le_one _) (x := true))
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage, ProbComp.boolDistAdvantage,
     hTrue, hF, ENNReal.toReal_one]
   unfold keyCollisionProb at hle ⊢
@@ -182,7 +182,7 @@ ML-KEM is -- the tag-ignoring scan flags someone else's announcement with
 probability `1`. This is what the tag comparison in `ofKEMFull.scan` buys. -/
 theorem probOutput_falsePositiveExp_ofKEMFullNoTag_eq_one (k₀ : K)
     (hdec : ∀ sk c, kem.decaps sk c = pure (some k₀)) :
-    Pr[= true | (StealthScheme.ofKEMFullNoTag kem auxGen).FalsePositiveExp] = 1 := by
+    Pr{let x ← (StealthScheme.ofKEMFullNoTag kem auxGen).FalsePositiveExp}[x = true] = 1 := by
   have hFP : (StealthScheme.ofKEMFullNoTag kem auxGen).FalsePositiveExp =
       (do let _ ← kem.keygen
           let ks1 ← kem.keygen

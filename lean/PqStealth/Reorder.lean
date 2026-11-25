@@ -68,10 +68,11 @@ theorem evalDist_pull₆ (o₁ : ProbComp α₁) (o₂ : ProbComp α₂) (o₃ :
           o₅ >>= fun e => k a b c d e f] :=
         evalDist_bind_bind_swap o₁ o₆ _
 
-/-- An unused uniform draw does not change the output distribution (a `ProbComp` never
-fails, so VCVio's `evalDist_bind_const_neverFails` applies). -/
-theorem evalDist_uniformSample_bind_const {α γ : Type} [SampleableType α] (p : ProbComp γ) :
+/-- An unused uniform draw does not change the output distribution (upstream's general
+`OracleComp.evalDist_bind_const`, proved for every `AnswerMeasure` specification). -/
+theorem evalDist_uniformSample_bind_const {α γ : Type} [SampleableType α] [MeasurableSpace γ]
+    (p : ProbComp γ) :
     𝒟[(($ᵗ α) >>= fun _ => p)] = 𝒟[p] :=
-  OracleComp.DeferredSampling.evalDist_bind_const_neverFails _ (probFailure_of_liftM_PMF _) p
+  OracleComp.evalDist_bind_const _ p
 
 end PqStealth
