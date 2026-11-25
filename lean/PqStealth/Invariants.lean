@@ -137,11 +137,10 @@ This theorem states exactly that public core. -/
 theorem stealth_t1_roundtrip (f : MLDSA.Concrete.Power2High)
     (hf : ∀ j : Fin ringDegree,
       (f.get j).val < 2 ^ MLDSA.Concrete.simpleWidth
-        (2 ^ (Nat.log2 (MLDSA.Concrete.modulus - 1) + 1 - MLDSA.Concrete.droppedBits) - 1)) :
-    MLDSA.Concrete.polyT1Unpack (MLDSA.Concrete.polyT1Pack f) = f := by
-  unfold MLDSA.Concrete.polyT1Unpack MLDSA.Concrete.polyT1Pack
-  exact MLDSA.Concrete.simpleBitUnpackPoly_simpleBitPackPoly f
-    (2 ^ (Nat.log2 (MLDSA.Concrete.modulus - 1) + 1 - MLDSA.Concrete.droppedBits) - 1) hf
+        (2 ^ (Nat.log2 (MLDSA.modulus - 1) + 1 - MLDSA.droppedBits) - 1)) :
+    MLDSA.Concrete.polyT1Unpack (MLDSA.Concrete.polyT1Pack f) = f :=
+  MLDSA.Concrete.simpleBitUnpackPoly_simpleBitPackPoly f
+    (2 ^ (Nat.log2 (MLDSA.modulus - 1) + 1 - MLDSA.droppedBits) - 1) hf
 
 /-! ### Fixed-offset splitting of byte strings -/
 
