@@ -1803,7 +1803,8 @@ that work tree — `Scheme3Wire`, `ANOAssumption`, `ClosedUnlinkability`,
 `.github/workflows/ci.yml` runs it. The bare string `8441` is deliberately not
 matched: prose that records the separation must stay legal, and four hex digits
 occur inside vector constants by chance. A planted `Scheme3Wire` was verified to
-fail the check.
+fail the check. *(Amended 2026-11-25, D-040: the scheme-3 work tree is
+in-repo on its gated branch; the prohibition now applies to `main` only.)*
 
 **What it does not change.** Scope under D-024/D-025 is unaffected: the
 key-exchange ERC remains the deliverable, spending stays supporting research.
@@ -1917,3 +1918,41 @@ copy of the retrospective, since the cohort repo has the plan and not the work.
 **What this does not change.** No vector, contract, proof, measurement, or claim
 in the ERC package referenced `projects/pq-sap.md`; `README.md` is the only
 inbound link and it is updated in the same change.
+
+## D-040 — The D-032/D-036 boundary is amended in one direction: scheme-3 work is in-repo on its gated branch, and ERC-8441 remains unmerged, uncited as normative, and un-vendored — **AMENDMENT (2026-11-25; branch `erc8441/vcvio-port`)**
+
+D-036 (ERC-8441 stays outside this repository) records the 2026-10-28 separation,
+enforced mechanically since 2026-10-29 by `scripts/check_scope.py` and its `scope`
+CI job. That entry was written when the scheme-3 layer lived only on
+`feat/erc-8441-scheme3-lean`, outside this repository's history. It now lives on the
+gated branch `erc8441/vcvio-port` (PR 60): the same work this repository authored and
+proved — the scheme-3 wire model, the ANO-CCA capstones, the concrete ERC-8441
+scheme layer with its own hash modules and known-answer tests — brought in-repo under
+a decision-numbering scheme agreed in advance with the main-side log (this entry).
+
+**Amended: D-032/D-036's "stays out of the repository" clause.** From 2026-11-25 the
+scheme-3/ERC-8441 work tree is part of this repository on its gated branch. The
+`scope` job's prohibition applies to `main` only; it red-fails the PR until merge, and
+the checker's identifier and path list stays authoritative as written. `check_scope.py`
+itself needs no change: it already scans exactly the tree that would land on `main`,
+which is unchanged by an out-of-scope branch.
+
+**Not amended: everything else.** D-024/D-025 scope is unaffected — the key-exchange
+ERC remains the deliverable. ERC-8441 remains *not* a dependency of any implementation
+here: it is still not merged into, cited as normative by, or vendored into any
+implementation surface; its text and vectors enter the repo only as SHA-256-pinned
+conformance data behind the second-implementation harness
+(`python/erc8441_ref/`, pins in `lean/docs/pins-2026-11-17.md`), and the Lean modules
+name the ERC constants as checked conformance data, not imported design. The Lean
+G6 layer (`Erc8441Concrete`, `Crypto/Keccak`, `Crypto/Sha256`, `Crypto/KAT`) is
+compiled against upstream's own `SLHDSA.Concrete` SHA-2/Keccak implementations —
+upstream code, not ERC-8441 work. The "not prior art" record stands unchanged.
+
+**Why an amendment rather than a silent merge.** D-036's own text predicts the
+collision ("a future merge would have to renumber them against this entry"). The
+numbering was instead fixed in advance: the scheme-3 entries travel renumbered
+(D-032 ANO-CCA, D-034 scheme-3 wire invariants, D-035 compressed-uniform simulator,
+splice-resolved against main's log), D-036 keeps its number and its meaning as the
+boundary record, and this entry is the dated marker that the boundary moved. Nothing
+renumbers D-036 itself; `check_scope.py` keeps red-failing every PR that would carry
+scheme-3 identifiers to `main` — including this branch, until the merge it gates.

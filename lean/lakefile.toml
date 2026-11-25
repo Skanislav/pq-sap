@@ -12,8 +12,8 @@ linter.missingDocs = true
 name = "PqStealth"
 
 # Pinned per plan.md ("VCVio is young ... we pin a commit and don't float
-# on main"): 2026-07-15, the commit validated by the week-1 gate.
+# on main"): 2026-11-24, the commit merging VCVio #1187 (KEM ANO-CPA/ANO-CCA)
 [[require]]
 name = "VCVio"
 git = "https://github.com/Verified-zkEVM/VCVio"
-rev = "a5f474fd0e9a26266cc599d100267411690dfeb7"
+rev = "1f43ff5b4908d5e145654cddca303f8edf7b13f8"

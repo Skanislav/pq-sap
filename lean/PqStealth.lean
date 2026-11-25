@@ -27,20 +27,22 @@ import PqStealth.Reorder
 import PqStealth.Soundness
 import PqStealth.Demo
 import PqStealth.Controls
+import PqStealth.Erc8441Concrete
+import PqStealth.Crypto.KAT
 import PqStealth.Axioms
 
 /-! # PqStealth — machine-checked core for post-quantum stealth addresses
 
 Importing this module brings in the whole development and, via
-`PqStealth.Axioms`, runs the axiom audit as part of the build. Twenty-six
+`PqStealth.Axioms`, runs the axiom audit as part of the build. Twenty-eight
 content modules in three layers: the algebraic core (`Blinding`, `Invariants`);
 the game layer (`Games`, `Reorder`, `MultiUnlink`, `MultiRecipient`,
 `KEMAnonymity`, `HybridKEM`, `Scheme3`, `ConstructionA`, `WidenedSigning`,
 `ROMUpToBad`, `Blinding`, `BlindingROM`, `BlindingEntropy`,
 `SharedSecretHiding`, `AnonymityFromSPR`, `MLKEM`, `SPRTwoHop`,
 `ClosedUnlinkability`, `Ownership`, `SpendSecurity`, `ConstructionASecurity`,
-`Soundness`); the classical comparison and controls (`DKSAP`, `DKSAPOracle`,
-`Controls`, `Demo`).
+`Soundness`, `Erc8441Concrete`, `Crypto.KAT`); the classical comparison and
+controls (`DKSAP`, `DKSAPOracle`, `Controls`, `Demo`).
 
 Reading order: `Demo` → `DKSAP` → `ROMUpToBad` → `DKSAPOracle` → `Blinding` →
 `Games` → `MultiUnlink` → `MultiRecipient` → `KEMAnonymity` → `HybridKEM` →
