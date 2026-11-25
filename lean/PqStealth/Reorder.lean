@@ -1,5 +1,6 @@
 import VCVio.OracleComp.QueryTracking.RandomOracle.DeferredSampling
 import VCVio.OracleComp.Constructions.SampleableType
+import VCVio.OracleComp.EvalDist.Measure
 
 /-!
 # Reordering independent draws
@@ -8,8 +9,9 @@ import VCVio.OracleComp.Constructions.SampleableType
 samples in different orders are not equal on the nose; they are equal under
 `evalDist`, which is all an advantage sees. The lemmas here pull the `k`-th of
 `k` independent draws to the front (`k = 3 … 6`), each a composition of VCVio's
-`evalDist_bind_bind_swap` under `evalDist_bind_congr'`. A game that differs from
-another by a permutation of independent draws is rewritten with a few of them.
+`evalDist_bind_bind_swap` under `evalDist_bind_congr_of_support`. A game that
+differs from another by a permutation of independent draws is rewritten with a
+few of them.
 -/
 
 open OracleComp OracleSpec
@@ -25,7 +27,8 @@ theorem evalDist_pull₃ (o₁ : ProbComp α₁) (o₂ : ProbComp α₂) (o₃ :
       𝒟[do let c ← o₃; let a ← o₁; let b ← o₂; k a b c] := by
   calc 𝒟[do let a ← o₁; let b ← o₂; let c ← o₃; k a b c]
       = 𝒟[do let a ← o₁; let c ← o₃; let b ← o₂; k a b c] :=
-        evalDist_bind_congr' _ fun a => evalDist_bind_bind_swap o₂ o₃ (k a)
+        evalDist_bind_congr_of_support _ _ _ fun a _ =>
+          evalDist_bind_bind_swap o₂ o₃ (k a)
     _ = 𝒟[do let c ← o₃; let a ← o₁; let b ← o₂; k a b c] :=
         evalDist_bind_bind_swap o₁ o₃ _
 
@@ -36,7 +39,8 @@ theorem evalDist_pull₄ (o₁ : ProbComp α₁) (o₂ : ProbComp α₂) (o₃ :
       𝒟[do let d ← o₄; let a ← o₁; let b ← o₂; let c ← o₃; k a b c d] := by
   calc 𝒟[do let a ← o₁; let b ← o₂; let c ← o₃; let d ← o₄; k a b c d]
       = 𝒟[do let a ← o₁; let d ← o₄; let b ← o₂; let c ← o₃; k a b c d] :=
-        evalDist_bind_congr' _ fun a => evalDist_pull₃ o₂ o₃ o₄ (k a)
+        evalDist_bind_congr_of_support _ _ _ fun a _ =>
+          evalDist_pull₃ o₂ o₃ o₄ (k a)
     _ = 𝒟[do let d ← o₄; let a ← o₁; let b ← o₂; let c ← o₃; k a b c d] :=
         evalDist_bind_bind_swap o₁ o₄ _
 
@@ -47,7 +51,8 @@ theorem evalDist_pull₅ (o₁ : ProbComp α₁) (o₂ : ProbComp α₂) (o₃ :
       𝒟[do let e ← o₅; let a ← o₁; let b ← o₂; let c ← o₃; let d ← o₄; k a b c d e] := by
   calc 𝒟[do let a ← o₁; let b ← o₂; let c ← o₃; let d ← o₄; let e ← o₅; k a b c d e]
       = 𝒟[do let a ← o₁; let e ← o₅; let b ← o₂; let c ← o₃; let d ← o₄; k a b c d e] :=
-        evalDist_bind_congr' _ fun a => evalDist_pull₄ o₂ o₃ o₄ o₅ (k a)
+        evalDist_bind_congr_of_support _ _ _ fun a _ =>
+          evalDist_pull₄ o₂ o₃ o₄ o₅ (k a)
     _ = 𝒟[do let e ← o₅; let a ← o₁; let b ← o₂; let c ← o₃; let d ← o₄; k a b c d e] :=
         evalDist_bind_bind_swap o₁ o₅ _
 
@@ -63,7 +68,8 @@ theorem evalDist_pull₆ (o₁ : ProbComp α₁) (o₂ : ProbComp α₂) (o₃ :
           o₆ >>= fun f => k a b c d e f]
       = 𝒟[o₁ >>= fun a => o₆ >>= fun f => o₂ >>= fun b => o₃ >>= fun c => o₄ >>= fun d =>
           o₅ >>= fun e => k a b c d e f] :=
-        evalDist_bind_congr' _ fun a => evalDist_pull₅ o₂ o₃ o₄ o₅ o₆ (k a)
+        evalDist_bind_congr_of_support _ _ _ fun a _ =>
+          evalDist_pull₅ o₂ o₃ o₄ o₅ o₆ (k a)
     _ = 𝒟[o₆ >>= fun f => o₁ >>= fun a => o₂ >>= fun b => o₃ >>= fun c => o₄ >>= fun d =>
           o₅ >>= fun e => k a b c d e f] :=
         evalDist_bind_bind_swap o₁ o₆ _

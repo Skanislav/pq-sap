@@ -1,5 +1,5 @@
 import PqStealth.BlindingROM
-import LatticeCrypto.MLDSA.Concrete.Instance
+import Extern.MLDSA.Instance
 
 /-! # The ROM query bound for the Construction A address point
 

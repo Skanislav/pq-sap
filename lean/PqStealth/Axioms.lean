@@ -75,8 +75,8 @@ newly classical proof visible. `whitespace := lax` is required because
 /-- info: 'PqStealth.blinded_is_ownership_witness' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.blinded_is_ownership_witness
 
-/-- info: 'PqStealth.stealth_pk_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs (whitespace := lax) in #print axioms PqStealth.stealth_pk_roundtrips
+/-- info: 'PqStealth.stealth_t1_roundtrip' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in #print axioms PqStealth.stealth_t1_roundtrip
 
 /-- info: 'PqStealth.meta_address_roundtrips' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in #print axioms PqStealth.meta_address_roundtrips

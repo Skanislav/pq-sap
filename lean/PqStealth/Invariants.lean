@@ -3,6 +3,7 @@ import Mathlib.Data.ZMod.ValMinAbs
 import PqStealth.Blinding
 import LatticeCrypto.MLDSA.Params
 import LatticeCrypto.MLDSA.Encoding
+import LatticeCrypto.MLDSA.Concrete.Encoding
 import LatticeCrypto.MLKEM.Params
 
 /-!
@@ -121,13 +122,26 @@ theorem blinded_is_signing_key {k l : ℕ}
 
 open MLDSA.Encoding
 
-/-- The stealth public key roundtrips: decoding the encoded `(rho, t1)` returns
-it unchanged — a direct consequence of VCVio's public-key encoding law. -/
-theorem stealth_pk_roundtrips {p : Params} {prims : Primitives p}
-    (enc : Encoding p prims) (laws : enc.Laws)
-    (rho : Bytes 32) (t1 : Vector prims.Power2High p.k) :
-    enc.pkDecode (enc.pkEncode rho t1) = (rho, t1) :=
-  laws.pkDecode_pkEncode rho t1
+/-- The stealth `t1` payload roundtrips through the concrete ML-DSA `t1` codec
+whenever every coefficient fits the pack width `simpleWidth (2^10 - 1) = 10`
+(`Nat.log2 (q − 1) + 1 − d = 22 + 1 − 13`): this is the range every
+`power2Round`-produced `t1` satisfies, since `power2RoundCoeff`'s high parts are
+`< 2^10` (`q − 1 < 2^23 = 1024 · 2^13`, and the `+1` round-up path needs the
+coefficient in the top `2^13` window, where the residue stays ≤ `2048 < 4096`).
+
+Upstream's concrete ML-DSA carriers are the unbounded `Rq`, so the abstract
+`Encoding.Laws` bundle no longer exists; the vector-level `pkEncode`/`pkDecode`
+assembly lemmas are `private` upstream (`LatticeCrypto/MLDSA/Concrete/Encoding`),
+keeping only the per-polynomial codec roundtrip — the mathematical core — outside.
+This theorem states exactly that public core. -/
+theorem stealth_t1_roundtrip (f : MLDSA.Concrete.Power2High)
+    (hf : ∀ j : Fin ringDegree,
+      (f.get j).val < 2 ^ MLDSA.Concrete.simpleWidth
+        (2 ^ (Nat.log2 (MLDSA.Concrete.modulus - 1) + 1 - MLDSA.Concrete.droppedBits) - 1)) :
+    MLDSA.Concrete.polyT1Unpack (MLDSA.Concrete.polyT1Pack f) = f := by
+  unfold MLDSA.Concrete.polyT1Unpack MLDSA.Concrete.polyT1Pack
+  exact MLDSA.Concrete.simpleBitUnpackPoly_simpleBitPackPoly f
+    (2 ^ (Nat.log2 (MLDSA.Concrete.modulus - 1) + 1 - MLDSA.Concrete.droppedBits) - 1) hf
 
 /-! ### Fixed-offset splitting of byte strings -/
 

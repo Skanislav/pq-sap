@@ -1,5 +1,5 @@
 import PqStealth.Blinding
-import VCVio.CryptoFoundations.SecExp
+import PqStealth.Advantage
 
 /-!
 # The stealth scheme as a game
@@ -43,10 +43,11 @@ theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : P
           let b ← ($ᵗ Bool)
           let z ← if b then branch true a else branch false a
           pure (b == z)) :=
-    bind_congr fun a => bind_congr fun b => by cases b <;> rfl
+    ProbComp.bind_congr fun a =>
+      ProbComp.bind_congr fun b => by cases b <;> rfl
   rw [h]
-  exact ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage pref
-    (branch true) (branch false)
+  exact PqStealth.boolBiasAdvantage_coinBranch (pref >>= branch true)
+    (pref >>= branch false)
 
 /-- Distinguishing advantage is symmetric: it is the absolute value of a
 difference. Used whenever a game hop is traversed in the opposite direction to

@@ -2,7 +2,7 @@ import PqStealth.AnonymityFromSPR
 import PqStealth.SharedSecretHiding
 import VCVio.CryptoFoundations.KeyEncapMech
 import LatticeCrypto.MLKEM.KEM
-import LatticeCrypto.MLKEM.Concrete.Instance
+import Extern.MLKEM.Instance
 
 /-!
 # ML-KEM-768
