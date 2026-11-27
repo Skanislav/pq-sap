@@ -78,8 +78,8 @@ theorem _root_.MeasureTheory.Measure.boolDistAdvantage_triangle {μ ν ρ : Meas
     μ.boolDistAdvantage ρ ≤ μ.boolDistAdvantage ν + ν.boolDistAdvantage ρ := by
   unfold MeasureTheory.Measure.boolDistAdvantage
   calc (μ.boolDist ρ).toReal ≤ (μ.boolDist ν + ν.boolDist ρ).toReal := by
-        exact ENNReal.toReal_le_toReal (by simpa using Measure.boolDist_ne_top μ ρ)
-          (ENNReal.add_ne_top.mpr ⟨Measure.boolDist_ne_top μ ν, Measure.boolDist_ne_top ν ρ⟩)
+        exact (ENNReal.toReal_le_toReal (by simpa using Measure.boolDist_ne_top μ ρ)
+          (ENNReal.add_ne_top.mpr ⟨Measure.boolDist_ne_top μ ν, Measure.boolDist_ne_top ν ρ⟩)).mpr
           (Measure.boolDist_triangle μ ν ρ)
     _ = _ := ENNReal.toReal_add (Measure.boolDist_ne_top μ ν) (Measure.boolDist_ne_top ν ρ)
 
