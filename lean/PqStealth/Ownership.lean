@@ -64,8 +64,10 @@ noncomputable def spendForgeryAdvantage (keyGen : ProbComp (OwnershipKey R k l))
 theorem spendForgeryAdvantage_ne_top (keyGen : ProbComp (OwnershipKey R k l))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool)
     (adv : SIS.Adversary (ownershipSISProblem keyGen isShort)) :
-    spendForgeryAdvantage keyGen isShort adv ≠ ⊤ :=
-  ne_top_of_le_ne_top ENNReal.one_ne_top (prEvent_le_one _)
+    spendForgeryAdvantage keyGen isShort adv ≠ ⊤ := by
+  refine ne_top_of_le_ne_top ENNReal.one_ne_top ?_
+  exact evalDist_apply_le_one (SIS.experiment (ownershipSISProblem keyGen isShort) adv)
+    {true}
 
 /-- The forgery advantage as a real number: the `ℝ` view used when a spend bound
 is chained with the distinguishing advantages, which are all `ℝ`. Nothing is
