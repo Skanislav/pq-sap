@@ -46,12 +46,15 @@ theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : P
   rw [evalDist_bind_bind_swap_of_uniform (spec := unifSpec)
     (mx := pref) (my := ($ᵗ Bool : ProbComp Bool))
     (f := fun (a : α) (b : Bool) => branch b a >>= fun z => pure (b == z))]
-  rw [@bind_congr_of_forall_mem_support (spec := unifSpec) (α := Bool) (β := Bool)
-    (mx := ($ᵗ Bool : ProbComp Bool))
-    (f := fun b : Bool => pref >>= fun (a : α) => branch b a >>= fun z => pure (b == z))
-    (g := fun b : Bool => (if b = true then pref >>= branch true else pref >>= branch false)
-      >>= fun z => pure (b == z))
-    (by intro b _hb; cases b <;> simp only [Bool.false_eq_true, ↓reduceIte, bind_assoc])]
+  have hcongr : ($ᵗ Bool : ProbComp Bool) >>= fun b => pref >>= fun (a : α) =>
+        branch b a >>= fun z => pure (b == z)
+      = ($ᵗ Bool : ProbComp Bool) >>= fun b : Bool =>
+          (if b = true then pref >>= branch true else pref >>= branch false)
+            >>= fun z => pure (b == z) := by
+    refine bind_congr_of_forall_mem_support _ ?_
+    intro b _
+    cases b <;> simp only [Bool.false_eq_true, ↓reduceIte, bind_assoc]
+  rw [hcongr]
   exact congrArg ENNReal.toReal
     (evalDist_boolBias_bind_coin ($ᵗ Bool : ProbComp Bool) (pref >>= branch true)
       (pref >>= branch false) (evalDist_uniformBool_apply true)
