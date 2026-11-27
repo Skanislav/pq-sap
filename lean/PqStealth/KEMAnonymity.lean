@@ -89,7 +89,7 @@ def run : ProbComp ((PK × SK) × (C × K) × Option K) := do
 /-- VCVio's correctness experiment is `run` scored by "the decapsulated key is
 the encapsulated one". -/
 theorem correctExp_eq [DecidableEq K] :
-    kem.CorrectExp = (do let a ← kem.run; pure (decide (a.2.2 = some a.2.1.2))) := by
+    kem.correctnessExperiment = (do let a ← kem.run; pure (decide (a.2.2 = some a.2.1.2))) := by
   simp only [KEMScheme.correctnessExperiment, KEM.run, bind_assoc, pure_bind]
 
 /-! ## Anonymity (key privacy)
@@ -170,7 +170,7 @@ structure ANO_Adversary {ι : Type} (spec : OracleSpec ι) (PK C : Type) where
 /-- Fixed-branch ANO-CPA experiment: no decapsulation oracle, matching
 `IND_CPA_Exp` but on the challenge ciphertext rather than the shared key; the
 observation is the output measure of the runtime. -/
-def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+noncomputable def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     [OracleSpec.AnswerMeasure spec]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) (b : Bool)
@@ -183,7 +183,7 @@ def ANO_CPA_Exp {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     adv.postChallenge st cStar
 
 /-- Single-bit ANO-CPA experiment (output measure). -/
-def ANO_CPA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+noncomputable def ANO_CPA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     [OracleSpec.AnswerMeasure spec]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) (adv : ANO_Adversary spec PK C) :
@@ -236,7 +236,7 @@ def anoPostChallengeImpl {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
 /-- ANO-CCA experiment: the hidden bit picks which key encapsulates the
 challenge ciphertext; both decapsulation oracles stay live throughout, each
 masking its own challenge (output measure). -/
-def ANO_CCA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+noncomputable def ANO_CCA_Game {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
     [OracleSpec.AnswerMeasure spec]
