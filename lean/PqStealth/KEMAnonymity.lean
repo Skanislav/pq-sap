@@ -1,5 +1,7 @@
 import PqStealth.Games
 import VCVio.CryptoFoundations.KeyEncapMech
+import ToMathlib.MeasureTheory.Measure.Bool
+import VCVio.OracleComp.EvalDist.AnswerMeasure
 
 /-!
 # KEM anonymity and the unlinkability reduction
@@ -37,7 +39,7 @@ the Maram–Xagawa Theorem 2 paper verification) is what remains.
 `anonymity → MLWE` for ML-KEM is the open piece (`AnonymityFromSPR`).
 -/
 
-open OracleComp OracleSpec
+open OracleComp OracleSpec MeasureTheory
 
 universe u
 
@@ -62,7 +64,8 @@ theorem probOutput_true_eq_one_of_imp {α : Type} (oa : ProbComp α) {p q : α �
     (hp : Pr{let x ← (do let a ← oa; pure (p a))}[x = true] = 1) :
     Pr{let x ← (do let a ← oa; pure (q a))}[x = true] = 1 := by
   rw [bind_pure_comp, prEvent_map] at hp ⊢
-  exact le_antisymm (prEvent_le_one _) (hp ▸ prEvent_mono h)
+  exact le_antisymm (prEvent_le_one _)
+    (hp ▸ prEvent_mono_of_support oa (fun a => p a = true) (fun a => q a = true) h)
 
 namespace KEM
 
@@ -87,7 +90,7 @@ def run : ProbComp ((PK × SK) × (C × K) × Option K) := do
 the encapsulated one". -/
 theorem correctExp_eq [DecidableEq K] :
     kem.CorrectExp = (do let a ← kem.run; pure (decide (a.2.2 = some a.2.1.2))) := by
-  simp only [KEMScheme.CorrectExp, KEM.run, bind_assoc, pure_bind]
+  simp only [KEMScheme.correctnessExperiment, KEM.run, bind_assoc, pure_bind]
 
 /-! ## Anonymity (key privacy)
 
@@ -771,14 +774,14 @@ theorem unlinkAdvantage_ofKEMFull_le :
   set Qt := kem.anonSetup >>= kem.anonBranch (adv.cipherOf auxGen) true
   calc Pt.boolDistAdvantage Pf
       ≤ Pt.boolDistAdvantage Mt + Mt.boolDistAdvantage Pf :=
-        ProbComp.boolDistAdvantage_triangle Pt Mt Pf
+        PFunctor.FreeM.boolDistAdvantage_triangle Pt Mt Pf
     _ ≤ Pt.boolDistAdvantage Mt + (Mt.boolDistAdvantage Qt + Qt.boolDistAdvantage Pf) := by
         gcongr
-        exact ProbComp.boolDistAdvantage_triangle Mt Qt Pf
+        exact PFunctor.FreeM.boolDistAdvantage_triangle Mt Qt Pf
     _ ≤ Pt.boolDistAdvantage Mt + (Mt.boolDistAdvantage Qt
           + (Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf)) := by
         gcongr
-        exact ProbComp.boolDistAdvantage_triangle Qt Mf Pf
+        exact PFunctor.FreeM.boolDistAdvantage_triangle Qt Mf Pf
     _ = Pt.boolDistAdvantage Mt + Mt.boolDistAdvantage Qt
           + Qt.boolDistAdvantage Mf + Mf.boolDistAdvantage Pf := by
         ring
