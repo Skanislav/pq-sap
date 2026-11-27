@@ -1,7 +1,7 @@
 import VCVio.OracleComp.EvalDist.Measure
 import VCVio.OracleComp.EvalDist.AnswerMeasure
 import VCVio.OracleComp.ProbComp
-import VCVio.OracleComp.Constructions.SampleableType
+import VCVio.OracleComp.Constructions.SampleableType.Measure
 import ToMathlib.MeasureTheory.Measure.Bool
 import VCVio.EvalDist.Monad.Bool
 
@@ -36,24 +36,20 @@ section Defs
 
 /-- Bias advantage of a Boolean-valued computation: the gap between the
 probabilities of the two outputs, at the real level. -/
-@[expose]
 noncomputable def _root_.PFunctor.FreeM.boolBiasAdvantage (p : ProbComp Bool) : ℝ :=
   𝒟[p].boolBias.toReal
 
 /-- Distinguishing advantage between two Boolean-valued computations, measured
 on the `true` branch. -/
-@[expose]
 noncomputable def _root_.PFunctor.FreeM.boolDistAdvantage (p q : ProbComp Bool) : ℝ :=
   𝒟[p].boolDist 𝒟[q] |>.toReal
 
 /-- Bias advantage of a Boolean-valued measure, at the real level. -/
-@[expose]
 noncomputable def _root_.MeasureTheory.Measure.boolBiasAdvantage (μ : Measure Bool) : ℝ :=
   μ.boolBias.toReal
 
 /-- Distinguishing advantage between two Boolean-valued measures, measured on
 the `true` branch. -/
-@[expose]
 noncomputable def _root_.MeasureTheory.Measure.boolDistAdvantage (μ ν : Measure Bool) : ℝ :=
   μ.boolDist ν |>.toReal
 
@@ -83,15 +79,18 @@ theorem _root_.MeasureTheory.Measure.boolDistAdvantage_triangle {μ ν ρ : Meas
   unfold MeasureTheory.Measure.boolDistAdvantage
   calc (μ.boolDist ρ).toReal ≤ (μ.boolDist ν + ν.boolDist ρ).toReal := by
         exact ENNReal.toReal_le_toReal (by simpa using Measure.boolDist_ne_top μ ρ)
-          (add_ne_top.mpr ⟨Measure.boolDist_ne_top μ ν, Measure.boolDist_ne_top ν ρ⟩)
+          (ENNReal.add_ne_top.mpr ⟨Measure.boolDist_ne_top μ ν, Measure.boolDist_ne_top ν ρ⟩)
           (Measure.boolDist_triangle μ ν ρ)
     _ = _ := ENNReal.toReal_add (Measure.boolDist_ne_top μ ν) (Measure.boolDist_ne_top ν ρ)
 
 /-- The triangle inequality for computations: the measures behind the games are
 probability measures (lossless denotation), hence finite. -/
 theorem _root_.PFunctor.FreeM.boolDistAdvantage_triangle (p q r : ProbComp Bool) :
-    p.boolDistAdvantage r ≤ p.boolDistAdvantage q + q.boolDistAdvantage r :=
-  MeasureTheory.Measure.boolDistAdvantage_triangle 𝒟[p] 𝒟[q] 𝒟[r]
+    p.boolDistAdvantage r ≤ p.boolDistAdvantage q + q.boolDistAdvantage r := by
+  haveI : IsFiniteMeasure 𝒟[p] := inferInstance
+  haveI : IsFiniteMeasure 𝒟[q] := inferInstance
+  haveI : IsFiniteMeasure 𝒟[r] := inferInstance
+  exact MeasureTheory.Measure.boolDistAdvantage_triangle (μ := 𝒟[p]) (ν := 𝒟[q]) (ρ := 𝒟[r])
 
 end Bridges
 
