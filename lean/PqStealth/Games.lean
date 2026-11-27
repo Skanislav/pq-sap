@@ -37,24 +37,31 @@ theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : P
       let z ← branch b a
       pure (b == z)).boolBiasAdvantage
       = (pref >>= branch true).boolDistAdvantage (pref >>= branch false) := by
-  have h : (do let a ← pref; let b ← ($ᵗ Bool); let z ← branch b a; pure (b == z))
-      = (do
-          let a ← pref
-          let b ← ($ᵗ Bool)
-          let z ← if b then branch true a else branch false a
-          pure (b == z)) :=
-    ProbComp.bind_congr fun a =>
-      ProbComp.bind_congr fun b => by cases b <;> rfl
-  rw [h]
-  exact PqStealth.boolBiasAdvantage_coinBranch (pref >>= branch true)
-    (pref >>= branch false)
+  unfold PFunctor.FreeM.boolBiasAdvantage PFunctor.FreeM.boolDistAdvantage
+  -- Swap the prefix and the hidden-bit draws (measure-level bind commutation,
+  -- `VCVio.OracleComp.EvalDist.Measure.evalDist_bind_bind_swap_of_uniform`), then
+  -- fold the branch selection into the `if` (support-aware congruence,
+  -- `VCVio.OracleComp.Support.bind_congr_of_forall_mem_support`), landing on the
+  -- exact coin-branch form `boolBiasAdvantage_coinBranch` proves.
+  rw [evalDist_bind_bind_swap_of_uniform (spec := unifSpec)
+    (mx := pref) (my := ($ᵗ Bool : ProbComp Bool))
+    (f := fun (a : α) (b : Bool) => branch b a >>= fun z => pure (b == z))]
+  rw [bind_congr_of_forall_mem_support ($ᵗ Bool : ProbComp Bool)
+    (fun b : Bool => pref >>= fun (a : α) => branch b a >>= fun z => pure (b == z))
+    (fun b : Bool => (if b = true then pref >>= branch true else pref >>= branch false)
+      >>= fun z => pure (b == z))
+    (by intro b _hb; cases b <;> simp only [Bool.false_eq_true, ↓reduceIte, bind_assoc])]
+  exact congrArg ENNReal.toReal
+    (evalDist_boolBias_bind_coin ($ᵗ Bool : ProbComp Bool) (pref >>= branch true)
+      (pref >>= branch false) (evalDist_uniformBool_apply true)
+      (evalDist_uniformBool_apply false))
 
 /-- Distinguishing advantage is symmetric: it is the absolute value of a
 difference. Used whenever a game hop is traversed in the opposite direction to
 the one a definition fixes. -/
 theorem ProbComp.boolDistAdvantage_comm (p q : ProbComp Bool) :
     p.boolDistAdvantage q = q.boolDistAdvantage p :=
-  abs_sub_comm _ _
+  PFunctor.FreeM.boolDistAdvantage_comm p q
 
 /-! ## The scheme as an abstract randomized algorithm -/
 
