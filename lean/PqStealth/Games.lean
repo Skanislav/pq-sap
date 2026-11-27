@@ -46,7 +46,7 @@ theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : P
   rw [evalDist_bind_bind_swap_of_uniform (spec := unifSpec)
     (mx := pref) (my := ($ᵗ Bool : ProbComp Bool))
     (f := fun (a : α) (b : Bool) => branch b a >>= fun z => pure (b == z))]
-  rw [bind_congr_of_forall_mem_support ($ᵗ Bool : ProbComp Bool)
+  rw [@bind_congr_of_forall_mem_support ($ᵗ Bool : ProbComp Bool) _ _
     (fun b : Bool => pref >>= fun (a : α) => branch b a >>= fun z => pure (b == z))
     (fun b : Bool => (if b = true then pref >>= branch true else pref >>= branch false)
       >>= fun z => pure (b == z))
