@@ -400,9 +400,10 @@ theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
     (runtime : ProbCompRuntime (OracleComp spec))
     (adv : ANO_Adversary spec PK C)
     (sim : ProbComp C)
-    (heval_pure : ∀ {α : Type} (a : α),
+    (heval_pure : ∀ {α : Type} [MeasurableSpace α] (a : α),
       runtime.evalDist (pure a : OracleComp spec α) = pure a)
-    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+    (heval_bind : ∀ {α β : Type} [MeasurableSpace α] [MeasurableSpace β]
+      (mx : OracleComp spec α)
       (f : α → OracleComp spec β),
       runtime.evalDist (mx >>= f) =
         runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
@@ -527,9 +528,10 @@ theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
     (runtime : ProbCompRuntime (OracleComp spec))
     (adv : ANO_CCA_Adversary spec PK C K)
     (sim : ProbComp C)
-    (heval_pure : ∀ {α : Type} (a : α),
+    (heval_pure : ∀ {α : Type} [MeasurableSpace α] (a : α),
       runtime.evalDist (pure a : OracleComp spec α) = pure a)
-    (heval_bind : ∀ {α β : Type} (mx : OracleComp spec α)
+    (heval_bind : ∀ {α β : Type} [MeasurableSpace α] [MeasurableSpace β]
+      (mx : OracleComp spec α)
       (f : α → OracleComp spec β),
       runtime.evalDist (mx >>= f) =
         runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
