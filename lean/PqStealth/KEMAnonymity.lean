@@ -401,16 +401,17 @@ theorem ANO_CCA_Advantage_le_of_spr {ι : Type} {spec : OracleSpec ι}
     (adv : ANO_Adversary spec PK C)
     (sim : ProbComp C)
     (heval_pure : ∀ {α : Type} [MeasurableSpace α] (a : α),
-      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+      runtime.evalDist (pure a : OracleComp spec α) = Measure.dirac a)
     (heval_bind : ∀ {α β : Type} [MeasurableSpace α] [MeasurableSpace β]
       (mx : OracleComp spec α)
       (f : α → OracleComp spec β),
+      Measurable (fun a => runtime.evalDist (f a)) →
       runtime.evalDist (mx >>= f) =
-        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
-    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+        Measure.bind (runtime.evalDist mx) fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} [MeasurableSpace α] (pc : ProbComp α),
       runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
     (hnf : ∀ (mx : OracleComp spec Bool),
-      Pr{let x ← runtime.evalDist mx}[x = true] + Pr{let x ← runtime.evalDist mx}[x = false] = 1)
+      runtime.evalDist mx {true} + runtime.evalDist mx {false} = 1)
     {sprTrue sprFalse : ℝ}
     (hT : ANO_SPR_Term kem runtime adv.toANO_CCA sim true ≤ sprTrue)
     (hF : ANO_SPR_Term kem runtime adv.toANO_CCA sim false ≤ sprFalse) :
@@ -529,16 +530,17 @@ theorem ANO_CCA_Advantage_le_of_spr_full {ι : Type} {spec : OracleSpec ι}
     (adv : ANO_CCA_Adversary spec PK C K)
     (sim : ProbComp C)
     (heval_pure : ∀ {α : Type} [MeasurableSpace α] (a : α),
-      runtime.evalDist (pure a : OracleComp spec α) = pure a)
+      runtime.evalDist (pure a : OracleComp spec α) = Measure.dirac a)
     (heval_bind : ∀ {α β : Type} [MeasurableSpace α] [MeasurableSpace β]
       (mx : OracleComp spec α)
       (f : α → OracleComp spec β),
+      Measurable (fun a => runtime.evalDist (f a)) →
       runtime.evalDist (mx >>= f) =
-        runtime.evalDist mx >>= fun a => runtime.evalDist (f a))
-    (heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
+        Measure.bind (runtime.evalDist mx) fun a => runtime.evalDist (f a))
+    (heval_liftProbComp : ∀ {α : Type} [MeasurableSpace α] (pc : ProbComp α),
       runtime.evalDist (runtime.liftProbComp pc) = 𝒟[pc])
     (hnf : ∀ (mx : OracleComp spec Bool),
-      Pr{let x ← runtime.evalDist mx}[x = true] + Pr{let x ← runtime.evalDist mx}[x = false] = 1)
+      runtime.evalDist mx {true} + runtime.evalDist mx {false} = 1)
     {sprTrue sprFalse : ℝ}
     (hT : ANO_SPR_Term kem runtime adv sim true ≤ sprTrue)
     (hF : ANO_SPR_Term kem runtime adv sim false ≤ sprFalse) :
@@ -817,25 +819,20 @@ theorem neverFail_of_unifSpec {ι : Type} {spec : OracleSpec ι} [OracleSpec.Uni
         constructor
         simp [prFail, evalDist_query]) hq
 
-/-- The `hnf` totality hypothesis of the ANO-CCA reductions, at `probComp`. -/
+/-- The `hnf` totality hypothesis of the ANO-CCA reductions, at `probComp`
+(measure mass form; `probComp.evalDist` is `𝒟` definitionally). -/
 theorem probComp_hnf : ∀ (mx : OracleComp unifSpec Bool),
-    Pr{let x ← ProbCompRuntime.probComp.evalDist mx}[x = true] +
-      Pr{let x ← ProbCompRuntime.probComp.evalDist mx}[x = false] = 1 := by
+    ProbCompRuntime.probComp.evalDist mx {true} +
+      ProbCompRuntime.probComp.evalDist mx {false} = 1 := by
   intro mx
-  have h0 : NeverFail mx := neverFail_of_unifSpec mx
-  have h2 : Pr{let x ← mx}[x = true] + Pr{let x ← mx}[x = false] = 1 - prFail mx :=
-    probOutput_true_add_false mx (m := ProbComp)
-  have h3 : prFail mx = 0 := h0.OracleComp.prFail_eq_zero
-  have h4 : (1 : ENNReal) - 0 = 1 := by norm_num
-  rw [h3, h4] at h2
-  exact h2
+  rw [Measure.apply_true_add_apply_false]
+  exact evalDist_apply_univ_eq_one mx
 
 /-- The `heval_pure` coherence hypothesis of the ANO-CCA reductions, at
-`probComp`: evaluation of a pure return is the Dirac `SPMF`. -/
+`probComp`: evaluation of a pure return is the Dirac measure. -/
 theorem probComp_heval_pure : ∀ {α : Type} (a : α),
-    ProbCompRuntime.probComp.evalDist (pure a : OracleComp unifSpec α) = pure a := by
+    ProbCompRuntime.probComp.evalDist (pure a : OracleComp unifSpec α) = Measure.dirac a := by
   intro α a
-  show liftM (pure a : OracleComp unifSpec α) = pure a
   exact evalDist_pure a
 
 /-- The `heval_bind` coherence hypothesis: evaluation commutes with bind. -/
@@ -848,10 +845,9 @@ theorem probComp_heval_bind : ∀ {α β : Type} (mx : OracleComp unifSpec α)
   exact evalDist_bind mx f
 
 /-- The `heval_liftProbComp` coherence hypothesis: the identity lift evaluates
-to the plain `ProbComp` distribution. -/
+to the plain `ProbComp` distribution (`probComp.evalDist` is `𝒟` definitionally). -/
 theorem probComp_heval_liftProbComp : ∀ {α : Type} (pc : ProbComp α),
     ProbCompRuntime.probComp.evalDist (ProbCompRuntime.probComp.liftProbComp pc) = 𝒟[pc] := by
   intro α pc
-  show liftM (pc : OracleComp unifSpec α) = 𝒟[pc]
   rfl
 end PqStealth
