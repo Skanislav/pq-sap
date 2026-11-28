@@ -364,6 +364,7 @@ noncomputable def ANO_CCA_SimBranch {ι : Type} {spec : OracleSpec ι} {K PK SK 
 advantage between honestly encapsulating the challenge ciphertext under public
 key `b` and drawing it from the key-independent simulator `sim`. -/
 noncomputable def ANO_SPR_Term {ι : Type} {spec : OracleSpec ι} {K PK SK C : Type}
+    [OracleSpec.AnswerMeasure spec]
     (kem : KEMScheme (OracleComp spec) K PK SK C)
     (runtime : ProbCompRuntime (OracleComp spec)) [DecidableEq C]
     (adv : ANO_CCA_Adversary spec PK C K) (sim : ProbComp C) (b : Bool) : ℝ :=
