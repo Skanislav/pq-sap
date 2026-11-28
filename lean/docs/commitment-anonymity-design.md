@@ -23,7 +23,7 @@ The generic chain (`KEMAnonymity.lean:236`) bounds unlinkability of
 Adv_unlink ≤ ssHiding(true) + auxKeyIndependence + KEM.anonAdvantage + ssHiding(false)
 ```
 
-and everything except `auxKeyIndependence` (`KEMAnonymity.lean:228`) is
+and everything except `auxKeyIndependence` (`KEMAnonymity.lean:733`) is
 already discharged generically or named. The commitment profile's
 `auxGen` is (§1 of the companion note):
 
@@ -35,7 +35,7 @@ auxGen ss pk := ( SHA-256(ss)[0:1],
 ```
 
 The module's goal statement, in the shape of
-`blindingAdvantageRO_le_queryBound` (`BlindingEntropy.lean:107`):
+`blindingAdvantageRO_le_queryBound` (`BlindingEntropy.lean:103`):
 
 > There is a query-bounded ROM game whose advantage bounds
 > `auxKeyIndependence` from above, and that advantage is at most
@@ -58,7 +58,7 @@ so the generic `ofKEMFull` layer never needs to know about oracles.
 `ExpandIsIdeal` XOF idealization, and the point-mass machinery
 (`BlindingEntropy.lean`), because the address point
 `pack rho (power2Round (u + t))` has *low min-entropy* per coordinate — the
-fiber bound `card_power2Round_fiber_le` (`BlindingEntropy.lean:162`) gives
+fiber bound `card_power2Round_fiber_le` (`BlindingEntropy.lean:158`) gives
 point mass `(2^d/q)^(k·256)` per address-point guess, and the whole
 `BlindPointMassBound` hypothesis exists to price that.
 
@@ -181,7 +181,7 @@ Planned theorem ladder (names provisional, statement shapes final):
    sanity check that the game measures the right thing.
 3. **`commitAdvantageRO_le_commitBadProb`** — identical-until-bad against
    VCVio's programming-oracle engine, via `ROMUpToBad`'s
-   `tvDist_run'_roImpl_cacheOr_le_probEvent_bad` (`ROMUpToBad.lean:298`): branch
+   `tvDist_run'_roImpl_cacheOr_le_probEvent_bad` (`ROMUpToBad.lean:295`): branch
    distance ≤ probability the adversary queries the branch's address point.
    Direct reuse of `blindingAdvantageRO_le_blindBadProb`'s proof shape.
 4. **`commitBadProb_le_queryBound`** — the union bound closing the gap under
@@ -202,7 +202,7 @@ claim creeps past what is proved:
 - **No identification with `auxKeyIndependence` inside the module.** Like
   `BlindingROM.lean`'s "Assumed / NOT closed" header note, the bridge from
   `commitGameRO` to the concrete `auxKeyIndependence`
-  (`KEMAnonymity.lean:228`) of `ofKEMFull commitKem commitAuxGen` is stated
+  (`KEMAnonymity.lean:733`) of `ofKEMFull commitKem commitAuxGen` is stated
   as an explicit TODO comment + docstring, not proved. The bridge needs the
   instantiation layer (concrete `K := Fin 256 → Bool`-shaped shared secret,
   `SpendKey := Bytes`, the composite-as-one-function reading of

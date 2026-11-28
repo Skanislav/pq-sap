@@ -8,7 +8,10 @@ Everything below was discovered while building `lean/PqStealth/` against
 `Verified-zkEVM/VCVio @ a5f474fd` (2026-07-15, Lean `v4.32.0`; see
 `vcvio-pin.md` for the pin and bump procedure). Each item says what we carry
 locally because of it, where it bit, and what the upstream change would be.
-Nothing here has been filed upstream yet (status as of 2026-08-19).
+Items 1–6 and the rest are unfiled (status as of 2026-08-19); item 7 (KEM
+anonymity) was filed on 2026-10-12 as [issue
+#848](https://github.com/Verified-zkEVM/VCVio/issues/848) and is the one with
+working in-repo games ready to send the moment VCVio says yes.
 
 Grouped by what the change would cost on VCVio's side.
 
@@ -97,11 +100,34 @@ Grouped by what the change would cost on VCVio's side.
 
 7. **KEM anonymity (ANO-CPA / ANO-CCA) in `CryptoFoundations/KeyEncapMech.lean`.**
    VCVio stops at IND-CCA. Recipient unlinkability of a stealth scheme is
-   key privacy, not message privacy, so we define the anonymity game
-   ourselves (`PqStealth.KEM.AnonExp`, the hidden bit picks the public
-   key). Upstream should own that definition; `vcvio-pin.md` says to adopt
-   theirs the moment it exists. References: Grubbs–Maram–Paterson
-   (EC'22), Maram–Xagawa (PKC'23).
+   key privacy, not message privacy, so we define the anonymity games
+   ourselves. **Filed upstream as [issue
+   #848](https://github.com/Verified-zkEVM/VCVio/issues/848)** (2026-10-12,
+   no maintainer reply at time of writing), so the in-repo games are the
+   working stand-in until VCVio agrees on naming and placement. Two layers
+   now exist in `PqStealth/KEMAnonymity.lean`:
+   - CPA: `KEM.AnonExp` / `anonAdvantage` (the hidden bit picks the public
+     key), plus the two-phase `KEM.ANO_Adversary` / `ANO_CPA_Game`.
+   - CCA: `KEM.ANO_CCA_Game` / `ANO_CCA_Advantage`, replicating VCVio's
+     `IND_CCA_Game` plumbing — adversary on `spec + ((Bool × C) →ₒ Option K)`,
+     one Boolean-keyed decapsulation oracle serving both keys, and the
+     post-challenge oracle masks its own challenge ciphertext to `none` for
+     either key. The shared `Bool × C` index keeps the oracle at `Type 0`, the
+     same shape as VCVio's `IND_CCA`, so its stock `simulateQ`/`SubSpec`
+     lemmas apply; a doubled `(C →ₒ Option K) + (C →ₒ Option K)` would land at
+     `Type 1` and break them. The oracle-ignoring lift
+     `ANO_Adversary.toANO_CCA` is **proved** to collapse each phase to the CPA
+     phase (`simulateQ_toANO_CCA`, `toANO_CCA_preChallenge`/`_postChallenge`).
+   - Reduction proved 2026-10-17: `KEM.ANO_CCA_Advantage_le_of_spr` — a CPA
+     anonymity adversary lifted into the CCA game is bounded by the two
+     per-branch SPR terms against a key-independent simulator. Runtime
+     coherence (`heval_pure/bind/liftProbComp`, `hnf` totality) is carried as
+     explicit hypotheses, the same pattern VCVio's KEM+DEM reduction uses.
+     This is the exact upstream payload: a self-contained proof that ANO-CCA
+     follows from ciphertext pseudorandomness in the two-key game.
+   Upstream should own the definition; `vcvio-pin.md` says to adopt theirs
+   the moment it exists, at which point this section is the exact payload to
+   send. References: Grubbs–Maram–Paterson (EC'22), Maram–Xagawa (PKC'23).
 
 ## C. Framework-level — the ones that blocked round 3
 

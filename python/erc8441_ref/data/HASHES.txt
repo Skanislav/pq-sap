@@ -1,0 +1,13 @@
+section-1.json        e05a67608ee48776b91b2e685342815c1f90fb3f77c70c78ecc3ba7cc158d151
+section-2.json        7f73be77a3ac54b0da36712db03876e6fc52a051fe5f1417658c8a0571c10d60
+ml-kem-768-acvp.json  51c2802f9958f4efdbd04daf6f565c0890eb343fb8d665cb0618f515138a606b
+
+Source URLs (verified 2026-11-17):
+- section-1.json / section-2.json:
+  https://raw.githubusercontent.com/ethereum/ERCs/master/assets/erc-8441/vectors/
+  (ERC merged 2026-10-29; assets commit 4878022; asset dir listing matches
+   byte sizes 3093 / 104208)
+- ml-kem-768-acvp.json:
+  https://raw.githubusercontent.com/namnc/pq-stealth-scheme3-public/main/vectors/tier1/ml-kem-768-acvp.json
+  (first implementation's vendored ACVP subset: 3 keygen + 3 encapsulation +
+   10 decapsulation + 10 encapsulation_key_check cases)

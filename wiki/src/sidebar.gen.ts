@@ -209,6 +209,10 @@ export const generatedSidebar = [
         "link": "/research/stretch-goal-report"
       },
       {
+        "text": "VCVio ML-KEM gap analysis for ERC-8441 — formal verification and a compiled Lean implementation",
+        "link": "/research/vcvio-mlkem-gap-analysis"
+      },
+      {
         "text": "Widened-z distribution and signature-route distinguishability",
         "link": "/research/widened-z-distribution"
       },
@@ -226,6 +230,10 @@ export const generatedSidebar = [
         "link": "/lean/proofs"
       },
       {
+        "text": "ANOAssumption",
+        "link": "/lean/proofs/anoassumption"
+      },
+      {
         "text": "AnonymityFromSPR",
         "link": "/lean/proofs/anonymityfromspr"
       },
@@ -240,6 +248,10 @@ export const generatedSidebar = [
       {
         "text": "BlindingROM",
         "link": "/lean/proofs/blindingrom"
+      },
+      {
+        "text": "ClosedUnlinkability",
+        "link": "/lean/proofs/closedunlinkability"
       },
       {
         "text": "ConstructionA",
@@ -266,8 +278,16 @@ export const generatedSidebar = [
         "link": "/lean/proofs/dksaporacle"
       },
       {
+        "text": "Erc8441Concrete",
+        "link": "/lean/proofs/erc8441concrete"
+      },
+      {
         "text": "Games",
         "link": "/lean/proofs/games"
+      },
+      {
+        "text": "HybridKEM",
+        "link": "/lean/proofs/hybridkem"
       },
       {
         "text": "Invariants",
@@ -300,6 +320,14 @@ export const generatedSidebar = [
       {
         "text": "ROMUpToBad",
         "link": "/lean/proofs/romuptobad"
+      },
+      {
+        "text": "Scheme3",
+        "link": "/lean/proofs/scheme3"
+      },
+      {
+        "text": "Scheme3Wire",
+        "link": "/lean/proofs/scheme3wire"
       },
       {
         "text": "SharedSecretHiding",

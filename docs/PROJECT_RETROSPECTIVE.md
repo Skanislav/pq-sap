@@ -2,8 +2,9 @@
 
 <!--
 The cohort proposal — as written, run, and scored after the fact. Superseded
-D-033 (2026-10-29), which kept a second copy of the proposal inside this
-repository so the upstream cohort copy could be refreshed from it: the upstream
+D-037 (2026-10-29 — the in-repo cohort proposal is the canonical text and the
+upstream copy is refreshed from it), which kept a second copy of the proposal
+inside this repository so the upstream cohort copy could be refreshed from it: the upstream
 file was a stale snapshot of the plan, not of the work, and maintaining two
 texts meant every "the proposal says" statement was ambiguous. This document is
 the single surviving copy; the cohort artifact is closed.
@@ -508,6 +509,6 @@ Skas
 
 **This project's artifacts**
 
-* [Technical reference](TECHNICAL_SPEC.md) · [ERC evidence map](ERC_EVIDENCE.md) · [security boundaries](SECURITY_ANALYSIS.md) · [decision log](DECISIONS.md) (D-001–D-033)
+* [Technical reference](TECHNICAL_SPEC.md) · [ERC evidence map](ERC_EVIDENCE.md) · [security boundaries](SECURITY_ANALYSIS.md) · [decision log](DECISIONS.md) (D-001–D-039)
 * [Cost report](research/cost-report.md) · [stretch-goal report](research/stretch-goal-report.md) · [submission roadmap](research/erc-submission-gap-analysis.md)
 * [Python reference + vectors](../python) · [TypeScript client](../js-client) · [demo UI](../ui) · [Lean proofs](../lean) · [Noir circuits](../noir)

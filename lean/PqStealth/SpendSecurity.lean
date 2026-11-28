@@ -114,14 +114,14 @@ noncomputable def relatedSpendAdvantage (keyGen : ProbComp (OwnershipKey R k l))
     (offGen : ProbComp (ShortOffset R k l offShort))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool) (q : ℕ)
     (adv : RelatedSpendAdv R k l offShort q) : ℝ≥0∞ :=
-  Pr[RelatedSpendWins isShort | relatedSpendRun keyGen offGen q adv]
+  Pr{let x ← relatedSpendRun keyGen offGen q adv}[(RelatedSpendWins isShort) x]
 
 /-- The advantage restricted to forgeries against derived key `i`. -/
 noncomputable def relatedSpendAdvantageAt (keyGen : ProbComp (OwnershipKey R k l))
     (offGen : ProbComp (ShortOffset R k l offShort))
     (isShort : ((Fin l → R) × (Fin k → R)) → Bool) (q : ℕ)
     (adv : RelatedSpendAdv R k l offShort q) (i : Fin q) : ℝ≥0∞ :=
-  Pr[fun x => x.2.2.1 = i ∧ RelatedSpendWins isShort x | relatedSpendRun keyGen offGen q adv]
+  Pr{let x ← relatedSpendRun keyGen offGen q adv}[x.2.2.1 = i ∧ RelatedSpendWins isShort x]
 
 /-! ## 3. The union bound over the targeted key -/
 
@@ -174,7 +174,7 @@ theorem relatedSpendAdvantageAt_le_spendForgery
     simp only [SIS.experiment, ownershipSISProblem, relatedSpendReduction, relatedSpendRun,
       map_eq_bind_pure_comp, Function.comp_def, bind_assoc, pure_bind]
   unfold relatedSpendAdvantageAt spendForgeryAdvantage SIS.advantage
-  rw [hexp, probOutput_map]
+  rw [hexp, prEvent_map]
   refine probEvent_mono'' fun x hx => ?_
   obtain ⟨hi, hwin⟩ := hx
   subst hi

@@ -1,7 +1,7 @@
 import PqStealth.DKSAP
 import PqStealth.ROMUpToBad
 import VCVio.OracleComp.QueryTracking.QueryBound
-import VCVio.OracleComp.QueryTracking.LoggingOracle
+import VCVio.OracleComp.QueryTracking.LoggingOracle.Core
 import VCVio.OracleComp.QueryTracking.RandomOracle.Simulation
 import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
 
@@ -261,8 +261,8 @@ theorem dksapROIdeal_boolDistAdvantage_eq_zero (g : G) (adv : UnlinkAdvRO F G)
   rw [ProbComp.boolDistAdvantage]
   refine abs_eq_zero.mpr (sub_eq_zero.mpr ?_)
   congr 1
-  rw [dksapROIdealRun_eq, dksapROIdealRun_eq, probOutput_bind_eq_tsum,
-    probOutput_bind_eq_tsum]
+  rw [dksapROIdealRun_eq, dksapROIdealRun_eq, OracleComp.prEvent_bind_eq_tsum,
+    OracleComp.prEvent_bind_eq_tsum]
   refine tsum_congr fun a => ?_
   congr 1
   simp only [if_true, Bool.false_eq_true, if_false]
@@ -342,7 +342,7 @@ noncomputable def dksapROBad (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ProbCo
 /-- The probability of the bad event, as an `ℝ` like every other advantage
 here. -/
 noncomputable def dksapROBadProb (g : G) (adv : UnlinkAdvRO F G) (b : Bool) : ℝ :=
-  (Pr[= true | dksapROBad g adv b]).toReal
+  (Pr{let x ← dksapROBad g adv b}[x = true]).toReal
 
 /-- **Identical until bad, closed.** The hashed-DH term on branch `b` is at most the
 probability that the adversary queries the DH point. -/

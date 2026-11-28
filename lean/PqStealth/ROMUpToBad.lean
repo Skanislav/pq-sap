@@ -15,7 +15,7 @@ stated for computations whose only oracle is the hash. Our ROM games live over
 Proved, for that shape (everything here is stated over an arbitrary `hashSpec`):
 
 * `tvDist_programmedROImpl_trackingROImpl_le`: the engine bound
-  (`tvDist_simulateQ_run_le_probEvent_output_bad`) for `unifFwd + withProgramming policy` vs
+  (`measureETVDist_simulateQ_run_le_prEvent_bad`) for `unifFwd + withProgramming policy` vs
   `unifFwd + withCachingTrackingPolicy policy`, with the programming flag as the bad event;
 * `relTriple_run'_programmedROImpl_roImpl`: the programmed run from `(cache₀, false)` is, on the
   output marginal (`evalDist_eq_of_relTriple_eqRel`), the plain random oracle run from the cache
@@ -144,14 +144,12 @@ output. (VCVio proves this for its own bridge but keeps it `private`.) -/
 theorem probOutput_withProgramming_eq_withCachingTrackingPolicy_of_not_bad_output
     (t : hashSpec.Domain) (cache : hashSpec.QueryCache)
     (u : hashSpec.Range t) (cache' : hashSpec.QueryCache) :
-    Pr[= (u, (cache', false)) |
-        (QueryImpl.withProgramming uniformSampleImpl policy t).run (cache, false)] =
-      Pr[= (u, (cache', false)) |
-        (QueryImpl.withCachingTrackingPolicy uniformSampleImpl policy t).run (cache, false)] := by
+    Pr{let x ← (QueryImpl.withProgramming uniformSampleImpl policy t).run (cache, false)}[x = (u, (cache', false))] =
+      Pr{let x ← (QueryImpl.withCachingTrackingPolicy uniformSampleImpl policy t).run (cache, false)}[x = (u, (cache', false))] := by
   classical
   cases hcache : cache t with
   | some v =>
-    simp only [QueryImpl.withProgramming_apply, StateT.run_mk, hcache, probOutput_pure,
+    simp only [QueryImpl.withProgramming_apply, StateT.run_mk, hcache, prEvent_pure,
       Prod.mk.injEq, and_true, QueryImpl.withCachingTrackingPolicy_apply, Bool.if_true_left,
       Bool.decide_eq_true, Functor.map_map]
   | none =>
@@ -178,10 +176,10 @@ theorem probOutput_withProgramming_eq_withCachingTrackingPolicy_of_not_bad_outpu
             ProbComp (hashSpec.Range t × hashSpec.QueryCache × Bool)) := by
         simp only [QueryImpl.withCachingTrackingPolicy_apply, hpol, Option.isSome_some, ↓reduceIte,
           Functor.map_map, StateT.run_mk, hcache, bind_pure_comp]
-      rw [hL, hR, probOutput_pure, if_neg (hne v _), probOutput_bind_eq_tsum]
+      rw [hL, hR, prEvent_pure, if_neg (hne v _), OracleComp.prEvent_bind_eq_tsum]
       symm
       refine ENNReal.tsum_eq_zero.mpr (fun u' => ?_)
-      rw [probOutput_pure, if_neg (hne u' _), mul_zero]
+      rw [prEvent_pure, if_neg (hne u' _), mul_zero]
 
 /-- **Identical until bad, with uniform forwarding.** The joint (output, cache, flag)
 distributions of the programmed and tracking runs are within the probability that the flag
@@ -190,9 +188,8 @@ theorem tvDist_programmedROImpl_trackingROImpl_le {α : Type}
     (oa : OracleComp (unifSpec + hashSpec) α) (cache₀ : hashSpec.QueryCache) :
     tvDist ((simulateQ (programmedROImpl policy) oa).run (cache₀, false))
         ((simulateQ (trackingROImpl policy) oa).run (cache₀, false))
-      ≤ Pr[fun z : α × hashSpec.QueryCache × Bool => z.2.2 = true |
-          (simulateQ (programmedROImpl policy) oa).run (cache₀, false)].toReal := by
-  refine OracleComp.ProgramLogic.Relational.tvDist_simulateQ_run_le_probEvent_output_bad
+      ≤ Pr{let z ← (simulateQ (programmedROImpl policy) oa).run (cache₀, false)}[z.2.2 = true].toReal := by
+  refine OracleComp.ProgramLogic.Relational.measureETVDist_simulateQ_run_le_prEvent_bad
     (programmedROImpl policy) (trackingROImpl policy) oa cache₀ ?_ ?_ ?_
   · rintro (n | t) s u s'
     · rfl
@@ -299,8 +296,7 @@ theorem tvDist_run'_roImpl_cacheOr_le_probEvent_bad {α : Type}
     (oa : OracleComp (unifSpec + hashSpec) α) (cache₀ : hashSpec.QueryCache) :
     tvDist ((simulateQ (roImpl hashSpec) oa).run' (cacheOr cache₀ policy))
         ((simulateQ (roImpl hashSpec) oa).run' cache₀)
-      ≤ Pr[fun z : α × hashSpec.QueryCache × Bool => z.2.2 = true |
-          (simulateQ (programmedROImpl policy) oa).run (cache₀, false)].toReal := by
+      ≤ Pr{let z ← (simulateQ (programmedROImpl policy) oa).run (cache₀, false)}[z.2.2 = true].toReal := by
   have hB := evalDist_eq_of_relTriple_eqRel (relTriple_run'_programmedROImpl_roImpl policy oa cache₀)
   have hC := evalDist_eq_of_relTriple_eqRel (relTriple_run'_trackingROImpl_roImpl policy oa cache₀)
   calc tvDist ((simulateQ (roImpl hashSpec) oa).run' (cacheOr cache₀ policy))
@@ -320,10 +316,8 @@ both keep it set. This is the equality counterpart of
 `tvDist_programmedROImpl_trackingROImpl_le`. -/
 theorem probEvent_flag_programmed_eq_tracking {α : Type}
     (oa : OracleComp (unifSpec + hashSpec) α) (cache₀ : hashSpec.QueryCache) :
-    Pr[fun z => z.2.2 = true |
-        (simulateQ (programmedROImpl policy) oa).run (cache₀, false)] =
-      Pr[fun z => z.2.2 = true |
-        (simulateQ (trackingROImpl policy) oa).run (cache₀, false)] := by
+    Pr{let z ← (simulateQ (programmedROImpl policy) oa).run (cache₀, false)}[z.2.2 = true] =
+      Pr{let z ← (simulateQ (trackingROImpl policy) oa).run (cache₀, false)}[z.2.2 = true] := by
   refine OracleComp.ProgramLogic.Relational.probEvent_output_bad_eq'
     (programmedROImpl policy) (trackingROImpl policy) ?_ ?_ ?_ oa cache₀
   · rintro (n | t) s u s'
@@ -391,34 +385,33 @@ theorem boolDistAdvantage_run'_cacheQuery_run'_empty_le {γ : Type} (pre : ProbC
       (pre >>= fun x => (simulateQ (roImpl hashSpec) (oa x)).run'
         ((∅ : hashSpec.QueryCache).cacheQuery (pt x) (val x)))
       (pre >>= fun x => (simulateQ (roImpl hashSpec) (oa x)).run' ∅)
-      ≤ (Pr[= true | badQueryGame pre oa pt val]).toReal := by
+      ≤ (Pr{let x ← badQueryGame pre oa pt val}[x = true]).toReal := by
   classical
   set f : γ → ProbComp Bool := fun x =>
     (simulateQ (roImpl hashSpec) (oa x)).run' ((∅ : hashSpec.QueryCache).cacheQuery (pt x) (val x))
   set g : γ → ProbComp Bool := fun x => (simulateQ (roImpl hashSpec) (oa x)).run' ∅
   set bad : γ → ℝ≥0∞ := fun x =>
-    Pr[fun z : Bool × hashSpec.QueryCache × Bool => z.2.2 = true |
-      (simulateQ (programmedROImpl (pointPolicy (pt x) (val x))) (oa x)).run (∅, false)]
+    Pr{let z ← (simulateQ (programmedROImpl (pointPolicy (pt x) (val x))) (oa x)).run (∅, false)}[z.2.2 = true]
   have hterm : ∀ x, tvDist (f x) (g x) ≤ (bad x).toReal := by
     intro x
     have := tvDist_run'_roImpl_cacheOr_le_probEvent_bad (pointPolicy (pt x) (val x)) (oa x) ∅
     rwa [cacheOr_empty_pointPolicy] at this
-  have hbadGame : Pr[= true | badQueryGame pre oa pt val] = ∑' x, Pr[= x | pre] * bad x := by
-    rw [badQueryGame, probOutput_bind_eq_tsum]
+  have hbadGame : Pr{let x ← badQueryGame pre oa pt val}[x = true] = ∑' x, Pr{let y ← pre}[y = x] * bad x := by
+    rw [badQueryGame, OracleComp.prEvent_bind_eq_tsum]
     refine tsum_congr fun x => ?_
-    rw [probOutput_map]
-  have hne_top : ∀ x, Pr[= x | pre] * bad x ≠ ⊤ := fun x =>
-    ENNReal.mul_ne_top (ne_top_of_le_ne_top one_ne_top probOutput_le_one)
-      (ne_top_of_le_ne_top one_ne_top probEvent_le_one)
-  have hsum_ne_top : (∑' x, Pr[= x | pre] * bad x) ≠ ⊤ := by
+    rw [prEvent_map]
+  have hne_top : ∀ x, Pr{let y ← pre}[y = x] * bad x ≠ ⊤ := fun x =>
+    ENNReal.mul_ne_top (ne_top_of_le_ne_top one_ne_top (prEvent_le_one _))
+      (ne_top_of_le_ne_top one_ne_top (prEvent_le_one _))
+  have hsum_ne_top : (∑' x, Pr{let y ← pre}[y = x] * bad x) ≠ ⊤ := by
     rw [← hbadGame]
-    exact ne_top_of_le_ne_top one_ne_top probOutput_le_one
-  have hsummable : Summable fun x => (Pr[= x | pre] * bad x).toReal :=
+    exact ne_top_of_le_ne_top one_ne_top (prEvent_le_one _)
+  have hsummable : Summable fun x => (Pr{let y ← pre}[y = x] * bad x).toReal :=
     ENNReal.summable_toReal hsum_ne_top
   calc ProbComp.boolDistAdvantage (pre >>= f) (pre >>= g)
       ≤ tvDist (pre >>= f) (pre >>= g) := abs_probOutput_toReal_sub_le_tvDist _ _
-    _ ≤ ∑' x, Pr[= x | pre].toReal * tvDist (f x) (g x) := tvDist_bind_left_le pre f g
-    _ ≤ ∑' x, (Pr[= x | pre] * bad x).toReal := by
+    _ ≤ ∑' x, Pr{let y ← pre}[y = x].toReal * tvDist (f x) (g x) := tvDist_bind_left_le pre f g
+    _ ≤ ∑' x, (Pr{let y ← pre}[y = x] * bad x).toReal := by
         refine Summable.tsum_le_tsum (fun x => ?_) ?_ hsummable
         · rw [ENNReal.toReal_mul]
           exact mul_le_mul_of_nonneg_left (hterm x) ENNReal.toReal_nonneg
@@ -427,7 +420,7 @@ theorem boolDistAdvantage_run'_cacheQuery_run'_empty_le {γ : Type} (pre : ProbC
             (fun x => by
               rw [ENNReal.toReal_mul]
               exact mul_le_mul_of_nonneg_left (hterm x) ENNReal.toReal_nonneg)
-    _ = (Pr[= true | badQueryGame pre oa pt val]).toReal := by
+    _ = (Pr{let x ← badQueryGame pre oa pt val}[x = true]).toReal := by
         rw [hbadGame, ENNReal.tsum_toReal_eq hne_top]
 
 end Point
@@ -451,17 +444,17 @@ variable [DecidableEq ι] [∀ t : hashSpec.Domain, SampleableType (hashSpec.Ran
 omit [DecidableEq ι] [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t)] in
 /-- A bound that holds on every support point of the continuation bounds the bind. -/
 theorem probEvent_bind_le_const {α β : Type} (mx : ProbComp α) (my : α → ProbComp β)
-    (q : β → Prop) (c : ℝ≥0∞) (h : ∀ x ∈ support mx, Pr[q | my x] ≤ c) :
-    Pr[q | mx >>= my] ≤ c := by
-  rw [probEvent_bind_eq_tsum]
-  calc ∑' x, Pr[= x | mx] * Pr[q | my x]
-      ≤ ∑' x, Pr[= x | mx] * c := by
+    (q : β → Prop) (c : ℝ≥0∞) (h : ∀ x ∈ support mx, Pr{let y ← my x}[q y] ≤ c) :
+    Pr{let x ← mx >>= my}[q x] ≤ c := by
+  rw [OracleComp.prEvent_bind_eq_tsum]
+  calc ∑' x, Pr{let y ← mx}[y = x] * Pr{let y ← my x}[q y]
+      ≤ ∑' x, Pr{let y ← mx}[y = x] * c := by
         refine ENNReal.tsum_le_tsum fun x => ?_
         by_cases hx : x ∈ support mx
         · exact mul_le_mul' le_rfl (h x hx)
-        · simp [probOutput_eq_zero_of_not_mem_support hx]
-    _ = (∑' x, Pr[= x | mx]) * c := ENNReal.tsum_mul_right
-    _ ≤ 1 * c := mul_le_mul' tsum_probOutput_le_one le_rfl
+        · simp [(prEvent_eq_zero_of_not_mem_support _) hx]
+    _ = (∑' x, Pr{let y ← mx}[y = x]) * c := ENNReal.tsum_mul_right
+    _ ≤ 1 * c := mul_le_mul' (OracleComp.tsum_prEvent_le_one _) le_rfl
     _ = c := one_mul c
 
 /-- **The tracking flag is "the point got cached".** Against the tracking oracle programmed at
@@ -470,12 +463,11 @@ final cache holds that point. -/
 theorem probEvent_flag_trackingROImpl_pointPolicy_le {α : Type}
     (oa : OracleComp (unifSpec + hashSpec) α) (pt : hashSpec.Domain) (v : hashSpec.Range pt)
     (cache₀ : hashSpec.QueryCache) (h₀ : cache₀ pt = none) :
-    Pr[fun z => z.2.2 = true |
-        (simulateQ (trackingROImpl (pointPolicy pt v)) oa).run (cache₀, false)] ≤
-      Pr[fun z => QueryCache.isCached z.2 pt = true | (simulateQ (roImpl hashSpec) oa).run cache₀] := by
+    Pr{let z ← (simulateQ (trackingROImpl (pointPolicy pt v)) oa).run (cache₀, false)}[z.2.2 = true] ≤
+      Pr{let z ← (simulateQ (roImpl hashSpec) oa).run cache₀}[QueryCache.isCached z.2 pt = true] := by
   have hrel := relTriple_simulateQ_run (trackingROImpl (pointPolicy pt v)) (roImpl hashSpec)
     (fun p c => c = p.1 ∧ p.2 = (p.1 pt).isSome) oa ?_ (cache₀, false) cache₀ ⟨rfl, by simp [h₀]⟩
-  · refine probEvent_le_of_relTriple hrel ?_
+  · refine prEvent_le_of_relTriple hrel ?_
     rintro a b ⟨-, hc, hflag⟩ hbad
     show (b.2 pt).isSome = true
     rw [hc, ← hflag]
@@ -583,14 +575,14 @@ omit [DecidableEq ι] [∀ t : hashSpec.Domain, SampleableType (hashSpec.Range t
 /-- **Union bound over a fixed cache.** A `β`-unpredictable point lands on a key of a cache
 whose keys lie in `S` with probability at most `|S|·β`. -/
 theorem probEvent_isSome_apply_le {γ : Type} (samp : ProbComp γ) (f : γ → hashSpec.Domain)
-    (beta : ℝ≥0∞) (hB : ∀ x, Pr[fun y => f y = x | samp] ≤ beta)
+    (beta : ℝ≥0∞) (hB : ∀ x, Pr{let y ← samp}[f y = x] ≤ beta)
     (c : hashSpec.QueryCache) (S : Finset hashSpec.Domain)
     (hS : ∀ t, QueryCache.isCached c t = true → t ∈ S) :
-    Pr[fun y => QueryCache.isCached c (f y) = true | samp] ≤ S.card * beta := by
-  calc Pr[fun y => QueryCache.isCached c (f y) = true | samp]
-      ≤ Pr[fun y => ∃ t ∈ S, f y = t | samp] :=
+    Pr{let y ← samp}[QueryCache.isCached c (f y) = true] ≤ S.card * beta := by
+  calc Pr{let y ← samp}[QueryCache.isCached c (f y) = true]
+      ≤ Pr{let y ← samp}[∃ t ∈ S, f y = t] :=
         probEvent_mono'' fun y hy => ⟨f y, hS _ hy, rfl⟩
-    _ ≤ ∑ t ∈ S, Pr[fun y => f y = t | samp] :=
+    _ ≤ ∑ t ∈ S, Pr{let y ← samp}[f y = t] :=
         probEvent_exists_finset_le_sum S samp (fun t y => f y = t)
     _ ≤ ∑ _t ∈ S, beta := Finset.sum_le_sum fun t _ => hB t
     _ = S.card * beta := by rw [Finset.sum_const, nsmul_eq_mul]

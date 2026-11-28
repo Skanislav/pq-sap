@@ -21,37 +21,37 @@ open OracleComp OracleSpec
 
 namespace PqStealth
 
-/-! ## Bookkeeping for `Pr[= true | …]` over a bind
+/-! ## Bookkeeping for `Pr{let x ← …}[x = true]` over a bind
 
 Three shapes recur below: reading off a uniform draw, bounding a bind by a
 uniform bound on its continuation, and collapsing a prefix. Each is a one-line
-specialisation of a VCVio lemma (`probOutput_map` + `probEvent_eq_eq_probOutput`,
-`probEvent_bind_le_of_forall_le`, `probOutput_bind_of_const`) to the
-`Pr[= true | …]` spelling the games use. -/
+specialisation of a VCVio lemma (`prEvent_map` + `probEvent_eq_eq_probOutput`,
+`prEvent_bind_le_of_forall_le`, `probOutput_bind_of_const`) to the
+`Pr{let x ← …}[x = true]` spelling the games use. -/
 
 /-- Testing a draw against a fixed value returns `true` exactly as often as the
 draw hits it. -/
 theorem probOutput_true_bind_decide_eq {α : Type} [DecidableEq α] (p : ProbComp α) (t : α) :
-    Pr[= true | (do let x ← p; pure (decide (x = t)))] = Pr[= t | p] := by
-  rw [bind_pure_comp, probOutput_map]
+    Pr{let y ← (do let x ← p; pure (decide (x = t)))}[y = true] = Pr{let x ← p}[x = t] := by
+  rw [bind_pure_comp, prEvent_map]
   simp only [decide_eq_true_eq]
   exact probEvent_eq_eq_probOutput p t
 
 /-- A bind is bounded by any bound holding uniformly over its continuation. The
 workhorse for the KEM false-positive bound. -/
 theorem probOutput_true_bind_le {α : Type} (p : ProbComp α) (f : α → ProbComp Bool)
-    (c : ENNReal) (h : ∀ a, Pr[= true | f a] ≤ c) :
-    Pr[= true | p >>= f] ≤ c := by
+    (c : ENNReal) (h : ∀ a, Pr{let x ← f a}[x = true] ≤ c) :
+    Pr{let x ← p >>= f}[x = true] ≤ c := by
   rw [← probEvent_eq_eq_probOutput]
-  exact probEvent_bind_le_of_forall_le fun a _ => by
+  exact prEvent_bind_le_of_forall_le fun a _ => by
     rw [probEvent_eq_eq_probOutput]; exact h a
 
 /-- A prefix whose continuation has a constant verdict probability contributes
 nothing (a `ProbComp` never fails). The equality counterpart of
 `probOutput_true_bind_le`. -/
 theorem probOutput_true_bind_eq {α : Type} (p : ProbComp α) (f : α → ProbComp Bool)
-    (c : ENNReal) (h : ∀ a, Pr[= true | f a] = c) :
-    Pr[= true | p >>= f] = c := by
+    (c : ENNReal) (h : ∀ a, Pr{let x ← f a}[x = true] = c) :
+    Pr{let x ← p >>= f}[x = true] = c := by
   rw [probOutput_bind_of_const p (fun a _ => h a), probFailure_of_liftM_PMF, tsub_zero, one_mul]
 
 /-! ## DKSAP: the exact false-positive rate
@@ -71,22 +71,22 @@ variable {F : Type} [Field F] [SampleableType F] [Fintype F] [DecidableEq F]
 recipient 1's uniform spending scalar. -/
 theorem probOutput_falsePositiveExp_dksap_eq (g : G) (h : G → F)
     (hinj : Function.Injective (fun x : F => x • g)) :
-    Pr[= true | (dksap g h).FalsePositiveExp] = (Fintype.card F : ENNReal)⁻¹ := by
+    Pr{let x ← (dksap g h).FalsePositiveExp}[x = true] = (Fintype.card F : ENNReal)⁻¹ := by
   have key : ∀ m0 v0 m1 v1 r : F,
       (m1 • g + h (r • v1 • g) • g = (m0 + h (v0 • r • g)) • g)
         ↔ (m1 = m0 + h (v0 • r • g) - h (r • v1 • g)) := by
     intro m0 v0 m1 v1 r
     rw [← add_smul, eq_sub_iff_add_eq]
     exact ⟨fun hEq => hinj hEq, fun hEq => congrArg (fun x : F => x • g) hEq⟩
-  have base : ∀ c : F, Pr[= true | (do let m1 ← ($ᵗ F); pure (decide (m1 = c)))]
+  have base : ∀ c : F, Pr{let x ← (do let m1 ← ($ᵗ F); pure (decide (m1 = c)))}[x = true]
       = (Fintype.card F : ENNReal)⁻¹ := fun c => by
     rw [probOutput_true_bind_decide_eq, probOutput_uniformSample]
   simp only [StealthScheme.FalsePositiveExp, dksap, bind_assoc, pure_bind, key]
   refine probOutput_true_bind_eq _ _ _ fun m0 => ?_
   refine probOutput_true_bind_eq _ _ _ fun v0 => ?_
-  rw [probOutput_bind_bind_swap]
+  rw [OracleComp.prEvent_bind_bind_swap]
   refine probOutput_true_bind_eq _ _ _ fun v1 => ?_
-  rw [probOutput_bind_bind_swap]
+  rw [OracleComp.prEvent_bind_bind_swap]
   refine probOutput_true_bind_eq _ _ _ fun r => ?_
   exact base _
 
@@ -124,7 +124,7 @@ prescribed value with probability at most `ε`. For a view tag this is a countin
 argument on the tag alphabet. -/
 def AuxCollisionFree (auxGen : K → PK → Aux) (ε : ℝ) : Prop :=
   ∀ (a : Aux) (pk : PK),
-    (Pr[= true | (do let k ← ($ᵗ K); pure (decide (a = auxGen k pk)))]).toReal ≤ ε
+    (Pr{let x ← (do let k ← ($ᵗ K); pure (decide (a = auxGen k pk)))}[x = true]).toReal ≤ ε
 
 /-- The false-positive experiment with recipient 0's decapsulated key replaced
 by a fresh uniform one: the announcement is unchanged, only the scanner's secret
@@ -147,16 +147,16 @@ noncomputable def decapsRoR : ℝ :=
 secret, so `AuxCollisionFree` bounds it directly. -/
 theorem probOutput_falsePositiveIdeal_le (ε : ℝ) (hε : 0 ≤ ε)
     (hTag : AuxCollisionFree auxGen ε) :
-    (Pr[= true | falsePositiveIdeal kem auxGen]).toReal ≤ ε := by
-  have hbound : Pr[= true | falsePositiveIdeal kem auxGen] ≤ ENNReal.ofReal ε := by
+    (Pr{let x ← falsePositiveIdeal kem auxGen}[x = true]).toReal ≤ ε := by
+  have hbound : Pr{let x ← falsePositiveIdeal kem auxGen}[x = true] ≤ ENNReal.ofReal ε := by
     refine probOutput_true_bind_le _ _ _ fun ks0 => ?_
     refine probOutput_true_bind_le _ _ _ fun ks1 => ?_
     refine probOutput_true_bind_le _ _ _ fun ck => ?_
     exact (ENNReal.le_ofReal_iff_toReal_le
-      (ne_top_of_le_ne_top ENNReal.one_ne_top probOutput_le_one) hε).2
+      (ne_top_of_le_ne_top ENNReal.one_ne_top (prEvent_le_one _)) hε).2
       (hTag (auxGen ck.2 ks1.1) ks0.1)
   exact (ENNReal.le_ofReal_iff_toReal_le
-    (ne_top_of_le_ne_top ENNReal.one_ne_top probOutput_le_one) hε).1 hbound
+    (ne_top_of_le_ne_top ENNReal.one_ne_top (prEvent_le_one _)) hε).1 hbound
 
 /-- **Detection soundness of the KEM scheme.** A stranger false-positives with
 probability at most the tag-collision bound plus the real-or-random gap of their
@@ -165,7 +165,7 @@ theorem falsePositiveRate_ofKEMFull_le (ε : ℝ) (hε : 0 ≤ ε)
     (hTag : AuxCollisionFree auxGen ε) :
     (StealthScheme.ofKEMFull kem auxGen).SoundWithin (ε + decapsRoR kem auxGen) := by
   have hgap : (StealthScheme.ofKEMFull kem auxGen).falsePositiveRate
-      - (Pr[= true | falsePositiveIdeal kem auxGen]).toReal ≤ decapsRoR kem auxGen :=
+      - (Pr{let x ← falsePositiveIdeal kem auxGen}[x = true]).toReal ≤ decapsRoR kem auxGen :=
     le_abs_self _
   have hideal := probOutput_falsePositiveIdeal_le kem auxGen ε hε hTag
   unfold StealthScheme.SoundWithin
@@ -247,7 +247,7 @@ theorem card_fiber_eval' {α : Type} [Fintype α] [DecidableEq α] [Nonempty α]
 `|α| ^ (n - 1)` (`card_fiber_eval'`); dividing by the `|α| ^ n` vectors leaves
 `1 / |α|`. -/
 theorem probOutput_map_get_uniformSample_vector {n : ℕ} (i : Fin n) (x : α) :
-    Pr[= x | (fun v : Vector α n => v.get i) <$> ($ᵗ (Vector α n))]
+    Pr{let y ← (fun v : Vector α n => v.get i) <$> ($ᵗ (Vector α n))}[y = x]
       = (Fintype.card α : ENNReal)⁻¹ := by
   classical
   rw [probOutput_map_eq_sum_fintype_ite]
@@ -309,21 +309,21 @@ def taggedAux (viewTag : K → T) (rest : K → PK → Rest) : K → PK → T ×
 tag, tag-led auxiliary data is `1/|T|`-collision-free: the remainder can only
 help, so the alphabet size is the whole story. -/
 theorem auxCollisionFree_taggedAux (viewTag : K → T) (rest : K → PK → Rest)
-    (hUnif : ∀ t : T, Pr[= t | viewTag <$> ($ᵗ K)] = (Fintype.card T : ENNReal)⁻¹) :
+    (hUnif : ∀ t : T, Pr{let x ← viewTag <$> ($ᵗ K)}[x = t] = (Fintype.card T : ENNReal)⁻¹) :
     AuxCollisionFree (taggedAux viewTag rest) (1 / (Fintype.card T : ℝ)) := by
   intro a pk
   haveI : Nonempty T := ⟨a.1⟩
-  have hmono : Pr[= true | (do let k ← ($ᵗ K); pure (decide (a = taggedAux viewTag rest k pk)))]
-      ≤ Pr[= true | (do let k ← ($ᵗ K); pure (decide (viewTag k = a.1)))] := by
+  have hmono : Pr{let x ← (do let k ← ($ᵗ K); pure (decide (a = taggedAux viewTag rest k pk)))}[x = true]
+      ≤ Pr{let x ← (do let k ← ($ᵗ K); pure (decide (viewTag k = a.1)))}[x = true] := by
     refine probOutput_bind_mono fun k _ => ?_
     by_cases hk : a = taggedAux viewTag rest k pk
     · have htag : viewTag k = a.1 := by simp only [hk, taggedAux]
       simp only [hk, htag, decide_true, le_refl]
-    · simp only [hk, decide_false, probOutput_pure, Bool.true_eq_false, if_false, zero_le]
+    · simp only [hk, decide_false, prEvent_pure, Bool.true_eq_false, if_false, zero_le]
   have hbridge : (do let x ← (viewTag <$> ($ᵗ K)); pure (decide (x = a.1)))
       = (do let k ← ($ᵗ K); pure (decide (viewTag k = a.1))) := by
     simp only [map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp_apply]
-  have hval : Pr[= true | (do let k ← ($ᵗ K); pure (decide (viewTag k = a.1)))]
+  have hval : Pr{let x ← (do let k ← ($ᵗ K); pure (decide (viewTag k = a.1)))}[x = true]
       = (Fintype.card T : ENNReal)⁻¹ := by
     rw [← hbridge, probOutput_true_bind_decide_eq, hUnif]
   have hfin : ((Fintype.card T : ENNReal))⁻¹ ≠ ⊤ := by
@@ -337,7 +337,7 @@ auxiliary data. The false-positive rate is at most the tag alphabet's reciprocal
 plus the real-or-random term. -/
 theorem soundWithin_ofKEMFull_taggedAux {SK C : Type}
     (kem : KEM PK SK C K) (viewTag : K → T) (rest : K → PK → Rest)
-    (hUnif : ∀ t : T, Pr[= t | viewTag <$> ($ᵗ K)] = (Fintype.card T : ENNReal)⁻¹) :
+    (hUnif : ∀ t : T, Pr{let x ← viewTag <$> ($ᵗ K)}[x = t] = (Fintype.card T : ENNReal)⁻¹) :
     (StealthScheme.ofKEMFull kem (taggedAux viewTag rest)).SoundWithin
       (1 / (Fintype.card T : ℝ) + decapsRoR kem (taggedAux viewTag rest)) :=
   falsePositiveRate_ofKEMFull_le kem (taggedAux viewTag rest) _
@@ -360,7 +360,7 @@ tag the false-positive rate is at most `2 ^ (-8n)` plus the real-or-random term;
 theorem soundWithin_ofKEMFull_byteTag (n : ℕ) (kem : KEM PK SK C K)
     (viewTag : K → Fin (2 ^ (8 * n))) (rest : K → PK → Rest)
     (hUnif : ∀ t : Fin (2 ^ (8 * n)),
-      Pr[= t | viewTag <$> ($ᵗ K)] = ((2 ^ (8 * n) : ℕ) : ENNReal)⁻¹) :
+      Pr{let x ← viewTag <$> ($ᵗ K)}[x = t] = ((2 ^ (8 * n) : ℕ) : ENNReal)⁻¹) :
     (StealthScheme.ofKEMFull kem (taggedAux viewTag rest)).SoundWithin
       (1 / ((2 ^ (8 * n) : ℕ) : ℝ) + decapsRoR kem (taggedAux viewTag rest)) := by
   have hcard : Fintype.card (Fin (2 ^ (8 * n))) = 2 ^ (8 * n) := Fintype.card_fin _
@@ -372,7 +372,7 @@ theorem soundWithin_ofKEMFull_byteTag (n : ℕ) (kem : KEM PK SK C K)
 the real-or-random term: the number the scanning-cost rationale uses. -/
 theorem soundWithin_ofKEMFull_oneByteTag (kem : KEM PK SK C K)
     (viewTag : K → Fin 256) (rest : K → PK → Rest)
-    (hUnif : ∀ t : Fin 256, Pr[= t | viewTag <$> ($ᵗ K)] = (256 : ENNReal)⁻¹) :
+    (hUnif : ∀ t : Fin 256, Pr{let x ← viewTag <$> ($ᵗ K)}[x = t] = (256 : ENNReal)⁻¹) :
     (StealthScheme.ofKEMFull kem (taggedAux viewTag rest)).SoundWithin
       (1 / 256 + decapsRoR kem (taggedAux viewTag rest)) := by
   have hcard : Fintype.card (Fin 256) = 256 := Fintype.card_fin 256

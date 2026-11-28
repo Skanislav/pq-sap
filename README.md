@@ -20,7 +20,7 @@ Docs site: <https://skanislav.github.io/pq-sap>
   secret and an agreed deployment configuration, without learning the spending
   secret. Construction A (`0x01`, 5,633 bytes) remains available for accounts
   using a per-address blinded ML-DSA key. Whether `0x02` becomes the only
-  normative format remains a decision for the ERC draft (D-024).
+  normative format remains a decision for the ERC draft (D-024 — the scheme is key exchange; the commitment meta-address 0x02 is adopted).
 - **Spending** — delegated to the account model. The browser demo proves
   knowledge of a spending secret and commitment opener (D-025). Its current
   UltraHonk backend is **not post-quantum sound**. Direct SPHINCS-C13,
@@ -39,12 +39,12 @@ the current key-exchange review boundaries. Start with the
 [separate research guide](docs/SPENDING_RESEARCH.md), whose measurements are
 assembled in the [spend stretch-goal report](docs/research/stretch-goal-report.md).
 The cohort's end-of-work revision of the proposal is
-[`docs/PROJECT_RETROSPECTIVE.md`](docs/PROJECT_RETROSPECTIVE.md) (D-035).
+[`docs/PROJECT_RETROSPECTIVE.md`](docs/PROJECT_RETROSPECTIVE.md) (D-038 — the proposal is revised into this retrospective and the spend stretch goal is closed).
 
 This repository is the artifact trail of our EPF cohort work: the scheme we
 specified, the vectors it generates, the checks we ran, and the
 [decision log](docs/DECISIONS.md) recording why. Related external proposals are
-not mirrored here as code or text ([D-032](docs/DECISIONS.md)). ERC-8441 is
+not mirrored here as code or text ([D-036](docs/DECISIONS.md) — ERC-8441 stays outside this repository). ERC-8441 is
 **not prior art**: its first public draft was committed 2026-08-30 and its ERC
 merged 2026-10-29, both after this project's implementation, vectors, and
 proofs existed (first commits 2026-08-06/07), so it is a concurrent design —
@@ -75,7 +75,7 @@ vectors; Lean supports specifically scoped mathematical statements.
 
 Next: review the security boundaries of each route, prepare a self-contained
 vector checker and ERC assets, and bring the proposal to community review.
-The ERC text is human-written only under D-024 and is not frozen. See the
+The ERC text is human-written only under D-024 (the key-exchange scope decision) and is not frozen. See the
 [submission gap analysis](docs/research/erc-submission-gap-analysis.md).
 
 The conformance vectors and checker are intended to enter the

@@ -52,14 +52,6 @@ omit nttOps [SampleableType (RqVec p.l)] [SampleableType (CommitHashBytes p)] in
 
 omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
   [SampleableType (CommitHashBytes p)] in
-/-- `polyNorm` is the vector-backend centered infinity norm, definitionally. -/
-theorem polyNorm_eq_cInfNorm (f : Rq) : polyNorm f = cInfNorm f := by
-  unfold polyNorm normOps cInfNorm
-  simp only [zmodPolyNormOps, normOpsOfCenteredView]
-  rfl
-
-omit nttOps [SampleableType (RqVec p.l)] [SampleableType (Vector prims.Hint p.k)]
-  [SampleableType (CommitHashBytes p)] in
 /-- `normOps.cInfNorm` is the vector-backend centered infinity norm, definitionally. -/
 theorem normOps_cInfNorm_eq (f : Rq) : normOps.cInfNorm f = cInfNorm f :=
   polyNorm_eq_cInfNorm f
@@ -185,7 +177,7 @@ theorem wApprox_eq_of_keyIdentity (h_laws : Primitives.Laws prims nttOps)
     {pk : PublicKey p prims} {sk : SecretKey p}
     (h_kg : prims.power2RoundShiftVec pk.t1 + sk.t0 = prims.expandA pk.rho * sk.s1 + sk.s2)
     (c : Rq) (y : RqVec p.l) :
-    computeWApprox p prims (prims.expandA pk.rho) c (y + c • sk.s1) pk.t1 =
+    computeWApprox p prims nttOps (prims.expandA pk.rho) c (y + c • sk.s1) pk.t1 =
       (prims.expandA pk.rho) * y - c • sk.s2 + c • sk.t0 := by
   haveI := h_laws.transform
   let laws := h_laws.transform
@@ -280,7 +272,7 @@ theorem cubeLift_add_get (v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1))
     simp only [Vector.get_eq_getElem, Vector.getElem_add]
   rw [h1, Rq.get_add]
   congr 1
-  simp only [cubeLift, Vector.get_eq_getElem, Vector.getElem_ofFn, Fin.eta]
+  simpa only [cubeLift, Vector.get_eq_getElem, Vector.getElem_ofFn] using rfl
 
 variable [NeZero (2 * p.gamma1)]
 
@@ -351,9 +343,9 @@ depend on `δ`, which is the independence-from-the-secret statement. -/
 theorem cube_shift_accept_prob
     (hB : widenedBeta p < p.gamma1) (hq : 2 * (p.gamma1 + widenedBeta p) < modulus)
     (delta : RqVec p.l) (hd : polyVecNorm delta ≤ widenedBeta p) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube p
-        pure (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p)) ] =
+        pure (decide (polyVecNorm (y + delta) < p.gamma1 - widenedBeta p)))}[x = true] =
       (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
         ^ (p.l * ringDegree) := by
   have hBpos : 0 < p.gamma1 - widenedBeta p := by omega
@@ -369,9 +361,9 @@ theorem cube_shift_accept_prob
       = (fun v => decide (polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)) <$>
           ($ᵗ (Fin p.l → Fin ringDegree → Fin (2 * p.gamma1))) := by
     simp only [sampleMaskCube, map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
-  rw [hcomp, probOutput_map]
+  rw [hcomp, prEvent_map]
   simp only [decide_eq_true_eq]
-  rw [probEvent_uniformSample]
+  rw [SampleableType.prEvent_uniformSample]
   -- 2. The accepted set is a product of per-coefficient accepted sets.
   have hfilter : (Finset.univ.filter fun v : Fin p.l → Fin ringDegree → Fin (2 * p.gamma1) =>
         polyVecNorm (cubeLift p v + delta) < p.gamma1 - widenedBeta p)
@@ -404,10 +396,10 @@ theorem widened_z_accepted_independent (h_laws : Primitives.Laws prims nttOps)
     (pk : PublicKey p prims) (sk : SecretKey p)
     (hw : widenedValidKeyPair p prims pk sk = true)
     (cTilde : CommitHashBytes p) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube p
         let z := y + prims.sampleInBall cTilde • sk.s1
-        pure (polyVecNorm z < p.gamma1 - widenedBeta p)) ] =
+        pure (polyVecNorm z < p.gamma1 - widenedBeta p))}[x = true] =
       (((2 * (p.gamma1 - widenedBeta p) - 1 : ℕ) : ℝ≥0∞) / ((2 * p.gamma1 : ℕ) : ℝ≥0∞))
         ^ (p.l * ringDegree) := by
   obtain ⟨-, -, ⟨a, b, hs1, ha, hb⟩, -⟩ := (widenedValidKeyPair_eq_true_iff p prims pk sk).mp hw
@@ -451,7 +443,7 @@ def widenedIdentificationScheme
   verify := fun pk w1 cTilde (z, h) =>
     let c := prims.sampleInBall cTilde
     let aHat := prims.expandA pk.rho
-    let wApprox := computeWApprox p prims aHat c z pk.t1
+    let wApprox := computeWApprox p prims nttOps aHat c z pk.t1
     let w1' := prims.useHintVec h wApprox
     decide (polyVecNorm z < p.gamma1 - widenedBeta p) &&
     decide (w1' = w1) &&
@@ -465,13 +457,13 @@ not abort, the verifier accepts. Same shape as VCVio's
 `idsWithAbort_complete`, with the widened bound `β'` in place of `β` and the
 key identity taken from `widenedValidKeyPair` instead of an honest seed. -/
 theorem widened_ids_complete
-    [DecidableEq prims.High] [IsUniformSpec unifSpec]
+    [DecidableEq prims.High] [OracleSpec.UniformAnswerMeasure unifSpec]
     (h_laws : Primitives.Laws prims nttOps) :
     (widenedIdentificationScheme p prims).Complete := by
   classical
   intro pk sk hvalid
-  rw [probOutput_eq_one_iff_forall]
-  refine ⟨probFailure_of_liftM_PMF _, fun b hb => ?_⟩
+  rw [prEvent_eq_one_iff]
+  refine fun b hb => ?_
   rw [support_bind] at hb
   simp only [Set.mem_iUnion] at hb
   obtain ⟨t?, ht?, hb⟩ := hb
@@ -554,7 +546,7 @@ def widenedHvzkSimulator
   if polyVecNorm z < p.gamma1 - widenedBeta p then
     let c := prims.sampleInBall cTilde
     let aHat := prims.expandA pk.rho
-    let wApprox := computeWApprox p prims aHat c z pk.t1
+    let wApprox := computeWApprox p prims nttOps aHat c z pk.t1
     let w1 := prims.useHintVec h wApprox
     return some (w1, cTilde, (z, h))
   else
@@ -568,16 +560,16 @@ this is sharpened (the honest prover's extra-rejection mass, as in upstream
 noncomputable def widenedHvzkDistance : ℝ≥0∞ := 1
 
 /-- HVZK of the widened scheme at distance `widenedHvzkDistance`. With the
-distance pinned to `1` this is the universal bound `tvDist ≤ 1`; the theorem
-exists so the statement shape is fixed while the bound is sharpened. -/
+distance pinned to `1` this is the universal bound `measureETVDist ≤ 1`; the
+theorem exists so the statement shape is fixed while the bound is sharpened. -/
 theorem widened_ids_hvzk
-    [DecidableEq prims.High] [IsUniformSpec unifSpec] :
+    [DecidableEq prims.High] [OracleSpec.UniformAnswerMeasure unifSpec] :
     (widenedIdentificationScheme p prims).HVZK
       (fun pk => widenedHvzkSimulator p prims pk)
-      widenedHvzkDistance.toReal := by
+      widenedHvzkDistance := by
   intro s w _
-  simp only [widenedHvzkDistance, ENNReal.toReal_one]
-  exact tvDist_le_one _ _
+  simp only [widenedHvzkDistance]
+  exact measureETVDist_le_one _ _
 
 /-! ## 9. ML-DSA-65 -/
 
@@ -595,10 +587,10 @@ theorem mldsa65_widened_z_accept_prob
     (pk : PublicKey mldsa65 prims65) (sk : SecretKey mldsa65)
     (hw : widenedValidKeyPair mldsa65 prims65 pk sk = true)
     (cTilde : CommitHashBytes mldsa65) :
-    Pr[= true | (do
+    Pr{let x ← (do
         let y ← sampleMaskCube mldsa65
         let z := y + prims65.sampleInBall cTilde • sk.s1
-        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65)) ] =
+        pure (polyVecNorm z < mldsa65.gamma1 - widenedBeta mldsa65))}[x = true] =
       (1047791 / 1048576 : ℝ≥0∞) ^ 1280 := by
   rw [widened_z_accepted_independent mldsa65 prims65 h_laws
     (by simp [widenedBeta, Params.beta, mldsa65, ParameterSet.params])

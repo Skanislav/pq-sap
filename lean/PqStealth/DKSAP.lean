@@ -74,8 +74,8 @@ because the two derivations of the shared scalar agree. -/
 theorem dksap_perfectlyComplete : (dksap g h).PerfectlyComplete := by
   simp only [StealthScheme.PerfectlyComplete, StealthScheme.CorrectExp, dksap,
     bind_pure_comp, Functor.map_map, bind_assoc, bind_map_left, dksap_derivation_agrees,
-    decide_true, probOutput_bind_const, probFailure_of_liftM_PMF, tsub_zero,
-    probOutput_map_const, probOutput_pure, ↓reduceIte, mul_one]
+    decide_true, prEvent_bind_const, probFailure_of_liftM_PMF, tsub_zero,
+    probOutput_map_const, prEvent_pure, ↓reduceIte, mul_one]
 
 end Scheme
 
@@ -142,18 +142,18 @@ computation: substitute `s ↦ d + s` for `d` the discrete log of `M1 - M0`. -/
 theorem dksapIdeal_announce_indep
     (hbij : Function.Bijective (fun x : F => x • g))
     (M0 M1 : G) (cont : G → ProbComp Bool) (z : Bool) :
-    Pr[= z | ($ᵗ F) >>= fun s => cont (M1 + s • g)] =
-      Pr[= z | ($ᵗ F) >>= fun s => cont (M0 + s • g)] := by
+    Pr{let x ← ($ᵗ F) >>= fun s => cont (M1 + s • g)}[x = z] =
+      Pr{let x ← ($ᵗ F) >>= fun s => cont (M0 + s • g)}[x = z] := by
   obtain ⟨d, hd⟩ := hbij.surjective (M1 - M0)
   simp only at hd
   have key : ∀ s : F, M0 + (d + s) • g = M1 + s • g := by
     intro s
     rw [add_smul, ← add_assoc, hd, add_sub_cancel]
   have hbij' : Function.Bijective (fun s : F => d + s) := (Equiv.addLeft d).bijective
-  calc Pr[= z | ($ᵗ F) >>= fun s => cont (M1 + s • g)]
-      = Pr[= z | ($ᵗ F) >>= fun s => (fun s' => cont (M0 + s' • g)) (d + s)] := by
+  calc Pr{let x ← ($ᵗ F) >>= fun s => cont (M1 + s • g)}[x = z]
+      = Pr{let x ← ($ᵗ F) >>= fun s => (fun s' => cont (M0 + s' • g)) (d + s)}[x = z] := by
         simp only [key]
-    _ = Pr[= z | ($ᵗ F) >>= fun s' => cont (M0 + s' • g)] :=
+    _ = Pr{let x ← ($ᵗ F) >>= fun s' => cont (M0 + s' • g)}[x = z] :=
         probOutput_bind_bijective_uniform_cross F (fun s : F => d + s) hbij'
           (fun s' => cont (M0 + s' • g)) z
 
@@ -161,11 +161,11 @@ theorem dksapIdeal_announce_indep
 theorem dksapIdeal_branch_indep
     (hbij : Function.Bijective (fun x : F => x • g))
     (M0 M1 : G) (cont : G × G → ProbComp Bool) (z : Bool) :
-    Pr[= z | ($ᵗ F) >>= fun r => ($ᵗ F) >>= fun s => cont (r • g, M1 + s • g)] =
-      Pr[= z | ($ᵗ F) >>= fun r => ($ᵗ F) >>= fun s => cont (r • g, M0 + s • g)] := by
+    Pr{let x ← ($ᵗ F) >>= fun r => ($ᵗ F) >>= fun s => cont (r • g, M1 + s • g)}[x = z] =
+      Pr{let x ← ($ᵗ F) >>= fun r => ($ᵗ F) >>= fun s => cont (r • g, M0 + s • g)}[x = z] := by
   have inner := fun (r : F) =>
     dksapIdeal_announce_indep g hbij M0 M1 (fun P => cont (r • g, P)) z
-  simp only [probOutput_bind_eq_tsum] at inner ⊢
+  simp only [OracleComp.prEvent_bind_eq_tsum] at inner ⊢
   exact tsum_congr fun r => by rw [inner r]
 
 /-- **Perfect unlinkability of the idealized scheme, sorry-free.** The
@@ -177,7 +177,7 @@ theorem dksapIdeal_unlinkAdvantage_eq_zero
   rw [StealthScheme.unlinkAdvantage_eq_branchDistAdvantage, ProbComp.boolDistAdvantage]
   refine abs_eq_zero.mpr (sub_eq_zero.mpr ?_)
   congr 1
-  simp only [probOutput_bind_eq_tsum]
+  simp only [OracleComp.prEvent_bind_eq_tsum]
   refine tsum_congr fun a => ?_
   congr 1
   simp only [StealthScheme.unlinkBranch, dksapIdeal, bind_assoc, pure_bind,

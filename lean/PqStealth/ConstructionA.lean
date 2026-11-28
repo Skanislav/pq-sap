@@ -247,7 +247,7 @@ silently: for a uniform shared secret, view tag and blinding pair are jointly
 three independent samples. False for the concrete primitives, true in the ROM. -/
 def ExpandIsIdeal : Prop :=
   ∀ x : Tag × (Fin l → R) × (Fin k → R),
-    Pr[= x | realJoint P] = Pr[= x | idealJoint Smp sampleTag]
+    Pr{let y ← realJoint P}[y = x] = Pr{let y ← idealJoint Smp sampleTag}[y = x]
 
 omit [CommRing R] [SampleableType R] in
 /-- `ExpandIsIdeal` is the boundary case of the quantitative bound: if the two
@@ -259,8 +259,8 @@ theorem blindExpandIdealizationBound_zero_of_expandIsIdeal
     (h : ExpandIsIdeal P Smp sampleTag) :
     BlindExpandIdealizationBound P Smp sampleTag 0 := by
   intro D
-  have hpr : Pr[= true | (realJoint P >>= D)] =
-      Pr[= true | (idealJoint Smp sampleTag >>= D)] :=
+  have hpr : Pr{let x ← (realJoint P >>= D)}[x = true] =
+      Pr{let x ← (idealJoint Smp sampleTag >>= D)}[x = true] :=
     probOutput_congr rfl (by rw [evalDist_bind, evalDist_bind, evalDist_ext h])
   simp only [ProbComp.boolDistAdvantage, hpr, sub_self, abs_zero,
     ENNReal.toReal_zero]
@@ -298,10 +298,10 @@ the blinding does erase `t`. Note what is NOT quantified over: `rho`, which
 enters outside the mask and therefore has to be shared between the two sides. -/
 theorem idealAux_indep_of_t (cont : Tag × Addr → ProbComp Bool) (tg : Tag)
     (rho : Rho) (t t' : Fin k → R) (z : Bool) :
-    Pr[= z | (do let u ← ($ᵗ (Fin k → R))
-                 cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t)))))] =
-      Pr[= z | (do let u ← ($ᵗ (Fin k → R))
-                   cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t')))))] := by
+    Pr{let x ← (do let u ← ($ᵗ (Fin k → R))
+                 cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t)))))}[x = z] =
+      Pr{let x ← (do let u ← ($ᵗ (Fin k → R))
+                   cont (tg, P.hashAddr (P.pack rho (P.power2Round (u + t')))))}[x = z] := by
   rw [probOutput_bind_add_right_uniform (Fin k → R) t
       (fun v => cont (tg, P.hashAddr (P.pack rho (P.power2Round v)))) z,
     probOutput_bind_add_right_uniform (Fin k → R) t'

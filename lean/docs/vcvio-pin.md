@@ -31,7 +31,7 @@ package options.
    and compiles from source; a cold build is hours, not minutes.
 4. `lake build` — must be green with no `warning:` or `error:` from
    `PqStealth/`.
-5. **The axiom guard re-runs itself.** There is no separate command: the 114
+5. **The axiom guard re-runs itself.** There is no separate command: the 181
    `#guard_msgs (whitespace := lax) in #print axioms …` blocks in
    `PqStealth/Axioms.lean` are part of the build, and a changed axiom list or a
    `sorry` anywhere in a headline theorem's dependency cone is a compile error.
@@ -104,7 +104,7 @@ retracted on 2026-08-19 — VCVio's programming-oracle bridge exists at the pin.
 
 Ordered by how loudly it fails.
 
-- **`PqStealth/Axioms.lean` — 114 frozen `#print axioms` messages.** Failing
+- **`PqStealth/Axioms.lean` — 181 frozen `#print axioms` messages.** Failing
   loudly is the whole point, but note the *shape* is fragile too: the blocks use
   a 3-line form with `#print axioms` indented onto a continuation line. That is
   structurally incompatible with mathlib's `style.commandStart` linter — with

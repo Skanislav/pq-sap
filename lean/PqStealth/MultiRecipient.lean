@@ -275,19 +275,19 @@ pairs of DISTINCT indices they recover it exactly. -/
 theorem sum_probOutput_unlinkBranchNAt
     (hpick : ∀ (pks : Fin n → MetaPub), ∀ i ∈ support (pick pks), i.1.1 ≠ i.1.2) (b : Bool) :
     ∑ j ∈ Finset.univ.offDiag,
-        Pr[= true | S.pubKeysN n >>= S.unlinkBranchNAt pick guess j b] =
-      Pr[= true | S.pubKeysN n >>= S.unlinkBranchN pick guess b] := by
+        Pr{let x ← S.pubKeysN n >>= S.unlinkBranchNAt pick guess j b}[x = true] =
+      Pr{let x ← S.pubKeysN n >>= S.unlinkBranchN pick guess b}[x = true] := by
   have hinner : ∀ pks : Fin n → MetaPub,
-      ∑ j ∈ Finset.univ.offDiag, Pr[= true | S.unlinkBranchNAt pick guess j b pks] =
-        Pr[= true | S.unlinkBranchN pick guess b pks] := by
+      ∑ j ∈ Finset.univ.offDiag, Pr{let x ← S.unlinkBranchNAt pick guess j b pks}[x = true] =
+        Pr{let x ← S.unlinkBranchN pick guess b pks}[x = true] := by
     intro pks
-    simp only [unlinkBranchNAt, unlinkBranchN, probOutput_bind_eq_tsum]
+    simp only [unlinkBranchNAt, unlinkBranchN, OracleComp.prEvent_bind_eq_tsum]
     rw [← Summable.tsum_finsetSum fun _ _ => ENNReal.summable]
     refine tsum_congr fun i => ?_
     rw [← Finset.mul_sum]
     by_cases hi : i.1.1 = i.1.2
-    · have hzero : Pr[= i | pick pks] = 0 :=
-        probOutput_eq_zero_of_not_mem_support fun hmem => hpick pks i hmem hi
+    · have hzero : Pr{let x ← pick pks}[x = i] = 0 :=
+        (prEvent_eq_zero_of_not_mem_support _) fun hmem => hpick pks i hmem hi
       simp only [hzero, zero_mul]
     · have hmem : i.1 ∈ (Finset.univ.offDiag : Finset (Fin n × Fin n)) := by
         simp only [Finset.mem_offDiag, Finset.mem_univ, true_and]
@@ -295,10 +295,10 @@ theorem sum_probOutput_unlinkBranchNAt
       congr 1
       refine Finset.sum_eq_single_of_mem i.1 hmem ?_ |>.trans ?_
       · intro j _ hji
-        simp only [if_neg (Ne.symm hji), probOutput_pure, Bool.true_eq_false, ↓reduceIte,
+        simp only [if_neg (Ne.symm hji), prEvent_pure, Bool.true_eq_false, ↓reduceIte,
           mul_zero, tsum_zero]
       · exact tsum_congr fun x => by rw [if_pos rfl]
-  simp only [probOutput_bind_eq_tsum]
+  simp only [OracleComp.prEvent_bind_eq_tsum]
   rw [← Summable.tsum_finsetSum fun _ _ => ENNReal.summable]
   exact tsum_congr fun pks => by rw [← Finset.mul_sum, hinner pks]
 
@@ -313,20 +313,20 @@ theorem unlinkAdvantageN_le_sum
       ∑ j ∈ Finset.univ.offDiag, S.unlinkAdvantage (S.pairGuessAdv pick guess j) := by
   have hterm : ∀ j ∈ (Finset.univ.offDiag : Finset (Fin n × Fin n)),
       S.unlinkAdvantage (S.pairGuessAdv pick guess j) =
-        |(Pr[= true | S.pubKeysN n >>= S.unlinkBranchNAt pick guess j true]).toReal
-          - (Pr[= true | S.pubKeysN n >>= S.unlinkBranchNAt pick guess j false]).toReal| := by
+        |(Pr{let x ← S.pubKeysN n >>= S.unlinkBranchNAt pick guess j true}[x = true]).toReal
+          - (Pr{let x ← S.pubKeysN n >>= S.unlinkBranchNAt pick guess j false}[x = true]).toReal| := by
     intro j hj
     rw [Finset.mem_offDiag] at hj
     rw [S.unlinkAdvantage_eq_branchDistAdvantage, ProbComp.boolDistAdvantage,
       probOutput_congr rfl (S.evalDist_unlinkBranch_pairGuessAdv pick guess hj.2.2 true),
       probOutput_congr rfl (S.evalDist_unlinkBranch_pairGuessAdv pick guess hj.2.2 false)]
   have hsum : ∀ b : Bool,
-      (Pr[= true | S.pubKeysN n >>= S.unlinkBranchN pick guess b]).toReal =
+      (Pr{let x ← S.pubKeysN n >>= S.unlinkBranchN pick guess b}[x = true]).toReal =
         ∑ j ∈ Finset.univ.offDiag,
-          (Pr[= true | S.pubKeysN n >>= S.unlinkBranchNAt pick guess j b]).toReal := by
+          (Pr{let x ← S.pubKeysN n >>= S.unlinkBranchNAt pick guess j b}[x = true]).toReal := by
     intro b
     rw [← S.sum_probOutput_unlinkBranchNAt pick guess hpick b,
-      ENNReal.toReal_sum fun j _ => probOutput_ne_top]
+      ENNReal.toReal_sum fun j _ => (prEvent_ne_top _)]
   rw [S.unlinkAdvantageN_eq_branchDistAdvantage, ProbComp.boolDistAdvantage,
     hsum true, hsum false, ← Finset.sum_sub_distrib, Finset.sum_congr rfl hterm]
   exact Finset.abs_sum_le_sum_abs _ _

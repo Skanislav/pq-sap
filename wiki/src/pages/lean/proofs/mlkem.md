@@ -196,11 +196,112 @@ theorem size_uEncoded_encrypt_mlkem768
 
 ### The FIPS 203 ciphertext byte layout
 
-## `mlkem768UniformCiphertext`
+## `instNeZeroMlkemModulus`
 
-Uniform over the ML-KEM-768 ciphertext byte space: 960 bytes of `u`, 128 of
-`v`. The key-independent simulator the SPR argument compares real encapsulations
-against, and sharper than uniform-over-the-encoded-type would be.
+The FIPS 203 modulus is nonzero -- needed to see `ZMod modulus` as
+`FinEnum`, which `modulus` being a `def` hides from instance search.
+
+```lean
+instance instNeZeroMlkemModulus : NeZero MLKEM.modulus := ⟨by decide⟩
+
+```
+
+[`MLKEM.lean:120-121 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L120-L121)
+
+## `instSampleableTypeRq`
+
+```lean
+instance instSampleableTypeRq : SampleableType MLKEM.Rq :=
+  inferInstanceAs (SampleableType (Vector MLKEM.Coeff MLKEM.ringDegree))
+
+```
+
+[`MLKEM.lean:124-126 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L124-L126)
+
+## `instSampleableTypeTq`
+
+```lean
+instance instSampleableTypeTq : SampleableType MLKEM.Tq :=
+  SampleableType.ofEquiv (α := MLKEM.Rq)
+    ⟨fun f => ⟨f⟩, fun t => t.coeffs, fun _ => rfl, fun _ => rfl⟩
+
+```
+
+[`MLKEM.lean:128-131 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L128-L131)
+
+### Uniform sampling on the ML-KEM ring
+
+## `pkOf`
+
+The K-PKE public key carrying `rho` and the encoding of `t̂`.
+
+```lean
+def pkOf {params : Params} (encoding : Encoding params) (rho : Seed32)
+    (tHat : TqVec params.k) : EncapsulationKey params encoding :=
+  { tHatEncoded := encoding.byteEncode12Vec tHat, rho := rho }
+
+```
+
+[`MLKEM.lean:139-142 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L139-L142)
+
+## `ctOf`
+
+```lean
+def ctOf {params : Params} (encoding : Encoding params) (u : RqVec params.k) (v : Rq) :
+    Ciphertext params encoding :=
+  { uEncoded := encoding.byteEncodeDUVec (encoding.compressDU u)
+    vEncoded := encoding.byteEncodeDV (encoding.compressDV v) }
+
+```
+
+[`MLKEM.lean:144-148 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L144-L148)
+
+## `uniformKeygen`
+
+```lean
+def uniformKeygen {params : Params} (encoding : Encoding params) :
+    ProbComp (EncapsulationKey params encoding) := do
+  let rho ← $ᵗ Seed32
+  let t ← $ᵗ (TqVec params.k)
+  pure (pkOf encoding rho t)
+
+```
+
+[`MLKEM.lean:150-155 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L150-L155)
+
+## `randCt`
+
+```lean
+def randCt {params : Params} (encoding : Encoding params) :
+    ProbComp (Ciphertext params encoding) := do
+  let u ← $ᵗ (RqVec params.k)
+  let v ← $ᵗ Rq
+  let m ← $ᵗ Message
+  pure (ctOf encoding u (v + encoding.decompress1 (encoding.byteDecode1 m)))
+
+```
+
+[`MLKEM.lean:159-165 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L159-L165)
+
+### Semantic constructors
+
+## `mlkem768CompressedUniformCiphertext`
+
+The exact compressed-ciphertext distribution of the final idealized MLWE
+game: uniform `(u, v)` in the ring, then FIPS 203 compression and byte
+encoding. Key-independent, so it is a valid SPR simulator; unlike raw uniform
+bytes it is the honest ciphertext distribution up to the ring-uniform step.
+
+```lean
+def mlkem768CompressedUniformCiphertext :
+    ProbComp (Ciphertext mlkem768 mlkem768Encoding) :=
+  randCt mlkem768Encoding
+
+```
+
+[`MLKEM.lean:194-197 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L194-L197)
+
+## `mlkem768UniformCiphertext`
 
 ```lean
 def mlkem768UniformCiphertext : ProbComp (Ciphertext mlkem768 mlkem768Encoding) := do
@@ -210,9 +311,9 @@ def mlkem768UniformCiphertext : ProbComp (Ciphertext mlkem768 mlkem768Encoding) 
 
 ```
 
-[`MLKEM.lean:117-121 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L117-L121)
+[`MLKEM.lean:203-207 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L203-L207)
 
-### The uniform-ciphertext-bytes simulator
+### The ciphertext simulators
 
 ## `mlkem768KEM`
 
@@ -229,7 +330,7 @@ def mlkem768KEM :
 
 ```
 
-[`MLKEM.lean:127-132 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L127-L132)
+[`MLKEM.lean:213-218 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L213-L218)
 
 ## `mlkem768StealthScheme`
 
@@ -246,7 +347,7 @@ def mlkem768StealthScheme :
 
 ```
 
-[`MLKEM.lean:140-146 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L140-L146)
+[`MLKEM.lean:226-232 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L226-L232)
 
 ## `mlkem768_unlinkAdvantage_le`
 
@@ -265,7 +366,7 @@ theorem mlkem768_unlinkAdvantage_le
 
 ```
 
-[`MLKEM.lean:150-159 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L150-L159)
+[`MLKEM.lean:236-245 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L236-L245)
 
 ## `mlkem768_unlinkAdvantage_le_full_decomposition`
 
@@ -278,15 +379,15 @@ theorem mlkem768_unlinkAdvantage_le_full_decomposition
     (mlkem768StealthScheme auxGen).unlinkAdvantage adv ≤
       sharedSecretHiding mlkem768KEM auxGen adv true
       + auxKeyIndependence mlkem768KEM auxGen adv
-      + (mlkem768KEM.sprAdv mlkem768UniformCiphertext (adv.cipherOf auxGen) true
-         + mlkem768KEM.sprAdv mlkem768UniformCiphertext (adv.cipherOf auxGen) false)
+      + (mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext (adv.cipherOf auxGen) true
+         + mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext (adv.cipherOf auxGen) false)
       + sharedSecretHiding mlkem768KEM auxGen adv false :=
   unlinkAdvantage_ofKEMFull_le_full_decomposition mlkem768KEM auxGen
-    mlkem768UniformCiphertext adv
+    mlkem768CompressedUniformCiphertext adv
 
 ```
 
-[`MLKEM.lean:163-174 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L163-L174)
+[`MLKEM.lean:253-264 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L253-L264)
 
 ## `mlkem768_unlinkAdvantage_le_indCpa`
 
@@ -307,7 +408,7 @@ theorem mlkem768_unlinkAdvantage_le_indCpa
 
 ```
 
-[`MLKEM.lean:178-189 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L178-L189)
+[`MLKEM.lean:268-279 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L268-L279)
 
 ### The scheme at ML-KEM-768
 
@@ -332,4 +433,4 @@ them is the T-transform half of Fujisaki-Okamoto. See `docs/spr-two-hop.md`. -/
 
 ```
 
-[`MLKEM.lean:200-215 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L200-L215)
+[`MLKEM.lean:290-305 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/MLKEM.lean#L290-L305)

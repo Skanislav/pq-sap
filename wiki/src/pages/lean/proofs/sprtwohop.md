@@ -21,41 +21,6 @@ seeded shape keeps `SampleNTT` concrete) and the simulator term
 (compress-and-encode regularity, plus the honest key distribution). Neither is
 an MLWE statement. See `docs/spr-two-hop.md`.
 
-## `instNeZeroMlkemModulus`
-
-The FIPS 203 modulus is nonzero -- needed to see `ZMod modulus` as
-`FinEnum`, which `modulus` being a `def` hides from instance search.
-
-```lean
-instance instNeZeroMlkemModulus : NeZero MLKEM.modulus := ⟨by decide⟩
-
-```
-
-[`SPRTwoHop.lean:37-38 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L37-L38)
-
-## `instSampleableTypeRq`
-
-```lean
-instance instSampleableTypeRq : SampleableType MLKEM.Rq :=
-  inferInstanceAs (SampleableType (Vector MLKEM.Coeff MLKEM.ringDegree))
-
-```
-
-[`SPRTwoHop.lean:41-43 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L41-L43)
-
-## `instSampleableTypeTq`
-
-```lean
-instance instSampleableTypeTq : SampleableType MLKEM.Tq :=
-  SampleableType.ofEquiv (α := MLKEM.Rq)
-    ⟨fun f => ⟨f⟩, fun t => t.coeffs, fun _ => rfl, fun _ => rfl⟩
-
-```
-
-[`SPRTwoHop.lean:45-48 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L45-L48)
-
-### Uniform sampling on the ML-KEM ring
-
 ## `LearningWithErrors.advantage_eq_boolDistAdvantage`
 
 The decision-LWE advantage is the distance between the two named games, so
@@ -90,34 +55,15 @@ theorem LearningWithErrors.advantage_eq_boolDistAdvantage {Sample Secret Output 
 
 :::
 
-[`SPRTwoHop.lean:54-70 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L54-L70)
+[`SPRTwoHop.lean:35-51 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L35-L51)
 
 ### VCVio's LWE advantage as a game distance
 
-## `pkOf`
-
-The K-PKE public key carrying `rho` and the encoding of `t̂`.
-
-```lean
-def pkOf (rho : Seed32) (tHat : TqVec params.k) : EncapsulationKey params encoding :=
-  { tHatEncoded := encoding.byteEncode12Vec tHat, rho := rho }
-
-```
-
-[`SPRTwoHop.lean:80-82 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L80-L82)
-
-## `ctOf`
-
-```lean
-def ctOf (u : RqVec params.k) (v : Rq) : Ciphertext params encoding :=
-  { uEncoded := encoding.byteEncodeDUVec (encoding.compressDU u)
-    vEncoded := encoding.byteEncodeDV (encoding.compressDV v) }
-
-```
-
-[`SPRTwoHop.lean:84-87 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L84-L87)
-
 ## `sampleEta1Hat`
+
+The `PRF_η₁` vector at a fresh seed, moved to the NTT domain: the
+distribution K-PKE gives `s`, `e` and the encryption randomness `y`, with the
+seed idealized to a fresh uniform draw.
 
 ```lean
 def sampleEta1Hat (offset : ℕ) : ProbComp (TqVec params.k) := do
@@ -126,7 +72,7 @@ def sampleEta1Hat (offset : ℕ) : ProbComp (TqVec params.k) := do
 
 ```
 
-[`SPRTwoHop.lean:91-94 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L91-L94)
+[`SPRTwoHop.lean:62-65 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L62-L65)
 
 ## `sampleNoise`
 
@@ -138,7 +84,7 @@ def sampleNoise : ProbComp (RqVec params.k × Rq) := do
 
 ```
 
-[`SPRTwoHop.lean:96-100 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L96-L100)
+[`SPRTwoHop.lean:67-71 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L67-L71)
 
 ## `idealKeygen`
 
@@ -151,7 +97,7 @@ def idealKeygen : ProbComp (EncapsulationKey params encoding) := do
 
 ```
 
-[`SPRTwoHop.lean:103-108 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L103-L108)
+[`SPRTwoHop.lean:74-79 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L74-L79)
 
 ## `idealEncrypt`
 
@@ -168,34 +114,9 @@ def idealEncrypt (ek : EncapsulationKey params encoding) :
 
 ```
 
-[`SPRTwoHop.lean:111-120 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L111-L120)
+[`SPRTwoHop.lean:82-91 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L82-L91)
 
-## `uniformKeygen`
-
-```lean
-def uniformKeygen : ProbComp (EncapsulationKey params encoding) := do
-  let rho ← $ᵗ Seed32
-  let t ← $ᵗ (TqVec params.k)
-  pure (pkOf encoding rho t)
-
-```
-
-[`SPRTwoHop.lean:122-126 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L122-L126)
-
-## `randCt`
-
-```lean
-def randCt : ProbComp (Ciphertext params encoding) := do
-  let u ← $ᵗ (RqVec params.k)
-  let v ← $ᵗ Rq
-  let m ← $ᵗ Message
-  pure (ctOf encoding u (v + encoding.decompress1 (encoding.byteDecode1 m)))
-
-```
-
-[`SPRTwoHop.lean:130-135 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L130-L135)
-
-### Semantic constructors and the idealized samplers
+### The idealized samplers
 
 ## `idealBranch`
 
@@ -215,7 +136,7 @@ def idealBranch (adv : StealthScheme.UnlinkAdv (EncapsulationKey params encoding
 
 ```
 
-[`SPRTwoHop.lean:144-153 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L144-L153)
+[`SPRTwoHop.lean:100-109 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L100-L109)
 
 ### The game chain
 
@@ -235,7 +156,7 @@ def keyHopProblem :
 
 ```
 
-[`SPRTwoHop.lean:161-168 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L161-L168)
+[`SPRTwoHop.lean:117-124 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L117-L124)
 
 ## `ctHopProblem`
 
@@ -259,7 +180,7 @@ def ctHopProblem :
 
 ```
 
-[`SPRTwoHop.lean:171-187 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L171-L187)
+[`SPRTwoHop.lean:127-143 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L127-L143)
 
 ### The two decision-MLWE problems
 
@@ -279,7 +200,7 @@ def keyHopAdv (b : Bool) : LearningWithErrors.Adversary (keyHopProblem ring enco
 
 ```
 
-[`SPRTwoHop.lean:196-202 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L196-L202)
+[`SPRTwoHop.lean:152-158 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L152-L158)
 
 ## `ctHopAdv`
 
@@ -294,7 +215,7 @@ def ctHopAdv (b : Bool) : LearningWithErrors.Adversary (ctHopProblem ring encodi
 
 ```
 
-[`SPRTwoHop.lean:206-213 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L206-L213)
+[`SPRTwoHop.lean:162-169 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L162-L169)
 
 ### The two reduction adversaries
 
@@ -325,7 +246,7 @@ theorem idealEncrypt_pkOf (rho : Seed32) (t : TqVec params.k) :
 
 :::
 
-[`SPRTwoHop.lean:218-228 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L218-L228)
+[`SPRTwoHop.lean:174-184 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L174-L184)
 
 ## `game0_keyHopProblem`
 
@@ -348,7 +269,7 @@ theorem game0_keyHopProblem (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:230-237 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L230-L237)
+[`SPRTwoHop.lean:186-193 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L186-L193)
 
 ## `game1_keyHopProblem`
 
@@ -371,7 +292,7 @@ theorem game1_keyHopProblem (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:239-246 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L239-L246)
+[`SPRTwoHop.lean:195-202 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L195-L202)
 
 ## `game0_ctHopProblem`
 
@@ -395,7 +316,7 @@ theorem game0_ctHopProblem (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:248-256 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L248-L256)
+[`SPRTwoHop.lean:204-212 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L204-L212)
 
 ## `game1_ctHopProblem`
 
@@ -418,7 +339,7 @@ theorem game1_ctHopProblem (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:258-265 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L258-L265)
+[`SPRTwoHop.lean:214-221 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L214-L221)
 
 ### The hop identities
 
@@ -436,7 +357,7 @@ def KEM.anonBranchReordered (b : Bool) : ProbComp Bool := do
 
 ```
 
-[`SPRTwoHop.lean:278-283 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L278-L283)
+[`SPRTwoHop.lean:234-239 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L234-L239)
 
 ## `KEM.evalDist_anonSetup_bind_anonBranch`
 
@@ -472,7 +393,7 @@ theorem KEM.evalDist_anonSetup_bind_anonBranch (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:285-305 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L285-L305)
+[`SPRTwoHop.lean:241-261 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L241-L261)
 
 ## `KEM.boolDistAdvantage_anonBranch_anonBranchReordered`
 
@@ -491,7 +412,7 @@ theorem KEM.boolDistAdvantage_anonBranch_anonBranchReordered (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:307-312 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L307-L312)
+[`SPRTwoHop.lean:263-268 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L263-L268)
 
 ### The real branch, reordered
 
@@ -511,7 +432,7 @@ noncomputable def primitiveIdealization (b : Bool) : ℝ :=
 
 ```
 
-[`SPRTwoHop.lean:327-331 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L327-L331)
+[`SPRTwoHop.lean:283-287 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L283-L287)
 
 ## `simulatorGap`
 
@@ -523,7 +444,7 @@ noncomputable def simulatorGap (b : Bool) : ℝ :=
 
 ```
 
-[`SPRTwoHop.lean:335-339 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L335-L339)
+[`SPRTwoHop.lean:291-295 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L291-L295)
 
 ## `encodingRegularity`
 
@@ -535,7 +456,7 @@ noncomputable def encodingRegularity (b : Bool) : ℝ :=
 
 ```
 
-[`SPRTwoHop.lean:342-346 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L342-L346)
+[`SPRTwoHop.lean:298-302 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L298-L302)
 
 ## `keyRestoration`
 
@@ -546,7 +467,7 @@ noncomputable def keyRestoration (b : Bool) : ℝ :=
 
 ```
 
-[`SPRTwoHop.lean:349-352 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L349-L352)
+[`SPRTwoHop.lean:305-308 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L305-L308)
 
 ## `simulatorGap_le`
 
@@ -561,7 +482,7 @@ theorem simulatorGap_le (b : Bool) :
 
 ```
 
-[`SPRTwoHop.lean:354-359 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L354-L359)
+[`SPRTwoHop.lean:310-315 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L310-L315)
 
 ### The four named terms
 
@@ -636,7 +557,7 @@ theorem sprAdv_le_two_hop_decomposition (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:365-418 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L365-L418)
+[`SPRTwoHop.lean:321-374 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L321-L374)
 
 ### The bound
 
@@ -652,7 +573,7 @@ def mlkem768KeyHopProblem :
 
 ```
 
-[`SPRTwoHop.lean:430-433 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L430-L433)
+[`SPRTwoHop.lean:386-389 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L386-L389)
 
 ## `mlkem768CtHopProblem`
 
@@ -664,7 +585,7 @@ def mlkem768CtHopProblem :
 
 ```
 
-[`SPRTwoHop.lean:436-440 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L436-L440)
+[`SPRTwoHop.lean:392-396 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L392-L396)
 
 ## `mlkem768_sprAdv_le_two_hop_decomposition`
 
@@ -672,20 +593,20 @@ def mlkem768CtHopProblem :
 
 ```lean
 theorem mlkem768_sprAdv_le_two_hop_decomposition (b : Bool) :
-    mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
+    mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext adv768 b ≤
       primitiveIdealization concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b
         + LearningWithErrors.advantage mlkem768KeyHopProblem
             (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
         + LearningWithErrors.advantage mlkem768CtHopProblem
             (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
         + simulatorGap concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
-            mlkem768UniformCiphertext b :=
+            mlkem768CompressedUniformCiphertext b :=
   sprAdv_le_two_hop_decomposition concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
-    mlkem768UniformCiphertext b
+    mlkem768CompressedUniformCiphertext b
 
 ```
 
-[`SPRTwoHop.lean:444-455 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L444-L455)
+[`SPRTwoHop.lean:400-411 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L400-L411)
 
 ### At ML-KEM-768
 
@@ -700,7 +621,7 @@ def primitiveIdealizationBound (epsilonPrim : ℝ) : Prop :=
 
 ```
 
-[`SPRTwoHop.lean:475-477 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L475-L477)
+[`SPRTwoHop.lean:431-433 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L431-L433)
 
 ## `encodingRegularityBound`
 
@@ -710,7 +631,7 @@ def encodingRegularityBound (epsilonEnc : ℝ) : Prop :=
 
 ```
 
-[`SPRTwoHop.lean:480-482 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L480-L482)
+[`SPRTwoHop.lean:436-438 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L436-L438)
 
 ## `keyRestorationAdv`
 
@@ -727,7 +648,7 @@ omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
   [DecidableEq encoding.EncodedV] in
 ```
 
-[`SPRTwoHop.lean:489-498 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L489-L498)
+[`SPRTwoHop.lean:445-454 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L445-L454)
 
 ## `game0_keyRestorationAdv`
 
@@ -753,7 +674,7 @@ omit [DecidableEq encoding.EncodedTHat] [DecidableEq encoding.EncodedU]
 
 :::
 
-[`SPRTwoHop.lean:502-511 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L502-L511)
+[`SPRTwoHop.lean:458-467 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L458-L467)
 
 ## `game1_keyRestorationAdv`
 
@@ -776,7 +697,7 @@ theorem game1_keyRestorationAdv (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:514-521 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L514-L521)
+[`SPRTwoHop.lean:470-477 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L470-L477)
 
 ## `keyIdealization`
 
@@ -788,7 +709,7 @@ noncomputable def keyIdealization (b : Bool) : ℝ :=
 
 ```
 
-[`SPRTwoHop.lean:526-530 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L526-L530)
+[`SPRTwoHop.lean:482-486 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L482-L486)
 
 ## `keyRestoration_le_mlwe_add_keyIdealization`
 
@@ -822,7 +743,7 @@ theorem keyRestoration_le_mlwe_add_keyIdealization (b : Bool) :
 
 :::
 
-[`SPRTwoHop.lean:535-553 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L535-L553)
+[`SPRTwoHop.lean:491-509 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L491-L509)
 
 ## `keyRestorationMLWE`
 
@@ -832,7 +753,7 @@ def keyRestorationMLWE (epsilonRestore : ℝ) : Prop :=
 
 ```
 
-[`SPRTwoHop.lean:557-559 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L557-L559)
+[`SPRTwoHop.lean:513-515 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L513-L515)
 
 ## `sprAdv_le_mlwe`
 
@@ -878,33 +799,235 @@ theorem sprAdv_le_mlwe (b : Bool)
 
 :::
 
-[`SPRTwoHop.lean:561-593 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L561-L593)
+[`SPRTwoHop.lean:517-549 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L517-L549)
 
-## `mlkem768_sprAdv_le_mlwe`
+## `sprAdv_le_three_mlwe`
 
-**ML-KEM-768 SPR ≤ named assumptions + three MLWE advantages**, against the
-uniform-ciphertext-bytes simulator `mlkem768UniformCiphertext` (the same
-simulator as `mlkem768_sprAdv_le_two_hop_decomposition`).
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
 
 ```lean
-theorem mlkem768_sprAdv_le_mlwe (b : Bool)
-    (epsilonPrim epsilonEnc epsilonRestore : ℝ)
-    (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b ≤ epsilonPrim)
-    (hEnc : ∀ b, encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
-      mlkem768UniformCiphertext b ≤ epsilonEnc)
-    (hRestore : ∀ b, keyRestoration concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
-      mlkem768UniformCiphertext b ≤ epsilonRestore) :
-    mlkem768KEM.sprAdv mlkem768UniformCiphertext adv768 b ≤
+theorem sprAdv_le_three_mlwe (b : Bool)
+    (epsilonPrim epsilonEnc epsilonKeyIdeal : ℝ)
+    (hPrim : ∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim)
+    (hEnc : ∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc)
+    (hKeyIdeal : ∀ b, keyIdealization ring encoding prims adv sim b ≤ epsilonKeyIdeal) :
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b ≤
       epsilonPrim
-        + LearningWithErrors.advantage mlkem768KeyHopProblem
-            (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
-        + LearningWithErrors.advantage mlkem768CtHopProblem
-            (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+            (keyHopAdv ring encoding prims adv b)
+        + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+            (ctHopAdv ring encoding prims adv b)
         + epsilonEnc
-        + epsilonRestore :=
-  sprAdv_le_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
-    mlkem768UniformCiphertext b epsilonPrim epsilonEnc epsilonRestore hPrim hEnc hRestore
+        + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+            (keyRestorationAdv ring encoding prims adv sim b)
+        + epsilonKeyIdeal := by
+```
+
+:::details[proof]
+
+```lean
+  calc
+    KEM.sprAdv (MLKEM.asKEMScheme ring encoding prims) sim adv b
+      ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + simulatorGap ring encoding prims adv sim b :=
+        sprAdv_le_two_hop_decomposition ring encoding prims adv sim b
+    _ ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (encodingRegularity ring encoding prims adv sim b
+            + keyRestoration ring encoding prims adv sim b) := by
+        gcongr
+        exact simulatorGap_le ring encoding prims adv sim b
+    _ ≤ primitiveIdealization ring encoding prims adv b
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (encodingRegularity ring encoding prims adv sim b
+            + (LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+                (keyRestorationAdv ring encoding prims adv sim b)
+              + keyIdealization ring encoding prims adv sim b)) := by
+        gcongr
+        exact keyRestoration_le_mlwe_add_keyIdealization ring encoding prims adv sim b
+    _ ≤ epsilonPrim
+          + LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+              (keyHopAdv ring encoding prims adv b)
+          + LearningWithErrors.advantage (ctHopProblem ring encoding prims)
+              (ctHopAdv ring encoding prims adv b)
+          + (epsilonEnc
+            + (LearningWithErrors.advantage (keyHopProblem ring encoding prims)
+                (keyRestorationAdv ring encoding prims adv sim b)
+              + epsilonKeyIdeal)) := by
+        gcongr
+        · exact hPrim b
+        · exact hEnc b
+        · exact hKeyIdeal b
+    _ = _ := by ring
+```
+
+:::
+
+[`SPRTwoHop.lean:554-612 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L554-L612)
+
+## `sprAdv_le_three_mlwe_hypotheses_inhabited`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem sprAdv_le_three_mlwe_hypotheses_inhabited :
+    ∃ epsilonPrim epsilonEnc epsilonKeyIdeal : ℝ,
+      (∀ b, primitiveIdealization ring encoding prims adv b ≤ epsilonPrim)
+        ∧ (∀ b, encodingRegularity ring encoding prims adv sim b ≤ epsilonEnc)
+        ∧ (∀ b, keyIdealization ring encoding prims adv sim b ≤ epsilonKeyIdeal) := by
+```
+
+:::details[proof]
+
+```lean
+  refine ⟨max (primitiveIdealization ring encoding prims adv false)
+      (primitiveIdealization ring encoding prims adv true),
+    max (encodingRegularity ring encoding prims adv sim false)
+      (encodingRegularity ring encoding prims adv sim true),
+    max (keyIdealization ring encoding prims adv sim false)
+      (keyIdealization ring encoding prims adv sim true), ?_, ?_, ?_⟩
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+  · intro b
+    cases b
+    · exact le_max_left _ _
+    · exact le_max_right _ _
+```
+
+:::
+
+[`SPRTwoHop.lean:616-639 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L616-L639)
+
+## `encodingRegularity_mlkem768CompressedUniformCiphertext`
+
+Against `mlkem768CompressedUniformCiphertext`, the encoding-regularity
+residual is identically zero because the simulator is the final ideal game's
+own `randCt` distribution.
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem encodingRegularity_mlkem768CompressedUniformCiphertext (b : Bool) :
+    encodingRegularity concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+      mlkem768CompressedUniformCiphertext b = 0 := by
+```
+
+:::details[proof]
+
+```lean
+  simp only [encodingRegularity, mlkem768CompressedUniformCiphertext,
+    ProbComp.boolDistAdvantage, sub_self, abs_zero]
+```
+
+:::
+
+[`SPRTwoHop.lean:651-656 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L651-L656)
+
+## `mlkem768_sprAdv_le_three_mlwe_compressed`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem mlkem768_sprAdv_le_three_mlwe_compressed (b : Bool)
+    (epsilonPrim epsilonKeyIdeal : ℝ)
+    (hPrim : ∀ b, primitiveIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 b ≤ epsilonPrim)
+    (hKeyIdeal : ∀ b, keyIdealization concreteNTTRingOps mlkem768Encoding
+      mlkem768Primitives adv768 mlkem768CompressedUniformCiphertext b ≤ epsilonKeyIdeal) :
+    mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext adv768 b ≤
+      epsilonPrim
+        + LearningWithErrors.advantage
+            (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage
+            (ctHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+        + LearningWithErrors.advantage
+            (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+            (keyRestorationAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+              mlkem768CompressedUniformCiphertext b)
+        + epsilonKeyIdeal := by
+```
+
+:::details[proof]
+
+```lean
+  calc
+    mlkem768KEM.sprAdv mlkem768CompressedUniformCiphertext adv768 b
+      ≤ epsilonPrim
+          + LearningWithErrors.advantage
+              (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (keyHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+          + LearningWithErrors.advantage
+              (ctHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (ctHopAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768 b)
+          + 0
+          + LearningWithErrors.advantage
+              (keyHopProblem concreteNTTRingOps mlkem768Encoding mlkem768Primitives)
+              (keyRestorationAdv concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+                mlkem768CompressedUniformCiphertext b)
+          + epsilonKeyIdeal :=
+        sprAdv_le_three_mlwe concreteNTTRingOps mlkem768Encoding mlkem768Primitives adv768
+          mlkem768CompressedUniformCiphertext b epsilonPrim 0 epsilonKeyIdeal hPrim
+          (fun b => le_of_eq (encodingRegularity_mlkem768CompressedUniformCiphertext adv768 b))
+          hKeyIdeal
+    _ = _ := by ring
+```
+
+:::
+
+[`SPRTwoHop.lean:662-701 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L662-L701)
+
+### Post-plan additions: named assumption records and per-branch cap
+
+## `hypotheses`
+
+```lean
+instance hypotheses, no `sorry`. The SPR terms themselves are the
+open-but-named quantities here — bounded for the CPA context by
+`sprAdv_le_three_mlwe_compressed` above; their CCA-context refinement is the
+Maram–Xagawa Theorem-2 residual (ROM/PRF + collision terms), tracked in
+Maram–Xagawa, eprint 2022/1696. -/
 
 ```
 
-[`SPRTwoHop.lean:605-622 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L605-L622)
+[`SPRTwoHop.lean:711-716 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L711-L716)
+
+## `mlkem768_ANO_CCA_Advantage_le_sprTerms`
+
+`axioms: propext, Classical.choice, Quot.sound` · sorry-free ✓
+
+```lean
+theorem mlkem768_ANO_CCA_Advantage_le_sprTerms
+    (adv : KEM.ANO_CCA_Adversary unifSpec
+      (EncapsulationKey mlkem768 mlkem768Encoding)
+      (Ciphertext mlkem768 mlkem768Encoding) SharedSecret) :
+    KEM.ANO_CCA_Advantage mlkem768KEM ProbCompRuntime.probComp adv ≤
+      KEM.ANO_SPR_Term mlkem768KEM ProbCompRuntime.probComp adv
+        mlkem768CompressedUniformCiphertext true
+      + KEM.ANO_SPR_Term mlkem768KEM ProbCompRuntime.probComp adv
+        mlkem768CompressedUniformCiphertext false :=
+  KEM.ANO_CCA_Advantage_le_of_spr_full mlkem768KEM ProbCompRuntime.probComp adv
+    mlkem768CompressedUniformCiphertext
+    probComp_heval_pure probComp_heval_bind probComp_heval_liftProbComp probComp_hnf
+    (le_refl _) (le_refl _)
+
+```
+
+[`SPRTwoHop.lean:722-735 ↗`](https://github.com/Skanislav/pq-sap/blob/main/lean/PqStealth/SPRTwoHop.lean#L722-L735)

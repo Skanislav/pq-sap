@@ -1,5 +1,5 @@
 import PqStealth.Blinding
-import VCVio.CryptoFoundations.SecExp
+import PqStealth.Advantage
 
 /-!
 # The stealth scheme as a game
@@ -37,23 +37,35 @@ theorem ProbComp.boolBiasAdvantage_bind_uniformBool_branch {α : Type} (pref : P
       let z ← branch b a
       pure (b == z)).boolBiasAdvantage
       = (pref >>= branch true).boolDistAdvantage (pref >>= branch false) := by
-  have h : (do let a ← pref; let b ← ($ᵗ Bool); let z ← branch b a; pure (b == z))
-      = (do
-          let a ← pref
-          let b ← ($ᵗ Bool)
-          let z ← if b then branch true a else branch false a
-          pure (b == z)) :=
-    bind_congr fun a => bind_congr fun b => by cases b <;> rfl
-  rw [h]
-  exact ProbComp.boolBiasAdvantage_bind_uniformBool_eq_boolDistAdvantage pref
-    (branch true) (branch false)
+  unfold PFunctor.FreeM.boolBiasAdvantage PFunctor.FreeM.boolDistAdvantage
+  -- Swap the prefix and the hidden-bit draws (measure-level bind commutation,
+  -- `VCVio.OracleComp.EvalDist.Measure.evalDist_bind_bind_swap_of_uniform`), then
+  -- fold the branch selection into the `if` (support-aware congruence,
+  -- `VCVio.OracleComp.Support.bind_congr_of_forall_mem_support`), landing on the
+  -- exact coin-branch form `boolBiasAdvantage_coinBranch` proves.
+  rw [evalDist_bind_bind_swap_of_uniform (spec := unifSpec)
+    (mx := pref) (my := ($ᵗ Bool : ProbComp Bool))
+    (f := fun (a : α) (b : Bool) => branch b a >>= fun z => pure (b == z))]
+  have hcongr : (($ᵗ Bool : ProbComp Bool) >>= fun b => pref >>= fun (a : α) =>
+        branch b a >>= fun z => pure (b == z))
+      = (($ᵗ Bool : ProbComp Bool) >>= fun b : Bool =>
+          if b = true then (pref >>= branch true) >>= fun z => pure (b == z) else
+            (pref >>= branch false) >>= fun z => pure (b == z)) := by
+    refine bind_congr_of_forall_mem_support _ ?_
+    intro b _
+    cases b <;> simp only [Bool.false_eq_true, ↓reduceIte, bind_assoc]
+  rw [hcongr]
+  exact congrArg ENNReal.toReal
+    (evalDist_boolBias_bind_coin ($ᵗ Bool : ProbComp Bool) (pref >>= branch true)
+      (pref >>= branch false) (evalDist_uniformBool_apply true)
+      (evalDist_uniformBool_apply false))
 
 /-- Distinguishing advantage is symmetric: it is the absolute value of a
 difference. Used whenever a game hop is traversed in the opposite direction to
 the one a definition fixes. -/
 theorem ProbComp.boolDistAdvantage_comm (p q : ProbComp Bool) :
     p.boolDistAdvantage q = q.boolDistAdvantage p :=
-  abs_sub_comm _ _
+  PFunctor.FreeM.boolDistAdvantage_comm p q
 
 /-! ## The scheme as an abstract randomized algorithm -/
 
@@ -83,7 +95,7 @@ def CorrectExp : ProbComp Bool := do
 
 /-- The scheme is perfectly complete when detection of an honestly generated
 announcement always succeeds. -/
-def PerfectlyComplete : Prop := Pr[= true | S.CorrectExp] = 1
+def PerfectlyComplete : Prop := Pr{let x ← S.CorrectExp}[x = true] = 1
 
 /-! ## The false-positive experiment
 
@@ -102,7 +114,7 @@ def FalsePositiveExp : ProbComp Bool := do
 /-- False-positive rate: how often a non-recipient's scan fires. `.toReal`
 because every advantage in the development is an `ℝ`, and this number is added
 to distinguishing advantages in `Soundness`. -/
-noncomputable def falsePositiveRate : ℝ := (Pr[= true | S.FalsePositiveExp]).toReal
+noncomputable def falsePositiveRate : ℝ := (Pr{let x ← S.FalsePositiveExp}[x = true]).toReal
 
 /-- Detection soundness within `ε`: a non-recipient false-positives with
 probability at most `ε`. The counterpart of `PerfectlyComplete`.
